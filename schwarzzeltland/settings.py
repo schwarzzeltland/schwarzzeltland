@@ -34,6 +34,7 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     "main",
     "buildings",
+    "events",
     "nested_admin",
     "django.contrib.admin",
     "django.contrib.auth",
