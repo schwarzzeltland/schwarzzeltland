@@ -1,4 +1,7 @@
 
+# ignore private config
+config.py
+
 .DS_Store
 
 # Byte-compiled / optimized / DLL files
