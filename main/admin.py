@@ -1,7 +1,8 @@
 from django.contrib import admin
 from nested_admin.nested import NestedTabularInline, NestedModelAdmin
 
-from main.models import Organization, Membership, StockMaterial
+from buildings.models import StockMaterial
+from main.models import Organization, Membership
 
 
 class MembershipInline(NestedTabularInline):
