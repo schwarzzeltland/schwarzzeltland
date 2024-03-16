@@ -24,7 +24,7 @@ from schwarzzeltland import settings
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("main/", include("main.urls")),
-    re_path(r'^$', main_views.main_view, name='main'),
+    re_path(r'^$', main_views.home_view, name='main'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
