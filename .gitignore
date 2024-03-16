@@ -2,6 +2,9 @@
 # ignore private config
 config.py
 
+# ignore media files
+uploads
+
 .DS_Store
 
 # Byte-compiled / optimized / DLL files

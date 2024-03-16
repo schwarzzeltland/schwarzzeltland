@@ -4,6 +4,7 @@ from django.db import models
 
 class Organization(models.Model):
     name = models.CharField(unique=True, max_length=254)
+    image = models.ImageField(upload_to="users/", blank=True, null=True)
     members = models.ManyToManyField(
         User,
         through='Membership',

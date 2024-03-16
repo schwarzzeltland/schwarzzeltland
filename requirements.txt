@@ -1,2 +1,6 @@
 Django>=5.0.0
 django-nested-admin
+Pillow # For ImageField
+# See https://github.com/zelenij/django-bootstrap-v5/issues/33
+git+https://github.com/math-a3k/django-bootstrap-v5.git@9d9f01988f0554028c0fd276939fc1336f0fa997#egg=django-bootstrap-v5
+

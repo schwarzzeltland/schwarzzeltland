@@ -11,23 +11,23 @@
   <meta content="" name="keywords">
 
   <!-- Favicons -->
-  <link href="static/img/favicon.png" rel="icon">
-  <link href="static/img/apple-touch-icon.png" rel="apple-touch-icon">
+  <link href="/static/img/favicon.png" rel="icon">
+  <link href="/static/img/apple-touch-icon.png" rel="apple-touch-icon">
 
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Raleway:300,300i,400,400i,500,500i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
 
   <!-- Vendor CSS Files -->
-  <link href="static/vendor/aos/aos.css" rel="stylesheet">
-  <link href="static/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-  <link href="static/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-  <link href="static/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
-  <link href="static/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
-  <link href="static/vendor/remixicon/remixicon.css" rel="stylesheet">
-  <link href="static/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+  <link href="/static/vendor/aos/aos.css" rel="stylesheet">
+  <link href="/static/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="/static/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+  <link href="/static/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <link href="/static/vendor/remixicon/remixicon.css" rel="stylesheet">
+  <link href="/static/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
 
   <!-- Template Main CSS File -->
-  <link href="static/css/style.css" rel="stylesheet">
+  <link href="/static/css/style.css" rel="stylesheet">
 
   <!-- =======================================================
   * Template Name: Gp
@@ -77,7 +77,7 @@
         <i class="bi bi-list mobile-nav-toggle"></i>
       </nav><!-- .navbar -->
 
-      <a href="#about" class="get-started-btn scrollto">Get Started</a>
+      <a href="/main/login/" class="get-started-btn scrollto">Login</a>
 
     </div>
   </header><!-- End Header -->
@@ -89,30 +89,28 @@
       <div class="container">
 
         <div class="d-flex justify-content-between align-items-center">
-          <h2>Inner Page</h2>
-          <ol>
+          <h2>Home</h2>
+          {% comment %}<ol>
             <li><a href="index.html">Home</a></li>
             <li>Inner Page</li>
-          </ol>
+          </ol>{% endcomment %}
         </div>
 
       </div>
     </section><!-- End Breadcrumbs -->
 
     <section class="inner-page">
-      <div class="container">
-          {% for message in messages %}
-                    {% if message.tags == 'error' %}
-                        <div class="alert alert-danger">{{ message | safe }}</div>
-                    {% else %}
-                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-                    {% endif %}
-                {% endfor %}
-                {% block content %}
-                {% endblock %}
-        <p>
-          Example inner page template
-        </p>
+        <div class="container">
+            {% for message in messages %}
+                {% if message.tags == 'error' %}
+                    <div class="alert alert-danger">{{ message | safe }}</div>
+                {% else %}
+                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endif %}
+            {% endfor %}
+
+            {% block content %}
+            {% endblock %}
       </div>
     </section>
 
@@ -186,7 +184,7 @@
   </footer><!-- End Footer -->
 
   <!-- Vendor JS Files -->
-  <script src="static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 
 </body>
 
