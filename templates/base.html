@@ -48,11 +48,15 @@
         <h1 class="logo me-auto me-lg-0"><a href="/">Schwarzzeltland<span>.</span></a></h1>
         <!-- Uncomment below if you prefer to use an image logo -->
         <!-- <a href="index.html" class="logo me-auto me-lg-0"><img src="static/img/logo.png" alt="" class="img-fluid"></a>-->
+{% comment %}
+<div style="display: flex;flex-direction: row;justify-content: flex-end">
+{% endcomment %}
 
         <nav id="navbar" class="navbar order-last order-lg-0">
             <ul>
-                <li><a class="nav-link scrollto " href="/">Home</a></li>
+                {% comment %}<li><a class="nav-link scrollto " href="/">Home</a></li>{% endcomment %}
                 <li><a class="nav-link scrollto" href="/main/contacts">Kontakt</a></li>
+                <li><a class="nav-link scrollto" href="/main/help">Hilfe</a></li>
                 {% comment %} <li><a class="nav-link scrollto" href="#services">Services</a></li>
           <li><a class="nav-link scrollto " href="#portfolio">Portfolio</a></li>
           <li><a class="nav-link scrollto" href="#team">Team</a></li>
@@ -77,9 +81,8 @@
             </ul>
             <i class="bi bi-list mobile-nav-toggle"></i>
         </nav><!-- .navbar -->
-
-        <a href="/main/login/" class="get-started-btn scrollto">Login</a>
-
+        <a href="/main/login/" class="get-started-btn scrollto" style="margin-left: 20px;">Login</a>
+{% comment %}</div>{% endcomment %}
     </div>
 </header><!-- End Header -->
 

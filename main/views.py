@@ -27,3 +27,7 @@ def privacypolice_view(request):
     return render(request, 'main/privacypolice.html', {
         'title': 'Datenschutzerklärung',
     })
+def help_view(request):
+    return render(request, 'main/help.html', {
+        'title': 'Hilfe',
+    })
