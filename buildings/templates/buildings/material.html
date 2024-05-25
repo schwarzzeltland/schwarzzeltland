@@ -1,8 +1,61 @@
 {% extends "base.html" %}
 {% load bootstrap5 %}
 
+
 {% block content %}
-    <p>
-        Tolles Material
-    </p>
+    <table class="table">
+        <thead>
+        <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Anzahl</th>
+            <th scope="col">Lagerort</th>
+            <th scope="col"></th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for m in material %}
+            <tr>
+                <td>{{ m.material.name }}</td>
+                <td>{{ m.count }}</td>
+                <td>{{ m.storage_place }}</td>
+                <td></td>
+            </tr>
+        {% endfor %}
+        {% if form %}
+            <form action="" method="post" class="form">
+                {% csrf_token %}
+                <tr>
+                    {{ form.non_field_errors }}
+
+                    <td>
+                        <div class="input-group">
+                            <select name="material" class="form-select" title="" required="" id="id_material">
+                                {% for field in form.material %}
+                                    {{ field }}
+                                {% endfor %}
+
+
+                            </select>
+                            <a href="{% url 'edit_material' %}" class="btn btn-outline-secondary" type="button"
+                               id="button-addon1">Create Material
+                            </a>
+                        </div>
+
+                    </td>
+
+                    <td>{% bootstrap_field form.count show_label=False %}</td>
+                    <td>{% bootstrap_field form.storage_place show_label=False %}</td>
+                    <th scope="row">
+                        <button type="submit" class="btn btn-success">
+                            Ins Lager einsortieren
+                        </button>
+                    </th>
+                </tr>
+            </form>
+        {% endif %}
+
+        </tbody>
+    </table>
+
+
 {% endblock %}
