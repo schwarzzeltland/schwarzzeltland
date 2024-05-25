@@ -1,4 +1,3 @@
-from Tools.scripts.umarshal import Type
 from django.db import models
 from django.db.models import CharField
 
@@ -26,8 +25,11 @@ class Location(models.Model):
     description = CharField(max_length=1024, default="", blank=True)
     latitude = models.FloatField(default=00.000000, help_text="Latitude")
     longitude = models.FloatField(default=00.000000, help_text="Longitude")
+
     def __str__(self):
         return self.name
+
+
 class Trip(models.Model):
     TYPE_CAMP = 0
     TYPE_DRIVE = 1
