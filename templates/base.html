@@ -82,14 +82,39 @@
             <i class="bi bi-list mobile-nav-toggle"></i>
         </nav><!-- .navbar -->
 
-    {% if user.is_authenticated %}
-        <form action="{% url 'logout' %}" method="post">
-            {% csrf_token %}
-            <button class="get-started-btn" type="submit">Log out</button>
-        </form>
-    {% else %}
-        <a href="/main/login/" class="get-started-btn">Login</a>
-    {% endif %}</div>
+        <div style="display: flex">
+            {% if user.is_authenticated %}
+                <div class="dropdown" style="margin-right: 1rem">
+                    <a class="btn btn-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                       aria-expanded="false">
+                        {{ organization.name }}
+                    </a>
+
+                    <ul class="dropdown-menu">
+                        {% for org in user.organization_set.all %}
+                            {% if org.id != organization.id %}
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="org" value="{{ org.id }}">
+                                    <li>
+                                        <button type="submit" class="dropdown-item">{{ org.name }}</button>
+                                    </li>
+                                </form>
+                            {% endif %}
+                        {% endfor %}
+                        <li><a class="dropdown-item" href="#">New Org</a></li>
+                    </ul>
+                </div>
+            {% endif %}
+            {% if user.is_authenticated %}
+                <form action="{% url 'logout' %}" method="post">
+                    {% csrf_token %}
+                    <button class="get-started-btn" type="submit">Log out</button>
+                </form>
+            {% else %}
+                <a href="/main/login/" class="get-started-btn">Login</a>
+            {% endif %}</div>
+    </div>
     </div>
 </header><!-- End Header -->
 
