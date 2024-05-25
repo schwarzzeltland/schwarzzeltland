@@ -29,5 +29,5 @@ def privacypolice_view(request):
     })
 def help_view(request):
     return render(request, 'main/help.html', {
-        'title': 'Hilfe',
+        'title': 'Was ist Schwarzzeltland?',
     })
