@@ -5,6 +5,10 @@ config.py
 # ignore media files
 uploads
 
+# ignore env files
+.env.prod
+.env.prod.db
+
 .DS_Store
 
 # Byte-compiled / optimized / DLL files
