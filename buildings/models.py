@@ -37,6 +37,7 @@ class StockMaterial(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     material = models.ForeignKey(Material, on_delete=models.CASCADE)
     count = models.IntegerField()
+    storage_place = CharField(max_length=1024, default="", blank=True)
 
 
 class Construction(models.Model):
@@ -54,3 +55,4 @@ class ConstructionMaterial(models.Model):
     construction = models.ForeignKey(Construction, on_delete=models.CASCADE)
     material = models.ForeignKey(Material, on_delete=models.CASCADE)
     count = models.IntegerField()
+    storage_place = CharField(max_length=1024, default="", blank=True)
