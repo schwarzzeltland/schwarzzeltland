@@ -81,8 +81,40 @@
             </ul>
             <i class="bi bi-list mobile-nav-toggle"></i>
         </nav><!-- .navbar -->
-        <a href="/main/login/" class="get-started-btn scrollto" style="margin-left: 20px;">Login</a>
-{% comment %}</div>{% endcomment %}
+
+        <div style="display: flex">
+            {% if user.is_authenticated %}
+                <div class="dropdown" style="margin-right: 1rem">
+                    <a class="btn btn-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                       aria-expanded="false">
+                        {{ organization.name }}
+                    </a>
+
+                    <ul class="dropdown-menu">
+                        {% for org in user.organization_set.all %}
+                            {% if org.id != organization.id %}
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="org" value="{{ org.id }}">
+                                    <li>
+                                        <button type="submit" class="dropdown-item">{{ org.name }}</button>
+                                    </li>
+                                </form>
+                            {% endif %}
+                        {% endfor %}
+                        <li><a class="dropdown-item" href="#">New Org</a></li>
+                    </ul>
+                </div>
+            {% endif %}
+            {% if user.is_authenticated %}
+                <form action="{% url 'logout' %}" method="post">
+                    {% csrf_token %}
+                    <button class="get-started-btn" type="submit">Log out</button>
+                </form>
+            {% else %}
+                <a href="/main/login/" class="get-started-btn">Login</a>
+            {% endif %}</div>
+    </div>
     </div>
 </header><!-- End Header -->
 
@@ -93,11 +125,21 @@
         <div class="container">
 
             <div class="d-flex justify-content-between align-items-center">
-                <h2>{{ title }}</h2>
-                {% comment %}<ol>
-            <li><a href="index.html">Home</a></li>
-            <li>Inner Page</li>
-          </ol>{% endcomment %}
+                <h2 class="mr-4">{{ title }}</h2>
+                {% if organization %}
+                    <nav class="d-flex justify-content-between align-items-baseline ">
+                        <style>
+                            .sub-menu {
+                                font-size: 22px;
+                                margin: 0 1rem;
+                            }
+                        </style>
+                        <h3 class="sub-menu"><a href="{% url 'constructions' %}">Konstruktionen</a></h3>
+                        <h3 class="sub-menu"><a href="{% url 'material' %}">Materialien</a></h3>
+                        <h3 class="sub-menu"><a href="{% url 'events' %}">Events</a></h3>
+                        <h3 class="sub-menu"><a href="{% url 'organization' %}">Organisation</a></h3>
+                    </nav>
+                {% endif %}
             </div>
 
         </div>

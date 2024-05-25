@@ -11,6 +11,11 @@ def home_view(request):
         'constructions': Construction.objects.filter(Q(owner__isnull=True) | Q(public=True)),
     })
 
+def organization_view(request):
+    return render(request, 'main/organization.html', {
+        'title': 'Organization',
+    })
+
 def contacts_view(request):
     return render(request, 'main/contacts.html', {
         'title': 'Kontakt',

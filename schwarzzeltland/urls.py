@@ -24,6 +24,8 @@ from schwarzzeltland import settings
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("main/", include("main.urls")),
+    path("buildings/", include("buildings.urls")),
+    path("events/", include("events.urls")),
     re_path(r'^$', main_views.home_view, name='main'),
 ]
 
