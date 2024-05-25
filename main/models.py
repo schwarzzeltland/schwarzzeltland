@@ -1,5 +1,7 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 class Organization(models.Model):
@@ -25,3 +27,10 @@ class Membership(models.Model):
 
     class Meta:
         unique_together = (("user", "organization"),)
+
+
+@receiver(post_save, sender=User)
+def user_created(sender, instance, created, **kwargs):
+    if created:
+        orga = Organization.objects.create(name=f"{instance.username}s Organisation")
+        Membership.objects.create(user=instance, organization=orga, admin=True, material_manager=True)
