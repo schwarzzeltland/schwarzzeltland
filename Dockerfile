@@ -3,7 +3,7 @@ LABEL authors="Leander Schulten"
 
 ADD requirements.txt /app/requirements.txt
 
-RUN apt update && apt install -y netcat
+RUN apt-get update && apt-get install -y --no-install-recommends netcat
 
 RUN set -ex \
     && python -m venv /env \
