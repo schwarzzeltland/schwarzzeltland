@@ -85,4 +85,4 @@ jobs:
         env:
           PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
         run: |
-          curl -X POST "$SUPER_SECRET"
+          curl -X POST "$PORTAINER_URL"
