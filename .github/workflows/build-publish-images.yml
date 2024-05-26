@@ -79,3 +79,10 @@ jobs:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}/nginx
           subject-digest: ${{ steps.push-nginx.outputs.digest }}
           push-to-registry: true
+
+      - name: Trigger portainer
+        shell: bash
+        env:
+          PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
+        run: |
+          curl -X POST "$SUPER_SECRET"
