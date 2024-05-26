@@ -18,7 +18,7 @@ class AddMaterialStockForm(ModelForm):
 
         # Modify the queryset of the material field
         self.fields['material'].queryset = Material.objects.filter(
-            Q(owner=organization) | Q(owner__isnull=True) | Q(public=True))
+            Q(owner=organization) | Q(owner__isnull=True) | Q(public=True)).order_by('name')
 
     class Meta:
         model = StockMaterial
