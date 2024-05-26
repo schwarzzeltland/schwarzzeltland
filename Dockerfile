@@ -3,6 +3,8 @@ LABEL authors="Leander Schulten"
 
 ADD requirements.txt /app/requirements.txt
 
+RUN apt update && apt install -y netcat
+
 RUN set -ex \
     && python -m venv /env \
     && /env/bin/pip install --upgrade pip \
