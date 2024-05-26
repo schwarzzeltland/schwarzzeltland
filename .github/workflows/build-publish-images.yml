@@ -38,13 +38,13 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.IMAGE_NAME }}/django-app:${{ github.ref_name }}
+          tags: ${{ env.IMAGE_NAME }}:django-app--${{ github.ref_name }}
 
       # This step generates an artifact attestation for the image, which is an unforgeable statement about where and how it was built. It increases supply chain security for people who consume the image. For more information, see "[AUTOTITLE](/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds)."
       - name: Generate django artifact attestation
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}/django-app
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.push-django.outputs.digest }}
           push-to-registry: true
 
@@ -54,11 +54,11 @@ jobs:
         with:
           context: nginx
           push: true
-          tags: ${{ env.IMAGE_NAME }}/nginx:${{ github.ref_name }}
+          tags: ${{ env.IMAGE_NAME }}:nginx--${{ github.ref_name }}
 
       - name: Generate nginx artifact attestation
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}/django-app
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.push-nginx.outputs.digest }}
           push-to-registry: true
