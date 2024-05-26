@@ -1,5 +1,6 @@
 services:
   web:
+    image: ghcr.io/schwarzzeltland/schwarzzeltland/django-app:main
     build:
       context: .
     volumes:
@@ -28,6 +29,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
   nginx:
+    image: ghcr.io/schwarzzeltland/schwarzzeltland/nginx:main
     build: ./nginx
     volumes:
       - static_volume:/app/staticfiles
