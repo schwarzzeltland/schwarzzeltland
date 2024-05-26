@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse_lazy
@@ -9,6 +10,7 @@ from buildings.models import StockMaterial, Construction
 from main.models import Membership
 
 
+@login_required
 def constructions(request):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
     if m.material_manager:
@@ -44,6 +46,7 @@ def constructions(request):
     })
 
 
+@login_required
 def edit_construction(request):
     if request.method == 'POST':
         construction_form = ConstructionForm(request.POST)
@@ -69,6 +72,7 @@ def edit_construction(request):
     })
 
 
+@login_required
 def material(request):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
     if m.material_manager:
@@ -89,6 +93,7 @@ def material(request):
     })
 
 
+@login_required
 def edit_material(request):
     form = MaterialForm(organization=request.org)
     if request.method == 'POST':
