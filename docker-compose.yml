@@ -7,10 +7,24 @@ services:
       - media_volume:/app/uploads
     expose:
       - 8000
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_NO_DEBUG: ${DJANGO_NO_DEBUG}
+      SQL_ENGINE: django.db.backends.postgresql
+      SQL_DATABASE: schwarzzeltland
+      SQL_USER: django
+      SQL_PASSWORD: schwarzzeltland
+      SQL_HOST: db
+      SQL_PORT: 5432
+      DATABASE: postgres
     depends_on:
       - db
   db:
     image: postgres:15
+    environment:
+      POSTGRES_USER: django
+      POSTGRES_PASSWORD: schwarzzeltland
+      POSTGRES_DB: schwarzzeltland
     volumes:
       - postgres_data:/var/lib/postgresql/data/
   nginx:
