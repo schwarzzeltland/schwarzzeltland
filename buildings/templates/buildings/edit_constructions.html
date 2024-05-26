@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+
+{% block content %}
+    <form action="{% url 'edit_constructions' %}" method="post" class="form">
+        {% csrf_token %}
+        {% bootstrap_form form %}
+        {% buttons %}
+            <button type="submit" class="btn btn-success">
+                <span data-feather="alert-triangle"></span>
+                Konstruktion hinzufügen
+            </button>
+
+        {% endbuttons %}
+    </form>
+{% endblock %}

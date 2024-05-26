@@ -2,7 +2,50 @@
 {% load bootstrap5 %}
 
 {% block content %}
-    <p>
-        Tolle Konstruktionen
-    </p>
+    <table class="table">
+        <thead>
+        <tr>
+            <th scope="col">Name</th>
+            <th scope="col"></th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for c in construction %}
+            <tr>
+                <td>{{ c.name }}</td>
+                <td></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {% if form %}
+        <form action="" method="post" class="form">
+            {% csrf_token %}
+            <table class="table">
+                <tbody>
+                <tr>
+                    <td>
+                        <div class="input-group">
+                            <select name="construction" class="form-select" title="" required="" id="id_construction">
+                                {% for field in form.construction %}
+                                    {{ field }}
+                                {% endfor %}
+                            </select>
+                            <a href="{% url 'edit_constructions' %}" class="btn btn-outline-secondary" type="button"
+                               id="button-addon1">
+                                Konstruktion erstellen
+                            </a>
+                        </div>
+                    </td>
+                    <td>
+                        <button type="submit" class="btn btn-success">
+                            Konstruktion hinzufügen
+                        </button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </form>
+    {% endif %}
 {% endblock %}
