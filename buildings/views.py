@@ -1,13 +1,11 @@
 from django.contrib import messages
 from django.http import HttpResponseRedirect
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from django.urls import reverse_lazy
-from setuptools._distutils.command.config import config
-from urllib3 import request
 
 from buildings.forms import AddMaterialStockForm, MaterialForm, ConstructionForm, ImportConstructionForm, \
-    ConstructionMaterialForm, ConstructionMaterialFormSet
-from buildings.models import StockMaterial, Construction, ConstructionMaterial
+    ConstructionMaterialFormSet
+from buildings.models import StockMaterial, Construction
 from main.models import Membership
 
 
@@ -65,7 +63,7 @@ def edit_construction(request):
         construction_form = ConstructionForm()
         material_formset = ConstructionMaterialFormSet()
     return render(request, 'buildings/edit_constructions.html', {
-        'title' : 'Konstruktion hinzufügen',
+        'title': 'Konstruktion hinzufügen',
         'construction_form': construction_form,
         'material_formset': material_formset,
     })
