@@ -13,7 +13,7 @@ def home_view(request):
 
 def organization_view(request):
     return render(request, 'main/organization.html', {
-        'title': 'Organization',
+        'title': 'Organisation',
     })
 
 def contacts_view(request):
