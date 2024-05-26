@@ -5,13 +5,36 @@
 {% block content %}
     <form action="{% url 'edit_constructions' %}" method="post" class="form">
         {% csrf_token %}
-        {% bootstrap_form form %}
-        {% buttons %}
-            <button type="submit" class="btn btn-success">
+        <div class="container mt-5">
+            <form method="post">
+                {% csrf_token %}
+                {% bootstrap_form construction_form %}
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Material</th>
+                        <th>Anzahl</th>
+                        <th>Lagerplatz</th>
+                        <!-- Weitere Spaltenköpfe nach Bedarf -->
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {{ material_formset.management_form }}
+                    {% for form in material_formset %}
+                        <tr>
+                            <td>{% bootstrap_field form.material show_label=False %}</td>
+                            <td>{% bootstrap_field form.count show_label=False %}</td>
+                            <td>{% bootstrap_field form.storage_place show_label=False %}</td>
+                            <!-- Weitere Zellen für zusätzliche Felder des Formulars -->
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+               <button type="submit" class="btn btn-success">
                 <span data-feather="alert-triangle"></span>
                 Konstruktion hinzufügen
             </button>
+            </form>
+        </div>
 
-        {% endbuttons %}
-    </form>
 {% endblock %}
