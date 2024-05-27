@@ -188,11 +188,9 @@
                 </div>
 
                 <div class="col footer-links" style="display: flex;justify-content: right">
-                    {% comment %}<h4>Useful Links</h4>{% endcomment %}
-
                     <style>
                         /* Entfernen der Standard-Listeneigenschaften */
-                        ul {
+                        .footer-ul {
                             list-style-type: none;
                             margin: 0;
                             padding: 0;
@@ -200,26 +198,24 @@
                         }
 
                         /* Styling der Listenelemente, um sie horizontal anzuzeigen */
-                        li {
+                        .footer-li {
                             padding-top: 8px !important;
                             float: left; /* Listenelemente nebeneinander anordnen */
                         }
 
                         /* Styling der Links innerhalb der Listenelemente */
-                        li a {
-                             font-size: 18px;
+                        .footer-li a {
+                            font-size: 18px;
                             display: block; /* Den Link-Elementen Block-Eigenschaften geben */
                             padding: 8px; /* Ein wenig Abstand um den Text hinzufügen */
                             text-decoration: none; /* Standard-Unterstreichung entfernen */
                         }
                     </style>
-                    </head>
-                    <body>
 
-                    <ul>
-                        <li><a href="/main/disclaimer">Haftungsausschluss</a></li>
-                        <li><a href="/main/impressum">Impressum</a></li>
-                        <li><a href="/main/privacypolice">Datenschutzerklärung</a></li>
+                    <ul class="footer-ul">
+                        <li class="footer-li"><a href="/main/disclaimer">Haftungsausschluss</a></li>
+                        <li class="footer-li"><a href="/main/impressum">Impressum</a></li>
+                        <li class="footer-li"><a href="/main/privacypolice">Datenschutzerklärung</a></li>
                     </ul>
                 </div>
 
