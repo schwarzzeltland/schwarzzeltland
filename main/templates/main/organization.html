@@ -5,4 +5,57 @@
     <p>
         Tolle Orga
     </p>
+    <form method="post" class="form">
+        {% csrf_token %}
+        {% bootstrap_form form %}
+        {% buttons %}
+            <button type="submit" class="btn btn-primary">
+                Save
+            </button>
+        {% endbuttons %}
+    </form>
+    <table class="table">
+        <thead>
+        <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Admin</th>
+            <th scope="col">Material Manager</th>
+            <th scope="col"></th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for m in members %}
+            {% include "./member_list_entry.html" %}
+        {% endfor %}
+        <tr id="new_member">
+            <form hx-post="{% url 'add_user' %}" hx-swap="beforebegin" hx-target="#new_member"
+                  hx-on::after-request="
+                    const element = document.querySelector('input[name=name2]');
+                    if (event.detail.failed) {
+                        element.classList.add('is-invalid');
+                        element.setCustomValidity('Unknown username');
+                        element.reportValidity();
+                        const handleInputChange = () => {
+                          element.classList.remove('is-invalid');
+                          element.setCustomValidity('');
+                          element.removeEventListener('input', handleInputChange);
+                        };
+                        element.addEventListener('input', handleInputChange);
+                    } else {
+                        element.classList.remove('is-invalid');
+                        element.value = '';
+                    }">
+                <td><input name="name2" type="text" class="form-control" required></td>
+                <td><input name="admin" class="form-check-input" style="vertical-align: middle" type="checkbox"/></td>
+                <td><input name="material_manager" class="form-check-input" style="vertical-align: middle"
+                           type="checkbox"/></td>
+                <td>
+                    <button type="submit" class="btn btn-success">Add User
+                    </button>
+                </td>
+            </form>
+
+        </tr>
+        </tbody>
+    </table>
 {% endblock %}

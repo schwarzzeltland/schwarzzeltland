@@ -1,8 +1,16 @@
+from django.contrib.auth.models import User
+from django.http import HttpResponse
+
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import render
+from django.contrib import messages
 
 from buildings.models import Construction
+from django.shortcuts import redirect
+
+from main.forms import OrganizationForm
+from main.models import Organization, Membership
 
 
 # Create your views here.
@@ -15,9 +23,52 @@ def home_view(request):
 
 @login_required
 def organization_view(request):
+    if request.method == 'POST':
+        form = OrganizationForm(request.POST, instance=request.org)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Saved")
+    else:
+        form = OrganizationForm(instance=request.org)
     return render(request, 'main/organization.html', {
         'title': 'Organisation',
+        'form': form,
+        'members': request.org.membership_set.all(),
     })
+
+
+def change_admin(request, pk):
+    m = request.org.membership_set.get(pk=pk)
+    m.admin = not m.admin
+    m.save()
+    return HttpResponse(status=200)
+
+
+def change_material_manager(request, pk):
+    m = request.org.membership_set.get(pk=pk)
+    m.material_manager = not m.material_manager
+    m.save()
+    return HttpResponse(status=200)
+
+
+def delete_membership(request, pk):
+    m = request.org.membership_set.get(pk=pk)
+    m.delete()
+    return HttpResponse(status=200)
+
+
+def add_user(request):
+    username = request.POST.get("name2", None)
+    user = User.objects.filter(username=username).first()
+    if user:
+        m = Membership.objects.create(organization=request.org, user=user,
+                                      admin=request.POST.get("admin", None) == "on",
+                                      material_manager=request.POST.get("material_manager", None) == "on")
+        return render(request, 'main/member_list_entry.html', {
+            'm': m,
+        })
+    print("unknown user", username)
+    return HttpResponse(status=404)
 
 
 def contacts_view(request):
