@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "imagekit",
 ]
 
 MIDDLEWARE = [
@@ -139,3 +140,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
 LOGIN_URL = '/main/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
+
+IMAGEKIT_DEFAULT_THUMBNAIL_FORMAT = "WEBP"
+IMAGEKIT_DEFAULT_THUMBNAIL_SRCSET_SCALES = [1.5, 2, 2.5, 3]

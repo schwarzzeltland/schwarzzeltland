@@ -1,6 +1,9 @@
 Django>=5.0.0
 django-nested-admin
-Pillow # For ImageField
+Pillow # For ImageField and django-imagekit
 # See https://github.com/zelenij/django-bootstrap-v5/issues/33
 git+https://github.com/math-a3k/django-bootstrap-v5.git@9d9f01988f0554028c0fd276939fc1336f0fa997#egg=django-bootstrap-v5
 
+# django-imagekit # um im template thumbnails zu generieren https://github.com/matthewwithanm/django-imagekit
+# Mit https://github.com/matthewwithanm/django-imagekit/pull/574 und https://github.com/matthewwithanm/django-imagekit/pull/575 :
+git+https://github.com/autoantwort/django-imagekit@068a9f087dedcc1e60ec55137b12edccfb503be5#egg=django-imagekit
