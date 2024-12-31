@@ -3,9 +3,8 @@
 
 
 {% block content %}
- <form method="post" class="form">
+ <form action="{% url 'create_material' %}" method="post" class="form">
         {% csrf_token %}
-        {% bootstrap_form mat_form %}
         {% bootstrap_form form %}
         {% buttons %}
             <button type="submit" class="btn btn-success">

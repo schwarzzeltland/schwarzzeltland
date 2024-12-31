@@ -12,8 +12,11 @@
         <tbody>
         {% for c in construction %}
             <tr>
-                <td>{{ c.name }}</td>
-                <td></td>
+                <td>{{ c.name }}
+                <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
+                    <a href="{% url 'edit_constructions' c.pk %}" class="btn btn-outline-primary btn-sm me-2">Bearbeiten</a>
+                    <a href="{% url 'delete_construction' c.pk %}" class="btn btn-danger btn-sm">Löschen</a>
+                </td>
             </tr>
         {% endfor %}
         </tbody>

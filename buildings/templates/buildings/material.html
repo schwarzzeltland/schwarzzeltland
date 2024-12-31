@@ -19,6 +19,9 @@
                 <td>{{ m.count }}</td>
                 <td>{{ m.storage_place }}</td>
                 <td></td>
+                <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
+                    <a href="{% url 'edit_material' m.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a>
+                </td>
             </tr>
         {% endfor %}
         {% if form %}
@@ -36,7 +39,7 @@
 
 
                             </select>
-                            <a href="{% url 'edit_material' %}" class="btn btn-outline-secondary" type="button"
+                            <a href="{% url 'create_material' %}" class="btn btn-outline-secondary" type="button"
                                id="button-addon1">Material erstellen
                             </a>
                         </div>

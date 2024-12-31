@@ -3,7 +3,7 @@
 
 
 {% block content %}
-    <form action="{% url 'edit_constructions' %}" method="post" class="form">
+    <form method="post" class="form">
         {% csrf_token %}
         <div class="container mt-5">
             <form method="post">
@@ -21,19 +21,24 @@
                     <tbody>
                     {{ material_formset.management_form }}
                     {% for form in material_formset %}
+                        {% for hidden in form.hidden_fields %}
+                            {{ hidden }}
+                        {% endfor %}
                         <tr>
                             <td>{% bootstrap_field form.material show_label=False %}</td>
                             <td>{% bootstrap_field form.count show_label=False %}</td>
                             <td>{% bootstrap_field form.storage_place show_label=False %}</td>
+                            <td>{% bootstrap_field form.DELETE show_label=True %}</td>
                             <!-- Weitere Zellen für zusätzliche Felder des Formulars -->
                         </tr>
                     {% endfor %}
                     </tbody>
                 </table>
-               <button type="submit" class="btn btn-success">
-                <span data-feather="alert-triangle"></span>
-                Konstruktion hinzufügen
-            </button>
+                <button type="submit" class="btn btn-success">
+                    <span data-feather="alert-triangle"></span>
+                    Konstruktion speichern
+                </button>
+                <a href="{% url 'constructions' %}" class="btn btn-secondary">Abbrechen</a>
             </form>
         </div>
 
