@@ -76,7 +76,7 @@ def edit_construction(request, pk=None):
         construction_form = ConstructionForm(instance=construction)
         material_formset = ConstructionMaterialFormSet(instance=construction)
     return render(request, 'buildings/edit_constructions.html', {
-        'title': 'Konstruktion gespeichert',
+        'title': 'Konstruktion bearbeiten',
         'construction_form': construction_form,
         'material_formset': material_formset,
     })
@@ -91,7 +91,7 @@ def material(request):
             form = AddMaterialStockForm(request.POST, organization=request.org)
             if form.is_valid():
                 form.save()
-                messages.success(request, 'Material Added')
+                messages.success(request, 'Material einsortiert')
                 return HttpResponseRedirect(reverse_lazy('material'))
     else:
         form = None
@@ -111,15 +111,16 @@ def create_material(request):
         if form.is_valid():
             form.save()
             StockMaterial.objects.create(material=form.instance, organization=request.org,
-                                                 count=form.cleaned_data['count'],
-                                               storage_place=form.cleaned_data['storage_place'])
+                                         count=form.cleaned_data['count'],
+                                         storage_place=form.cleaned_data['storage_place'])
 
-        messages.success(request, 'Material gespeichert')
+            messages.success(request, 'Material einsortiert')
         return HttpResponseRedirect(reverse_lazy('material'))
     return render(request, 'buildings/create_material.html', {
-        'title': 'Material hinzufügen',
+        'title': 'Material erstellen',
         'form': form,
     })
+
 
 @login_required
 def edit_material(request, pk=None):
@@ -130,22 +131,34 @@ def edit_material(request, pk=None):
         if form.is_valid() and mat_form.is_valid():
             form.save()
             mat_form.save()
-            messages.success(request, 'Material gespeichert')
+            messages.success(request, f'Material {mat.material.name} gespeichert')
             return HttpResponseRedirect(reverse_lazy('material'))
     else:
         form = StockMaterialForm(instance=mat)
         mat_form = PlainMaterialForm(instance=mat.material)
     return render(request, 'buildings/edit_material.html', {
-        'title': 'Material hinzufügen',
+        'title': 'Material berabeiten',
         'form': form,
         'mat_form': mat_form,
     })
 
+
 @login_required
 def delete_construction(request, pk=None):
-        construction = get_object_or_404(Construction, pk=pk, owner=request.org)
-        if request.method == 'POST':
-            construction.delete()
-            messages.success(request, f'Konstruktion {construction.name} erfolgreich gelöscht.')
-            return HttpResponseRedirect(reverse_lazy('constructions'))
-        return render(request, 'buildings/delete_construction.html', {'construction': construction})
+    construction = get_object_or_404(Construction, pk=pk, owner=request.org)
+    if request.method == 'POST':
+        construction.delete()
+        messages.success(request, f'Konstruktion {construction.name} erfolgreich gelöscht.')
+        return HttpResponseRedirect(reverse_lazy('constructions'))
+    return render(request, 'buildings/delete_construction.html',
+                  {'title': 'Konstruktion löschen', 'construction': construction})
+
+
+@login_required
+def delete_material(request, pk=None):
+    mat = get_object_or_404(StockMaterial, pk=pk)
+    if request.method == 'POST':
+        mat.delete()
+        messages.success(request, f'Material {mat.material.name} erfolgreich gelöscht.')
+        return HttpResponseRedirect(reverse_lazy('material'))
+    return render(request, 'buildings/delete_material.html', {'title': 'Material löschen', 'material': mat.material})

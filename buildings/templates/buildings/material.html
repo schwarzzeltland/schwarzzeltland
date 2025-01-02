@@ -21,6 +21,7 @@
                 <td></td>
                 <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
                     <a href="{% url 'edit_material' m.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a>
+                    <a href="{% url 'delete_material' m.pk %}" class="btn btn-danger btn-sm">Löschen</a>
                 </td>
             </tr>
         {% endfor %}
