@@ -17,8 +17,6 @@ WORKDIR /app
 ENV VIRTUAL_ENV /env
 ENV PATH /env/bin:$PATH
 
-RUN python manage.py collectstatic --noinput
-
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 EXPOSE 8000
