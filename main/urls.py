@@ -6,6 +6,7 @@ from main import views
 urlpatterns = [
     path('home', views.home_view, name='home'),
     path('organization', views.organization_view, name='organization'),
+    path('create_organization', views.create_organization, name='create_organization'),
     path('change_admin/<int:pk>/', views.change_admin, name='change_admin'),
     path('change_material_manager/<int:pk>/', views.change_material_manager, name='change_material_manager'),
     path('delete_membership/<int:pk>/', views.delete_membership, name='delete_membership'),

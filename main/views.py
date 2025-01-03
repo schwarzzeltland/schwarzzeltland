@@ -9,7 +9,7 @@ from django.contrib import messages
 from buildings.models import Construction
 from django.shortcuts import redirect
 
-from main.forms import OrganizationForm
+from main.forms import OrganizationForm, MembershipFormset
 from main.models import Organization, Membership
 
 
@@ -33,6 +33,33 @@ def organization_view(request):
     return render(request, 'main/organization.html', {
         'title': 'Organisation',
         'form': form,
+        'members': request.org.membership_set.all(),
+    })
+
+
+@login_required
+def create_organization(request):
+    if request.method == 'POST':
+        form = OrganizationForm(request.POST)
+        formset = MembershipFormset(request.POST)
+        if form.is_valid() and formset.is_valid():
+            org = form.save()
+            formset.instance = org
+            formset.save()
+            request.session["org"] = org.id
+            messages.success(request, "Saved")
+            return redirect('organization')
+    else:
+        form = OrganizationForm()
+        formset = MembershipFormset(initial=[
+            {
+                "user": request.user.username,
+            }
+        ])
+    return render(request, 'main/create_organization.html', {
+        'title': 'Organisation',
+        'form': form,
+        'formset': formset,
         'members': request.org.membership_set.all(),
     })
 

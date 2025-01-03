@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+{% block content %}
+    <form method="post">
+        {% csrf_token %}
+        {% bootstrap_form form %}
+        {{ formset.management_form }}
+
+        <table class="table">
+            <thead>
+            <tr>
+                {% for field in formset.form.visible_fields %}
+                    <th>{{ field.label }}</th>
+                {% endfor %}
+                <th>Delete</th>
+            </tr>
+            </thead>
+            <tbody id="id_formset">
+
+            {% for form in formset %}
+                <tr>
+                    {% for field in form.visible_fields %}
+                        <td>
+                            {% bootstrap_field field show_label=False wrapper_class="mb-2" %}
+                            {% if field.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ field.errors }}
+                                </div>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td>
+                        <button type="button" onclick="deleteRow(event)"
+                                {% if forloop.first %}style="display: none" {% endif %} class="btn btn-outline-danger">D
+                        </button>
+                    </td>
+                </tr>
+            {% endfor %}
+            <tr id="add_row">
+                <td colspan="100" class="text-end">
+                    <button type="button" id="add_form" class="btn btn-outline-primary">Add User</button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+
+
+        <script async>
+            const formset = document.getElementById('id_formset');
+            const addButton = document.getElementById('add_form');
+            addButton.addEventListener('click', (event) => {
+                const newForm = formset.firstElementChild.innerHTML
+                    .replace("-0-", "-" + formset.children.length + "-").replace("display: none", "");
+                document.getElementById('add_row').insertAdjacentHTML('beforebegin', newForm);
+                event.preventDefault();
+            });
+
+            function deleteRow(event) {
+                event.currentTarget.parentElement.parentElement.remove();
+            }
+        </script>
+
+        {% bootstrap_button "Save" button_type="submit" button_class="btn-success" %}
+    </form>
+
+{% endblock %}

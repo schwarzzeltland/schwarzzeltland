@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+# Collect static files before stating the server
+python manage.py collectstatic --noinput
+
 if [ "$DATABASE" = "postgres" ]
 then
     echo "Waiting for postgres..."
