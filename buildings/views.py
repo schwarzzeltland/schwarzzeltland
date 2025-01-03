@@ -33,11 +33,19 @@ def constructions(request):
                 else:
                     # Andernfalls verwenden Sie den Namen wie gewohnt
                     new_name = c.name + ' 1'
-                c.pk = None
-                c.owner = request.org
-                c.name = new_name
-                c.public = False
-                c.save()
+
+                new_construction = Construction.objects.create(
+                    owner=request.org,
+                    name=new_name,
+                    public=False,
+                )
+
+                # Materialien der Vorlage kopieren und der neuen Konstruktion zuordnen
+                materials = c.constructionmaterial_set.all()
+                for material in materials:
+                    material.pk = None  # Primärschlüssel entfernen, um ein neues Objekt zu erstellen
+                    material.construction = new_construction  # Der neuen Konstruktion zuordnen
+                    material.save()
                 messages.success(request, 'Konstruktion hinzugefügt')
                 return HttpResponseRedirect(reverse_lazy('constructions'))
     else:
@@ -76,8 +84,7 @@ def edit_construction(request, pk=None):
                 return HttpResponseRedirect(reverse_lazy('constructions'))  # Beispiel-URL für die Weiterleitung
     else:
         construction_form = ConstructionForm(instance=construction)
-        material_formset = ConstructionMaterialFormSet(instance=construction)
-    print(request.org)
+        material_formset = ConstructionMaterialFormSet(instance=construction, form_kwargs={'organization': request.org})
     materials = Material.objects.filter(Q(owner=request.org) | Q(owner__isnull=True) | Q(public=True))
     return render(request, 'buildings/edit_constructions.html', {
         'title': 'Konstruktion bearbeiten',

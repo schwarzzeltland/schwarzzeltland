@@ -25,12 +25,12 @@
                             {{ hidden }}
                         {% endfor %}
                         <tr>
-                            <td>{% bootstrap_field form.material show_label=False %}</td>
+                            <td>{% bootstrap_field form.material show_label=False class="form-select select2" %} </td>
                             <td>{% bootstrap_field form.count show_label=False %}</td>
                             <td>{% bootstrap_field form.storage_place show_label=False %}</td>
                             <td>{% bootstrap_field form.DELETE show_label=False %}</td>
                         </tr>
-                    {% endfor %}
+                    {% endfor  %}
                     </tbody>
                 </table>
                 <button type="button" id="add-row" class="btn btn-primary">Zeile hinzufügen</button>
@@ -40,25 +40,46 @@
         </div>
         <!-- Vorlage für eine neue Zeile -->
         <script type="text/template" id="empty-form-template">
-            <tr class="form-row">
+            <tr>
                 <td>
-                    <select name="constructionmaterial_set-__prefix__-material"
-                            id="id_{{ formset_prefix }}-__prefix__-material" class="form-select">
-                        <option value="" selected>--------</option>
-                        {% for material in materials %}
-                            <option value="{{ material.id }}">{{ material.name }}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="mb-3">
+                        <select name="constructionmaterial_set-__prefix__-material"
+                                id="id_{{ formset_prefix }}-__prefix__-material" class="form-select select2">
+                            <option value="" selected>--------</option>
+                            {% for material in materials %}
+                                <option value="{{ material.id }}">{{ material.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </td>
-                <td><input type="number" name="constructionmaterial_set-__prefix__-count" class="form-control"
-                           id="id_{{ formset_prefix }}-__prefix__-count"></td>
-                <td><input type="text" name="constructionmaterial_set-__prefix__-storage_place"
-                           class="form-control"
-                           id="id_{{ formset_prefix }}-__prefix__-storage_place"></td>
-                <td><input type="checkbox" name="constructionmaterial_set-__prefix__-DELETE"
-                           id="id_{{ formset_prefix }}-__prefix__-DELETE"></td>
+                <td>
+                    <div class="mb-3">
+                        <input type="number" name="constructionmaterial_set-__prefix__-count" class="form-control"
+                               id="id_{{ formset_prefix }}-__prefix__-count">
+                    </div>
+                </td>
+                <td>
+                    <div class="mb-3">
+                        <input type="text" name="constructionmaterial_set-__prefix__-storage_place"
+                               class="form-control"
+                               id="id_{{ formset_prefix }}-__prefix__-storage_place">
+                    </div>
+                </td>
+                <td>
+                    <div class="mb-3">
+                        <input type="checkbox" name="constructionmaterial_set-__prefix__-DELETE"
+                               id="id_{{ formset_prefix }}-__prefix__-DELETE">
+                    </div>
+                </td>
             </tr>
+
         </script>
+
+        <!-- Include Select2 Library -->
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const addRowButton = document.getElementById('add-row');
@@ -71,7 +92,14 @@
                     const newRow = template.replace(/__prefix__/g, formIndex);
                     formContainer.insertAdjacentHTML('beforeend', newRow);
                     totalFormsInput.value = parseInt(formIndex) + 1; // Anzahl erhöhen
+
+                    // Apply Select2 to the new dropdown
+                    $(`#id_constructionmaterial_set-${formIndex}-material`).select2({
+                    placeholder: "Wähle ein Material...",
+                    allowClear: true,
+                    width: '100%'
                 });
             });
-        </script>
+        });
+    </script>
 {% endblock %}
