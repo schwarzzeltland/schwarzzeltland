@@ -35,16 +35,16 @@
                                     {{ field }}
                                 {% endfor %}
                             </select>
-                            <a href="{% url 'edit_constructions' %}" class="btn btn-outline-secondary" type="button"
-                               id="button-addon1">
-                                Konstruktion erstellen
-                            </a>
+                             <button type="submit" class="btn btn-success">
+                            Konstruktion hinzufügen
+                        </button>
                         </div>
                     </td>
                     <td>
-                        <button type="submit" class="btn btn-success">
-                            Konstruktion hinzufügen
-                        </button>
+                       <a href="{% url 'edit_constructions' %}" class="btn btn-outline-secondary" type="button"
+                               id="button-addon1">
+                                Neue Konstruktion erstellen
+                            </a>
                     </td>
                 </tr>
                 </tbody>

@@ -15,7 +15,6 @@ class AddMaterialStockForm(ModelForm):
         organization = kwargs.pop('organization', None)
         super(AddMaterialStockForm, self).__init__(*args, **kwargs)
         self.instance.organization = organization
-
         # Modify the queryset of the material field
         self.fields['material'].queryset = Material.objects.filter(
             Q(owner=organization) | Q(owner__isnull=True) | Q(public=True)).order_by('name')
@@ -84,7 +83,9 @@ class ConstructionMaterialForm(ModelForm):
         organization = kwargs.pop('organization', None)
         super(ConstructionMaterialForm, self).__init__(*args, **kwargs)
         self.instance.organization = organization
-
+        print(organization)
+        self.fields['material'].queryset = self.fields['material'].queryset.filter(
+                Q(owner=organization) | Q(owner__isnull=True) | Q(public=True))
     class Meta:
         model = ConstructionMaterial
         fields = '__all__'
@@ -92,5 +93,5 @@ class ConstructionMaterialForm(ModelForm):
 
 
 ConstructionMaterialFormSet = inlineformset_factory(
-    Construction, ConstructionMaterial, fields=("material", "count", "storage_place"), extra=1, can_delete=True
+    Construction, ConstructionMaterial, form=ConstructionMaterialForm, fields=("material", "count", "storage_place"), extra=1, can_delete=True
 )

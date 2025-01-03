@@ -3,7 +3,7 @@
 
 
 {% block content %}
-    <form method="post" class="form">
+    <div method="post" class="form">
         {% csrf_token %}
         <div class="container mt-5">
             <form method="post">
@@ -37,29 +37,28 @@
                 <button type="submit" class="btn btn-success">Konstruktion speichern</button>
                 <a href="{% url 'constructions' %}" class="btn btn-secondary">Abbrechen</a>
             </form>
-
-            <!-- Vorlage für eine neue Zeile -->
-            <script type="text/template" id="empty-form-template">
-                <tr>
-                    <td>
-                        <select name="constructionmaterial_set-__prefix__-material"
-                                id="id_{{ formset_prefix }}-__prefix__-material" class="form-select">
-                            <option value="" selected>--------</option>
-                            {% for material in materials %}
-                                <option value="{{ material.id }}">{{ material.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
-                    <td><input type="number" name="constructionmaterial_set-__prefix__-count" class="form-control"
-                               id="id_{{ formset_prefix }}-__prefix__-count"></td>
-                    <td><input type="text" name="constructionmaterial_set-__prefix__-storage_place" class="form-control"
-                               id="id_{{ formset_prefix }}-__prefix__-storage_place"></td>
-                    <td><input type="checkbox" name="constructionmaterial_set-__prefix__-DELETE"
-                               id="id_{{ formset_prefix }}-__prefix__-DELETE"></td>
-                </tr>
-            </script>
         </div>
-
+        <!-- Vorlage für eine neue Zeile -->
+        <script type="text/template" id="empty-form-template">
+            <tr class="form-row">
+                <td>
+                    <select name="constructionmaterial_set-__prefix__-material"
+                            id="id_{{ formset_prefix }}-__prefix__-material" class="form-select">
+                        <option value="" selected>--------</option>
+                        {% for material in materials %}
+                            <option value="{{ material.id }}">{{ material.name }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td><input type="number" name="constructionmaterial_set-__prefix__-count" class="form-control"
+                           id="id_{{ formset_prefix }}-__prefix__-count"></td>
+                <td><input type="text" name="constructionmaterial_set-__prefix__-storage_place"
+                           class="form-control"
+                           id="id_{{ formset_prefix }}-__prefix__-storage_place"></td>
+                <td><input type="checkbox" name="constructionmaterial_set-__prefix__-DELETE"
+                           id="id_{{ formset_prefix }}-__prefix__-DELETE"></td>
+            </tr>
+        </script>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const addRowButton = document.getElementById('add-row');

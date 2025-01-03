@@ -2,6 +2,7 @@ from pickle import LIST
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse_lazy
@@ -76,7 +77,8 @@ def edit_construction(request, pk=None):
     else:
         construction_form = ConstructionForm(instance=construction)
         material_formset = ConstructionMaterialFormSet(instance=construction)
-    materials = Material.objects.filter()
+    print(request.org)
+    materials = Material.objects.filter(Q(owner=request.org) | Q(owner__isnull=True) | Q(public=True))
     return render(request, 'buildings/edit_constructions.html', {
         'title': 'Konstruktion bearbeiten',
         'construction_form': construction_form,
@@ -100,7 +102,7 @@ def material(request):
         form = None
 
     return render(request, 'buildings/material.html', {
-        'title': 'Materialien',
+        'title': 'Material-Lager',
         'material': StockMaterial.objects.filter(organization=request.org),
         'form': form,
     })
@@ -112,6 +114,7 @@ def create_material(request):
     if request.method == 'POST':
         form = MaterialForm(request.POST, organization=request.org)
         if form.is_valid():
+            form.instance.owner = request.org
             form.save()
             StockMaterial.objects.create(material=form.instance, organization=request.org,
                                          count=form.cleaned_data['count'],
