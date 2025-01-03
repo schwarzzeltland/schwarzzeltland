@@ -40,14 +40,18 @@ class MaterialForm(ModelForm):
         fields = '__all__'
         exclude = ['owner']
 
+
 class StockMaterialForm(ModelForm):
     class Meta:
         model = StockMaterial
-        fields = ["count",'storage_place']
+        fields = ["count", 'storage_place']
+
+
 class PlainMaterialForm(ModelForm):
     class Meta:
         model = Material
         fields = "__all__"
+
 
 class ConstructionForm(ModelForm):
     def __init__(self, *args, **kwargs):
@@ -88,5 +92,5 @@ class ConstructionMaterialForm(ModelForm):
 
 
 ConstructionMaterialFormSet = inlineformset_factory(
-    Construction, ConstructionMaterial, fields=("material", "count", "storage_place"), extra=15, can_delete=True
+    Construction, ConstructionMaterial, fields=("material", "count", "storage_place"), extra=1, can_delete=True
 )

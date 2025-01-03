@@ -57,28 +57,31 @@ def edit_construction(request, pk=None):
         construction = None
     if request.method == 'POST':
         construction_form = ConstructionForm(request.POST, instance=construction)
+        material_formset = ConstructionMaterialFormSet(request.POST, instance=construction)
         if construction_form.is_valid():
             construction = construction_form.save(commit=False)
             construction.owner = request.org
             construction.save()
-            material_formset = ConstructionMaterialFormSet(request.POST, instance=construction)
             if material_formset.is_valid():
                 # Material Speichern
-                materials = material_formset.save(commit=False)
-                for obj in material_formset.deleted_objects:
+                materials = material_formset.save(commit=False)  # Holen Sie alle geänderten/neu hinzugefügten Objekte
+                for obj in material_formset.deleted_objects:  # Gelöschte Objekte entfernen
                     obj.delete()
-                for material in materials:
+                for material in materials:  # Konstruktion zu neuen Materialien hinzufügen
                     material.construction = construction
                     material.save()
+                material_formset.save_m2m()
                 messages.success(request, 'Konstruktion gespeichert')
                 return HttpResponseRedirect(reverse_lazy('constructions'))  # Beispiel-URL für die Weiterleitung
     else:
         construction_form = ConstructionForm(instance=construction)
         material_formset = ConstructionMaterialFormSet(instance=construction)
+    materials = Material.objects.filter()
     return render(request, 'buildings/edit_constructions.html', {
         'title': 'Konstruktion bearbeiten',
         'construction_form': construction_form,
         'material_formset': material_formset,
+        'materials': materials,
     })
 
 
