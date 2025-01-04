@@ -1,7 +1,9 @@
+from functools import wraps
 from pickle import LIST
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404
@@ -11,6 +13,7 @@ from buildings.forms import AddMaterialStockForm, MaterialForm, ConstructionForm
     ConstructionMaterialFormSet, StockMaterialForm, PlainMaterialForm
 from buildings.models import StockMaterial, Construction, ConstructionMaterial, Material
 from main.models import Membership
+from main.decorators import material_manager_required
 
 
 @login_required
@@ -54,10 +57,12 @@ def constructions(request):
         'title': 'Konstruktionen',
         'construction': Construction.objects.filter(owner=request.org),
         'form': form,
+        'is_material_manager': m.material_manager,
     })
 
 
 @login_required
+@material_manager_required
 def edit_construction(request, pk=None):
     # Bestehende Konstruktion abrufen, falls PK übergeben wurde
     if pk:
@@ -112,10 +117,13 @@ def material(request):
         'title': 'Material-Lager',
         'material': StockMaterial.objects.filter(organization=request.org),
         'form': form,
+        'is_material_manager': m.material_manager,
+        'organization': request.org,
     })
 
 
 @login_required
+@material_manager_required
 def create_material(request):
     form = MaterialForm(organization=request.org)
     if request.method == 'POST':
@@ -136,6 +144,7 @@ def create_material(request):
 
 
 @login_required
+@material_manager_required
 def edit_material(request, pk=None):
     mat = get_object_or_404(StockMaterial, pk=pk)
     if request.method == 'POST':
@@ -157,6 +166,7 @@ def edit_material(request, pk=None):
 
 
 @login_required
+@material_manager_required
 def delete_construction(request, pk=None):
     construction = get_object_or_404(Construction, pk=pk, owner=request.org)
     if request.method == 'POST':
@@ -168,6 +178,7 @@ def delete_construction(request, pk=None):
 
 
 @login_required
+@material_manager_required
 def delete_material(request, pk=None):
     mat = get_object_or_404(StockMaterial, pk=pk)
     if request.method == 'POST':

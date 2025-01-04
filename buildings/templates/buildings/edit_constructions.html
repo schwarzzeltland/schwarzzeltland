@@ -25,12 +25,12 @@
                             {{ hidden }}
                         {% endfor %}
                         <tr>
-                            <td>{% bootstrap_field form.material show_label=False class="form-select select2" %} </td>
+                            <td>{% bootstrap_field form.material show_label=False %} </td>
                             <td>{% bootstrap_field form.count show_label=False %}</td>
                             <td>{% bootstrap_field form.storage_place show_label=False %}</td>
                             <td>{% bootstrap_field form.DELETE show_label=False %}</td>
                         </tr>
-                    {% endfor  %}
+                    {% endfor %}
                     </tbody>
                 </table>
                 <button type="button" id="add-row" class="btn btn-primary">Zeile hinzufügen</button>
@@ -47,7 +47,12 @@
                                 id="id_{{ formset_prefix }}-__prefix__-material" class="form-select select2">
                             <option value="" selected>--------</option>
                             {% for material in materials %}
-                                <option value="{{ material.id }}">{{ material.name }}</option>
+                                {% if material.owner == organization %}
+                                    <option value="{{ material.id }}" class="org-material">{{ material.name }}</option>
+                                    n>
+                                {% else %}
+                                    <option value="{{ material.id }}">{{ material.name }}</option>
+                                {% endif %}
                             {% endfor %}
                         </select>
                     </div>
@@ -76,30 +81,80 @@
         </script>
 
         <!-- Include Select2 Library -->
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
         <script>
+
             document.addEventListener('DOMContentLoaded', function () {
                 const addRowButton = document.getElementById('add-row');
                 const formContainer = document.getElementById('form-container');
                 const totalFormsInput = document.querySelector(`#id_constructionmaterial_set-TOTAL_FORMS`);
                 const template = document.getElementById('empty-form-template').innerHTML;
-
+                initializeSelect2()
                 addRowButton.addEventListener('click', function () {
                     const formIndex = totalFormsInput.value; // Aktuelle Anzahl der Formulare
                     const newRow = template.replace(/__prefix__/g, formIndex);
                     formContainer.insertAdjacentHTML('beforeend', newRow);
                     totalFormsInput.value = parseInt(formIndex) + 1; // Anzahl erhöhen
-
-                    // Apply Select2 to the new dropdown
-                    $(`#id_constructionmaterial_set-${formIndex}-material`).select2({
-                    placeholder: "Wähle ein Material...",
-                    allowClear: true,
-                    width: '100%'
+                    // Wendet Select2 auf das neue Dropdown-Menü an
+                    initializeSelect2()
                 });
             });
-        });
-    </script>
+
+            $(document).ready(function () {
+                initializeSelect2()
+            });
+
+            function initializeSelect2() {
+                $('.form-select').each(function () {
+                    const $select = $(this);
+                    // Wendet Select2 auf das Dropdown an, das auch die Klasse org-material berücksichtigt
+                    $select.select2({
+                        placeholder: "---------",
+                        allowClear: true,
+                        width: '100%'
+                    });
+                    // Setzt Fettdruck auf Materialien, die zur Organisation gehören
+                    // Achten Sie darauf, dass Sie hier direkt auf die Optionen zugreifen
+                    $select.find('.org-material').each(function () {
+                        $(this).css('font-weight', 'bold');
+                    });
+                });
+            }
+        </script>
+        <style>
+            .select2-container--default .select2-results__option.org-material {
+                font-weight: bold !important; /* Fettgedruckt für Dropdown-Optionen */
+                color: #000000; /* Schwarze Schriftfarbe */
+            }
+
+            .select2-container--default .select2-selection--single {
+                width: 250px !important;
+                height: 38px; /* Abstimmung mit Bootstrap-Form-Höhe */
+                font-size: 16px;
+                display: flex;
+                align-items: center;
+                padding: 0 10px; /* Nur horizontale Innenabstände */
+            }
+
+            .select2-container--default .select2-selection--single {
+                border: 1px solid #ced4da; /* Bootstrap-Standard-Rahmenfarbe */
+                background-color: #fff; /* Hintergrundfarbe */
+            }
+
+            .select2-container--default .select2-selection--single .select2-selection__arrow {
+                height: 100%; /* Pfeil anpassen */
+                right: 10px; /* Pfeil-Abstand */
+            }
+
+
+            .select2-container--default .select2-selection--single:focus,
+            .select2-container--default .select2-selection--single:hover {
+                border-color: #80bdff; /* Bootstrap-Fokusfarbe */
+                outline: 0;
+                box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Fokus-Schlagschatten */
+            }
+        </style>
 {% endblock %}

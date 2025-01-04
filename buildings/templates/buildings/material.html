@@ -20,8 +20,10 @@
                 <td>{{ m.storage_place }}</td>
                 <td></td>
                 <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
-                    <a href="{% url 'edit_material' m.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a>
-                    <a href="{% url 'delete_material' m.pk %}" class="btn btn-danger btn-sm">Löschen</a>
+                    {% if is_material_manager %}
+                        <a href="{% url 'edit_material' m.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a>
+                        <a href="{% url 'delete_material' m.pk %}" class="btn btn-danger btn-sm">Löschen
+                    {% endif %}
                 </td>
             </tr>
         {% endfor %}
@@ -33,7 +35,7 @@
 
                     <td>
                         <div class="input-group">
-                            <select name="material" class="form-select" title="" required="" id="id_material">
+                            <select name="material" class="form-select select2" title="" required="" id="id_material">
                                 {% for field in form.material %}
                                     {{ field }}
                                 {% endfor %}
@@ -60,6 +62,45 @@
 
         </tbody>
     </table>
+    <!-- Include jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Include Select2 Library -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $('.form-select').select2({
+                placeholder: "--------",
+                allowClear: true,
+                width: 'resolve' // Automatische Breite basierend auf dem Container
+            });
+        });
+    </script>
+    <style>
+        .select2-container--default .select2-selection--single {
+            height: 38px; /* Abstimmung mit Bootstrap-Form-Höhe */
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px; /* Nur horizontale Innenabstände */
+        }
+
+        .select2-container--default .select2-selection--single {
+            border: 1px solid #ced4da; /* Bootstrap-Standard-Rahmenfarbe */
+            background-color: #fff; /* Hintergrundfarbe */
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 100%; /* Pfeil anpassen */
+            right: 10px; /* Pfeil-Abstand */
+        }
 
 
+        .select2-container--default .select2-selection--single:focus,
+        .select2-container--default .select2-selection--single:hover {
+            border-color: #80bdff; /* Bootstrap-Fokusfarbe */
+            outline: 0;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Fokus-Schlagschatten */
+        }
+    </style>
 {% endblock %}
