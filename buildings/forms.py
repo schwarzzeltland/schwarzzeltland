@@ -50,6 +50,7 @@ class PlainMaterialForm(ModelForm):
     class Meta:
         model = Material
         fields = "__all__"
+        exclude = ['owner']
 
 
 class ConstructionForm(ModelForm):
