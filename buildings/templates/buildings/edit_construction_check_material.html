@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h4>Verfügbare Materialien:</h4>
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Material</th>
+            <th>Benötigte Menge</th>
+            <th>Verfügbare Menge</th>
+            <th>Lagerorte und Mengen</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for material in available_materials %}
+            <tr>
+                <td>{{ material.material }}</td>
+                <td>{{ material.required_quantity }}</td> <!-- Benötigte Menge anzeigen -->
+                <td>{{ material.available_quantity }}</td>
+                <td>
+                    {% for storage in material.storage_info %}
+                        <span>{{ storage.storage_place }}: {{ storage.available_quantity }} Stück</span><br>
+                    {% endfor %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <h4>Fehlendes Material:</h4>
+    {% if missing_materials %}
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Materialname</th>
+                <th>Benötigte Menge</th>
+                <th>Verfügbare Menge</th>
+                <th>Fehlende Menge</th>
+                <th>Lagerorte</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for material in missing_materials %}
+                <tr>
+                    <td>{{ material.material }}</td>
+                    <td>{{ material.required_quantity }}</td>
+                    <td>{{ material.available_quantity }}</td>
+                    <td>{{ material.missing_quantity }}</td>
+                    <td>
+                        {% for storage in material.storage_info %}
+                            <span>{{ storage.storage_place }}: {{ storage.available_quantity }} Stück</span><br>
+                        {% endfor %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <form method="POST" action="{% url 'constructions' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-warning">Zur Überischt</button>
+            <a href="{% url 'edit_constructions' construction.pk  %}" class="btn btn-secondary">Zurück zur Bearbeitung</a>
+        </form>
+    {% else %}
+        <p>Alle Materialien sind ausreichend vorhanden.</p>
+        <form method="POST" action="{% url 'constructions' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">Zur Überischt</button>
+        </form>
+    {% endif %}
+{% endblock %}

@@ -19,6 +19,13 @@ from main.decorators import material_manager_required
 @login_required
 def constructions(request):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
+    search_query = request.GET.get('search', '')  # Hole die Suchanfrage
+    # Filtere Konstruktionen basierend auf der Suchanfrage
+    constructions_query = Construction.objects.filter(owner=request.org)
+    if search_query:
+        constructions_query = constructions_query.filter(
+            Q(name__icontains=search_query) | Q(owner__name__icontains=search_query)
+        )
     if m.material_manager:
         form = ImportConstructionForm(organization=request.org)
         if request.method == 'POST':
@@ -55,9 +62,10 @@ def constructions(request):
         form = None
     return render(request, 'buildings/constructions.html', {
         'title': 'Konstruktionen',
-        'construction': Construction.objects.filter(owner=request.org),
+        'construction': constructions_query,
         'form': form,
         'is_material_manager': m.material_manager,
+        'search_query': search_query,
     })
 
 
@@ -69,24 +77,85 @@ def edit_construction(request, pk=None):
         construction = get_object_or_404(Construction, pk=pk, owner=request.org)
     else:
         construction = None
+    available_materials = []
+    missing_materials = []
     if request.method == 'POST':
         construction_form = ConstructionForm(request.POST, request.FILES, instance=construction)
-        material_formset = ConstructionMaterialFormSet(request.POST, instance=construction, form_kwargs={'organization': request.org})
+        material_formset = ConstructionMaterialFormSet(request.POST, instance=construction,
+                                                       form_kwargs={'organization': request.org})
         if construction_form.is_valid():
             construction = construction_form.save(commit=False)
             construction.owner = request.org
             construction.save()
             if material_formset.is_valid():
-                # Material Speichern
                 materials = material_formset.save(commit=False)  # Holen Sie alle geänderten/neu hinzugefügten Objekte
                 for obj in material_formset.deleted_objects:  # Gelöschte Objekte entfernen
                     obj.delete()
-                for material in materials:  # Konstruktion zu neuen Materialien hinzufügen
+
+                # Konstruktion speichern
+                for material in materials:
                     material.construction = construction
                     material.save()
+
                 material_formset.save_m2m()
-                messages.success(request, 'Konstruktion gespeichert')
-                return HttpResponseRedirect(reverse_lazy('constructions'))  # Beispiel-URL für die Weiterleitung
+
+                # Überprüfung der Materialverfügbarkeit für alle Materialien (alte + neue)
+                all_materials = construction.constructionmaterial_set.all()  # Alle zugeordneten Materialien
+
+                for material in materials:
+                    # Wenn das Material neu ist, füge es hinzu
+                    print(material.pk)
+                    if not material.pk:
+                        all_materials = all_materials | ConstructionMaterial.objects.filter(construction=construction,
+                                                                                      material=material.material)
+                    else:
+                        # Das Material existiert bereits, aktualisiere es
+                        all_materials = all_materials | ConstructionMaterial.objects.filter(pk=material.pk)
+
+                missing = False
+                print(all_materials)
+                for material in all_materials:  # Überprüfung aller Materialien
+                    stock_materials = StockMaterial.objects.filter(
+                        material=material.material,
+                        organization=request.org
+                    )
+                    available_quantity = sum(m.count for m in stock_materials)
+                    # Speichere die Lagerorte und verfügbaren Mengen
+                    storage_info = [{'storage_place': m.storage_place, 'available_quantity': m.count} for m in
+                                    stock_materials]
+
+                    print("material wird verfügbar ")
+                    if available_quantity >= material.count:
+                        available_materials.append({
+                            'material': material.material.name,
+                            'required_quantity': material.count,  # Benötigte Menge hier einfügen
+                            'available_quantity': available_quantity,
+                            'storage_info': storage_info
+                        })
+                    else:
+                        missing_materials.append({
+                            'material': material.material.name,
+                            'required_quantity': material.count,
+                            'available_quantity': available_quantity,
+                            'missing_quantity': material.count - available_quantity,
+                            'storage_info': storage_info
+                        })
+                        missing = True
+
+                    # Wenn Materialien fehlen, zeige eine Warnung und die Liste der fehlenden Materialien an
+                if missing:
+                    messages.warning(request, 'Konstruktion gespeichert. Einige Materialien sind jedoch nicht vorhanden.')
+                else:
+                    # Alle Materialien sind verfügbar, also keine Fehlermeldung anzeigen
+                    messages.success(request, 'Alle Materialien sind ausreichend vorhanden.')
+
+                # Weiterleitung zum Verfügbarkeitsfenster (immer, auch wenn keine Materialien fehlen)
+                return render(request, 'buildings/edit_construction_check_material.html', {
+                    'title': 'Materialübersicht',
+                    'construction': construction,
+                    'available_materials': available_materials,
+                    'missing_materials': missing_materials,
+                })
     else:
         construction_form = ConstructionForm(instance=construction)
         material_formset = ConstructionMaterialFormSet(instance=construction, form_kwargs={'organization': request.org})
@@ -102,6 +171,19 @@ def edit_construction(request, pk=None):
 @login_required
 def material(request):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
+    # Suchlogik
+    search_query = request.GET.get('search', '')
+
+    # Filtere nach Name oder Lagerort, wenn eine Suchanfrage vorliegt
+    if search_query:
+        materials = StockMaterial.objects.filter(
+            Q(material__name__icontains=search_query) |
+            Q(storage_place__icontains=search_query),
+            organization=request.org
+        )
+    else:
+        materials = StockMaterial.objects.filter(organization=request.org)
+
     if m.material_manager:
         form = AddMaterialStockForm(organization=request.org)
         if request.method == 'POST':
@@ -112,13 +194,13 @@ def material(request):
                 return HttpResponseRedirect(reverse_lazy('material'))
     else:
         form = None
-
     return render(request, 'buildings/material.html', {
         'title': 'Material-Lager',
-        'material': StockMaterial.objects.filter(organization=request.org),
+        'materials': materials,
         'form': form,
         'is_material_manager': m.material_manager,
         'organization': request.org,
+        'search_query': search_query,
     })
 
 

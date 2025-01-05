@@ -2,6 +2,13 @@
 {% load bootstrap5 %}
 
 {% block content %}
+      <form method="get" action="" class="mb-3">
+        <div class="input-group">
+            <input type="text" class="form-control" name="search" value="{{ search_query }}"
+                   placeholder="Suchen nach Name">
+            <button class="btn btn-outline-secondary" type="submit">Suchen</button>
+        </div>
+    </form>
     <table class="table">
         <thead>
         <tr>
