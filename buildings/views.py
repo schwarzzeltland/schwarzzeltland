@@ -71,7 +71,7 @@ def edit_construction(request, pk=None):
         construction = None
     if request.method == 'POST':
         construction_form = ConstructionForm(request.POST, request.FILES, instance=construction)
-        material_formset = ConstructionMaterialFormSet(request.POST, instance=construction)
+        material_formset = ConstructionMaterialFormSet(request.POST, instance=construction, form_kwargs={'organization': request.org})
         if construction_form.is_valid():
             construction = construction_form.save(commit=False)
             construction.owner = request.org

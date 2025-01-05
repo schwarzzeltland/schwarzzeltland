@@ -83,7 +83,6 @@ class ConstructionMaterialForm(ModelForm):
         organization = kwargs.pop('organization', None)
         super(ConstructionMaterialForm, self).__init__(*args, **kwargs)
         self.instance.organization = organization
-        print(organization)
         self.fields['material'].queryset = self.fields['material'].queryset.filter(
                 Q(owner=organization) | Q(owner__isnull=True) | Q(public=True))
     class Meta:

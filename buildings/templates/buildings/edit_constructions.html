@@ -47,12 +47,10 @@
                                 id="id_{{ formset_prefix }}-__prefix__-material" class="form-select select2">
                             <option value="" selected>--------</option>
                             {% for material in materials %}
-                                {% if material.owner == organization %}
-                                    <option value="{{ material.id }}" class="org-material">{{ material.name }}</option>
-                                    n>
-                                {% else %}
-                                    <option value="{{ material.id }}">{{ material.name }}</option>
-                                {% endif %}
+                                <option value="{{ material.id }}" {% if material.owner == organization %}
+                                        class="org-material" {% endif %}>
+                                    {{ material.name }}
+                                </option>
                             {% endfor %}
                         </select>
                     </div>
@@ -103,10 +101,6 @@
                 });
             });
 
-            $(document).ready(function () {
-                initializeSelect2()
-            });
-
             function initializeSelect2() {
                 $('.form-select').each(function () {
                     const $select = $(this);
@@ -116,20 +110,10 @@
                         allowClear: true,
                         width: '100%'
                     });
-                    // Setzt Fettdruck auf Materialien, die zur Organisation gehören
-                    // Achten Sie darauf, dass Sie hier direkt auf die Optionen zugreifen
-                    $select.find('.org-material').each(function () {
-                        $(this).css('font-weight', 'bold');
-                    });
                 });
             }
         </script>
         <style>
-            .select2-container--default .select2-results__option.org-material {
-                font-weight: bold !important; /* Fettgedruckt für Dropdown-Optionen */
-                color: #000000; /* Schwarze Schriftfarbe */
-            }
-
             .select2-container--default .select2-selection--single {
                 width: 250px !important;
                 height: 38px; /* Abstimmung mit Bootstrap-Form-Höhe */
