@@ -105,8 +105,6 @@ def edit_construction(request, pk=None):
                     material.save()
                 material_formset.save_m2m()
 
-                # Überprüfen der Konstruktion
-                construction = get_object_or_404(Construction, pk=pk, owner=request.org)
 
                 # Materialzuordnungen für diese Konstruktion
                 materials = ConstructionMaterial.objects.filter(construction=construction)
