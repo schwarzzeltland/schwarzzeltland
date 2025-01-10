@@ -58,7 +58,13 @@
         <form method="POST" action="{% url 'constructions' %}">
             {% csrf_token %}
             <button type="submit" class="btn btn-warning">Zur Überischt</button>
-            <a href="{% url 'edit_constructions' construction.pk  %}" class="btn btn-secondary">Zurück zur Bearbeitung</a>
+            {% if is_material_manager %}
+                <a href="{% url 'edit_constructions' construction.pk %}" class="btn btn-secondary">Zurück zur
+                    Bearbeitung</a>
+            {% else %}
+                <a href="{% url 'show_construction' construction.pk %}" class="btn btn-secondary">Zurück zur
+                    Konstruktion</a>
+            {% endif %}
         </form>
     {% else %}
         <p>Alle Materialien sind ausreichend vorhanden.</p>

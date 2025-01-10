@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+{% block content %}
+    <div class="form">
+        {% csrf_token %}
+        <div class="container mt-5">
+            <form method="post" enctype='multipart/form-data'>
+                {% csrf_token %}
+            <h4>Konstruktionsdaten:</h4>
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <td><strong>Konstruktionsname:</strong></td>
+                            <td>{{ construction.name }}</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Beschreibung:</strong></td>
+                            <td>{{ construction.description }}</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Schlafplatz-Anzahl:</strong></td>
+                            <td>{{ construction.sleep_place_count }}</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Überdachte Fläche:</strong></td>
+                            <td>{{ construction.covered_area }}</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Benötigter Platz:</strong></td>
+                            <td>{{ construction.required_space }}</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Bild:</strong></td>
+                            <td>
+                                {% if construction.image %}
+                                    <img src="{{ construction.image.url }}" alt="Bild" width="200">
+                                {% else %}
+                                    Kein Bild vorhanden
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>Material:</h4>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Materialname</th>
+                            <th>Anzahl</th>
+                            <th>Lagerplatz</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cm in construction_material %}
+                            <tr>
+                                <td>{{ cm.material.name }}</td>
+                                <td>{{ cm.count }}</td>
+                                <td>{{ cm.storage_place }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <a href="{% url 'constructions' %}" class="btn btn-secondary">Zurück</a>
+                <a href="{% url 'check_material' construction.pk %}" class="btn btn-outline-success">Materialverfügbarkeit im Lager prüfen</a>
+            </form>
+        </div>
+    </div>
+{% endblock %}

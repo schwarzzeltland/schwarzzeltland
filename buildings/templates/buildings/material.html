@@ -30,6 +30,8 @@
                     {% if is_material_manager %}
                         <a href="{% url 'edit_material' m.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a>
                         <a href="{% url 'delete_material' m.pk %}" class="btn btn-danger btn-sm">Löschen</a>
+                    {% else %}
+                        <a href="{% url 'show_material' m.pk%}" class="btn btn-sm btn-outline-primary">Anzeigen</a>
                     {% endif %}
                 </td>
             </tr>
@@ -42,13 +44,8 @@
 
                     <td>
                         <div class="input-group">
-                            <select name="material" class="form-select select2" title="" required="" id="id_material">
-                                {% for field in form.material %}
-                                    {{ field }}
-                                {% endfor %}
-
-
-                            </select>
+                            <label for="id_material"></label>
+                            {{ form.material }}
                             <a href="{% url 'create_material' %}" class="btn btn-outline-secondary" type="button"
                                id="button-addon1">Material erstellen
                             </a>
@@ -58,7 +55,7 @@
 
                     <td>{% bootstrap_field form.count show_label=False %}</td>
                     <td>{% bootstrap_field form.storage_place show_label=False %}</td>
-                    <th scope="row">
+                    <th scope="row" class="text-end">
                         <button type="submit" class="btn btn-success">
                             Ins Lager einsortieren
                         </button>
@@ -76,7 +73,7 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         $(document).ready(function () {
-            $('.form-select').select2({
+            $('#id_material').select2({
                 placeholder: "--------",
                 allowClear: true,
                 width: 'resolve' // Automatische Breite basierend auf dem Container

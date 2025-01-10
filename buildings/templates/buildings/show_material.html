@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+{% block content %}
+    <div class="form">
+        {% csrf_token %}
+        <div class="container mt-5">
+            <form method="post" enctype='multipart/form-data'>
+                {% csrf_token %}
+            <h4>Materialdaten:</h4>
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <td><strong>Materialname:</strong></td>
+                            <td>{{ material.material.name }}</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Beschreibung:</strong></td>
+                            <td>{{ material.material.description }}</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Typ::</strong></td>
+                            <td>{{ material.material.type }}</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Gewicht:</strong></td>
+                            <td>{{ material.material.weight }}</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Länge Min.:</strong></td>
+                            <td>{{ material.material.length_min }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Länge Max.:</strong></td>
+                            <td>{{ material.material.length_max }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Breite:</strong></td>
+                            <td>{{ material.material.width }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Bild:</strong></td>
+                            <td>
+                                {% if material.material.image %}
+                                    <img src="{{ material.material.image.url }}" alt="Bild" width="200">
+                                {% else %}
+                                    Kein Bild vorhanden
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Anzahl:</strong></td>
+                            <td>{{ material.count}}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Lagerplatz:</strong></td>
+                            <td>{{ material.storage_place }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <a href="{% url 'material' %}" class="btn btn-secondary">Zurück</a>
+            </form>
+        </div>
+    </div>
+{% endblock %}

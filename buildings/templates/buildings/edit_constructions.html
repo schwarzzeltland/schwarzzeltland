@@ -35,6 +35,10 @@
                 </table>
                 <button type="button" id="add-row" class="btn btn-primary">Zeile hinzufügen</button>
                 <button type="submit" class="btn btn-success">Konstruktion speichern</button>
+                {% if construction.pk != None %}
+                    <a href="{% url 'check_material' construction.pk %}" class="btn btn-outline-success">Materialverfügbarkeit im Lager
+                        prüfen</a>
+                {% endif %}
                 <a href="{% url 'constructions' %}" class="btn btn-secondary">Abbrechen</a>
             </form>
         </div>
@@ -43,15 +47,18 @@
             <tr>
                 <td>
                     <div class="mb-3">
-                        <select name="constructionmaterial_set-__prefix__-material"
-                                id="id_{{ formset_prefix }}-__prefix__-material" class="form-select select2">
-                            <option value="" selected>--------</option>
-                            {% for material in materials %}
-                                <option value="{{ material.id }}" {% if material.owner == organization %}
-                                        class="org-material" {% endif %}>
-                                    {{ material.name }}
-                                </option>
-                            {% endfor %}
+                        <select name="constructionmaterial_set-__prefix__-material" class="form-select select2">
+                            <option value="" selected>---------</option>
+                            <optgroup label="Eigene Materialien">
+                                {% for material in materials.organization %}
+                                    <option value="{{ material.id }}">{{ material.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Fremde Materialien">
+                                {% for material in materials.external %}
+                                    <option value="{{ material.id }}">{{ material.name }}</option>
+                                {% endfor %}
+                            </optgroup>
                         </select>
                     </div>
                 </td>

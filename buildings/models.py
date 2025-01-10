@@ -43,6 +43,9 @@ class StockMaterial(models.Model):
 class Construction(models.Model):
     name = CharField(max_length=255)
     description = CharField(max_length=1024, default="", blank=True)
+    sleep_place_count = models.IntegerField(null=True, blank=True)
+    covered_area = models.IntegerField(null=True, blank=True)
+    required_space = models.IntegerField(null=True, blank=True)
     image = models.ImageField(upload_to="constructions/", blank=True, null=True)
     owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
     public = BooleanField(default=False)

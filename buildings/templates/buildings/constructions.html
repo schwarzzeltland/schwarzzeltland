@@ -2,7 +2,7 @@
 {% load bootstrap5 %}
 
 {% block content %}
-      <form method="get" action="" class="mb-3">
+    <form method="get" action="" class="mb-3">
         <div class="input-group">
             <input type="text" class="form-control" name="search" value="{{ search_query }}"
                    placeholder="Suchen nach Name">
@@ -25,6 +25,9 @@
                         <a href="{% url 'edit_constructions' c.pk %}"
                            class="btn btn-outline-primary btn-sm me-2">Bearbeiten</a>
                         <a href="{% url 'delete_construction' c.pk %}" class="btn btn-danger btn-sm">Löschen</a>
+                    {% else %}
+                        <a href="{% url 'show_construction' c.pk %}"
+                           class="btn btn-outline-primary btn-sm me-2">Anzeigen</a>
                     {% endif %}
                 </td>
             </tr>
@@ -37,30 +40,24 @@
             {% csrf_token %}
             <table class="table">
                 <tbody>
-                <tr>
-                    <td>
-                        <div class="input-group">
-                            <select name="construction" class="form-select select2" required id="id_construction">
-                                <option value="" disabled selected>--------</option>
-                                {% for c in form.fields.construction.queryset %}
-                                    <option value="{{ c.pk }}">{{ c.name }}</option>
-                                {% endfor %}
-                            </select>
-                            <button type="submit" class="btn btn-success">
-                                Konstruktion hinzufügen
-                            </button>
+                <td>
+                    <div class="input-group">
+                    {{ form.construction }}
+                    <button type="submit" class="btn btn-success">
+                        Konstruktion hinzufügen
+                    </button>
                         </div>
-                    </td>
-                    <td>
-                        <a href="{% url 'edit_constructions' %}" class="btn btn-outline-secondary" type="button"
-                           id="button-addon1">
-                            Neue Konstruktion erstellen
-                        </a>
-                    </td>
-                </tr>
+                </td>
+                <td class="text-end">
+                    <a href="{% url 'edit_constructions' %}" class="btn btn-outline-secondary" type="button"
+                       id="button-addon1">
+                        Neue Konstruktion erstellen
+                    </a>
+                </td>
                 </tbody>
             </table>
         </form>
+
     {% endif %}
     <!-- Include jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -72,7 +69,7 @@
             $('#id_construction').select2({
                 placeholder: "--------",
                 allowClear: true,
-                width: 'resolve' // Automatische Breite basierend auf dem Container
+                width: '275px'
             });
         });
     </script>
