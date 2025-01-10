@@ -1,3 +1,4 @@
+from collections import defaultdict
 from functools import wraps
 from pickle import LIST
 
@@ -30,10 +31,6 @@ def constructions(request):
         form = ImportConstructionForm(organization=request.org)
         if request.method == 'POST':
             form = ImportConstructionForm(request.POST, organization=request.org)
-            print(form.errors)
-             # Überprüfe die ausgewählte Konstruktion
-            selected_construction = form.cleaned_data["construction"]
-            print(f"Ausgewählte Konstruktion ID: {selected_construction.id}")
             if form.is_valid():
                 c: Construction = form.cleaned_data["construction"]
 
@@ -59,8 +56,6 @@ def constructions(request):
 
                 messages.success(request, 'Konstruktion hinzugefügt')
                 return HttpResponseRedirect(reverse_lazy('constructions'))
-            else:
-                messages.error(request, 'Fehler beim Hinzufügen der Konstruktion.')
     else:
         form = None
     return render(request, 'buildings/constructions.html', {
@@ -110,46 +105,55 @@ def edit_construction(request, pk=None):
                     material.save()
                 material_formset.save_m2m()
 
-                # Überprüfung der Materialverfügbarkeit für alle Materialien (alte + neue)
-                all_materials = construction.constructionmaterial_set.all()  # Alle zugeordneten Materialien
+                # Überprüfen der Konstruktion
+                construction = get_object_or_404(Construction, pk=pk, owner=request.org)
+
+                # Materialzuordnungen für diese Konstruktion
+                materials = ConstructionMaterial.objects.filter(construction=construction)
+
+                # Sammlung von Materialien nach Namen gruppieren
+                material_names = defaultdict(list)
+
+                # Gruppiere Materialien nach Namen
+                for material in materials:
+                    material_names[material.material.name].append(material)
+
                 available_materials = []
                 missing_materials = []
-                for material in materials:
-                    # Wenn das Material neu ist, füge es hinzu
-                    print(material.pk)
-                    if not material.pk:
-                        all_materials = all_materials | ConstructionMaterial.objects.filter(construction=construction,
-                                                                                            material=material.material)
-                    else:
-                        # Das Material existiert bereits, aktualisiere es
-                        all_materials = all_materials | ConstructionMaterial.objects.filter(pk=material.pk)
+                missing = False  # Trackt, ob Materialien fehlen
 
-                missing = False
-                print(all_materials)
-                for material in all_materials:  # Überprüfung aller Materialien
+                # Überprüfung der Materialverfügbarkeit
+                for material_name, materials_group in material_names.items():
+                    # Berechne die Gesamtmenge der verfügbaren Materialien (basierend auf dem Namen)
                     stock_materials = StockMaterial.objects.filter(
-                        material=material.material,
+                        material__name=material_name,
                         organization=request.org
                     )
+
+                    # Berechne die Gesamtmenge der verfügbaren Materialien
                     available_quantity = sum(m.count for m in stock_materials)
-                    # Speichere die Lagerorte und verfügbaren Mengen
+
+                    # Sammle Informationen über Lagerorte und Mengen
                     storage_info = [{'storage_place': m.storage_place, 'available_quantity': m.count} for m in
                                     stock_materials]
 
-                    print("material wird verfügbar ")
-                    if available_quantity >= material.count:
+                    # Berechne die gesamte benötigte Menge für dieses Material
+                    total_required_quantity = sum(material.count for material in materials_group)
+
+                    # Verfügbarkeit prüfen
+                    if available_quantity >= total_required_quantity:
                         available_materials.append({
-                            'material': material.material.name,
-                            'required_quantity': material.count,  # Benötigte Menge hier einfügen
+                            'material': material_name,  # Materialname für dieses Material
+                            'required_quantity': total_required_quantity,
                             'available_quantity': available_quantity,
                             'storage_info': storage_info
                         })
                     else:
                         missing_materials.append({
-                            'material': material.material.name,
-                            'required_quantity': material.count,
+                            'material': material_name,  # Materialname für dieses Material
+                            'required_quantity': total_required_quantity,
                             'available_quantity': available_quantity,
-                            'missing_quantity': material.count - available_quantity,
+                            'missing_quantity': total_required_quantity - available_quantity,
                             'storage_info': storage_info
                         })
                         missing = True
@@ -194,49 +198,55 @@ def edit_construction(request, pk=None):
 @login_required
 def check_material(request, pk=None):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
+
+    # Überprüfen der Konstruktion
     construction = get_object_or_404(Construction, pk=pk, owner=request.org)
+
+    # Materialzuordnungen für diese Konstruktion
     materials = ConstructionMaterial.objects.filter(construction=construction)
-    # Überprüfung der Materialverfügbarkeit für alle Materialien (alte + neue)
-    all_materials = construction.constructionmaterial_set.all()
+
+    # Sammlung von Materialien nach Namen gruppieren
+    material_names = defaultdict(list)
+
+    # Gruppiere Materialien nach Namen
+    for material in materials:
+        material_names[material.material.name].append(material)
 
     available_materials = []
     missing_materials = []
-    for material in materials:
-        # Wenn das Material neu ist, füge es hinzu
-        print(material.pk)
-        if not material.pk:
-            all_materials = all_materials | ConstructionMaterial.objects.filter(construction=construction,
-                                                                                material=material.material)
-        else:
-            # Das Material existiert bereits, aktualisiere es
-            all_materials = all_materials | ConstructionMaterial.objects.filter(pk=material.pk)
+    missing = False  # Trackt, ob Materialien fehlen
 
-    missing = False
-    print(all_materials)
-    for material in all_materials:  # Überprüfung aller Materialien
+    # Überprüfung der Materialverfügbarkeit
+    for material_name, materials_group in material_names.items():
+        # Berechne die Gesamtmenge der verfügbaren Materialien (basierend auf dem Namen)
         stock_materials = StockMaterial.objects.filter(
-            material=material.material,
+            material__name=material_name,
             organization=request.org
         )
-        available_quantity = sum(m.count for m in stock_materials)
-        # Speichere die Lagerorte und verfügbaren Mengen
-        storage_info = [{'storage_place': m.storage_place, 'available_quantity': m.count} for m in
-                        stock_materials]
 
-        print("material wird verfügbar ")
-        if available_quantity >= material.count:
+        # Berechne die Gesamtmenge der verfügbaren Materialien
+        available_quantity = sum(m.count for m in stock_materials)
+
+        # Sammle Informationen über Lagerorte und Mengen
+        storage_info = [{'storage_place': m.storage_place, 'available_quantity': m.count} for m in stock_materials]
+
+        # Berechne die gesamte benötigte Menge für dieses Material
+        total_required_quantity = sum(material.count for material in materials_group)
+
+        # Verfügbarkeit prüfen
+        if available_quantity >= total_required_quantity:
             available_materials.append({
-                'material': material.material.name,
-                'required_quantity': material.count,  # Benötigte Menge hier einfügen
+                'material': material_name,  # Materialname für dieses Material
+                'required_quantity': total_required_quantity,
                 'available_quantity': available_quantity,
                 'storage_info': storage_info
             })
         else:
             missing_materials.append({
-                'material': material.material.name,
-                'required_quantity': material.count,
+                'material': material_name,  # Materialname für dieses Material
+                'required_quantity': total_required_quantity,
                 'available_quantity': available_quantity,
-                'missing_quantity': material.count - available_quantity,
+                'missing_quantity': total_required_quantity - available_quantity,
                 'storage_info': storage_info
             })
             missing = True
