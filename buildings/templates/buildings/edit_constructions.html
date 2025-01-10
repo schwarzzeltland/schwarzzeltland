@@ -15,6 +15,7 @@
                         <th>Material</th>
                         <th>Anzahl</th>
                         <th>Lagerplatz</th>
+                        <th>Zum Lager hinzufügen</th>
                         <th>Löschen</th>
                     </tr>
                     </thead>
@@ -28,6 +29,7 @@
                             <td>{% bootstrap_field form.material show_label=False %} </td>
                             <td>{% bootstrap_field form.count show_label=False %}</td>
                             <td>{% bootstrap_field form.storage_place show_label=False %}</td>
+                            <td>{% bootstrap_field form.add_to_stock show_label=False %}</td>
                             <td>{% bootstrap_field form.DELETE show_label=False %}</td>
                         </tr>
                     {% endfor %}
@@ -36,7 +38,8 @@
                 <button type="button" id="add-row" class="btn btn-primary">Zeile hinzufügen</button>
                 <button type="submit" class="btn btn-success">Konstruktion speichern</button>
                 {% if construction.pk != None %}
-                    <a href="{% url 'check_material' construction.pk %}" class="btn btn-outline-success">Materialverfügbarkeit im Lager
+                    <a href="{% url 'check_material' construction.pk %}" class="btn btn-outline-success">Materialverfügbarkeit
+                        im Lager
                         prüfen</a>
                 {% endif %}
                 <a href="{% url 'constructions' %}" class="btn btn-secondary">Abbrechen</a>

@@ -1,5 +1,6 @@
 from typing import Type
 
+from django import forms
 from django.db.models import Q
 from urllib3.filepost import iter_field_objects
 
@@ -114,6 +115,11 @@ class ImportConstructionForm(Form):
 class ConstructionMaterialForm(ModelForm):
     count = IntegerField(required=True)
     storage_place = CharField(required=False)
+    add_to_stock = forms.BooleanField(
+        required=False,
+        label="In Lager übernehmen",
+        initial=False
+    )
 
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop('organization', None)
@@ -140,6 +146,6 @@ class ConstructionMaterialForm(ModelForm):
 
 
 ConstructionMaterialFormSet = inlineformset_factory(
-    Construction, ConstructionMaterial, form=ConstructionMaterialForm, fields=("material", "count", "storage_place"),
+    Construction, ConstructionMaterial, form=ConstructionMaterialForm, fields=("material", "count", "storage_place","add_to_stock"),
     extra=1, can_delete=True
 )
