@@ -129,9 +129,9 @@ def edit_construction(request, pk=None):
                                 image=original_material.image,
                                 weight=original_material.weight,
                                 type=original_material.type,
-                                length_min=original_material.lenghth_min,
-                                length_max=original_material.lenghth_max,
-                                width=original_material.witdh
+                                length_min=original_material.length_min,
+                                length_max=original_material.length_max,
+                                width=original_material.width
                             )
                         else:
                             # Existierendes Material verwenden
@@ -152,7 +152,7 @@ def edit_construction(request, pk=None):
                                 material=cloned_material,
                                 organization=request.org,
                                 storage_place=material.storage_place,
-                                defaults={'count': 0}  # Standardwert, falls StockMaterial neu ist
+                                count=material.count
                             )
 
                 material_formset.save_m2m()
@@ -355,9 +355,9 @@ def material(request):
                         image=original_material.image,
                         weight=original_material.weight,
                         type=original_material.type,
-                        length_min=original_material.lenghth_min,
-                        length_max=original_material.lenghth_max,
-                        width=original_material.witdh
+                        length_min=original_material.length_min,
+                        length_max=original_material.length_max,
+                        width=original_material.width
                     )
                 else:
                     # Existierendes Material verwenden
