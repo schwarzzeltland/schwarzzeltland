@@ -24,9 +24,9 @@ class Material(models.Model):
     owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
     weight = DecimalField(max_digits=10, decimal_places=3, help_text="Gewicht in kg", blank=True, null=True)
     type = models.IntegerField(choices=TYPES, null=True, blank=True, help_text="Typ des Materials")
-    length_min = IntegerField(null=True, blank=True)
-    length_max = IntegerField(null=True, blank=True)
-    width = IntegerField(null=True, blank=True)
+    length_min = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
+    length_max = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
+    width = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
     public = BooleanField(default=False)
 
     def __str__(self):
@@ -43,9 +43,9 @@ class StockMaterial(models.Model):
 class Construction(models.Model):
     name = CharField(max_length=255)
     description = CharField(max_length=1024, default="", blank=True)
-    sleep_place_count = models.IntegerField(null=True, blank=True)
-    covered_area = models.IntegerField(null=True, blank=True)
-    required_space = models.IntegerField(null=True, blank=True)
+    sleep_place_count = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
+    covered_area = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
+    required_space = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
     image = models.ImageField(upload_to="constructions/", blank=True, null=True)
     owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
     public = BooleanField(default=False)

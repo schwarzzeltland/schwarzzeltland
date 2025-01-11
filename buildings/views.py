@@ -139,16 +139,22 @@ def edit_construction(request, pk=None):
 
                         ##
                         # Versuche, StockMaterial zu holen oder zu erstellen
-                        stock_material, created = StockMaterial.objects.get_or_create(
-                            material=cloned_material,
-                            organization=request.org,
-                            storage_place=material.storage_place,
-                            defaults={'count': 0}  # Standardwert, falls StockMaterial neu ist
-                        )
+                        stock_material = StockMaterial.objects.filter(material=cloned_material,
+                                                                      organization=request.org,
+                                                                      storage_place=material.storage_place)
+                        if stock_material:
+                            st_mat = stock_material.first()
+                            # Aktualisiere die Menge im Lager
+                            st_mat.count += material.count
+                            st_mat.save()
+                        else:
+                            stock_material = StockMaterial.objects.create(
+                                material=cloned_material,
+                                organization=request.org,
+                                storage_place=material.storage_place,
+                                defaults={'count': 0}  # Standardwert, falls StockMaterial neu ist
+                            )
 
-                        # Aktualisiere die Menge im Lager
-                        stock_material.count += material.count
-                        stock_material.save()
                 material_formset.save_m2m()
 
                 # Materialzuordnungen für diese Konstruktion
