@@ -45,6 +45,11 @@ def constructions(request):
                     owner=request.org,
                     name=new_name,
                     public=False,
+                    description=c.description,
+                    sleep_place_count=c.sleep_place_count,
+                    covered_area=c.covered_area,
+                    required_space=c.required_space,
+                    image=c.image
                 )
 
                 # Materialien der Vorlage kopieren
@@ -98,48 +103,52 @@ def edit_construction(request, pk=None):
                 materials = material_formset.save(commit=False)  # Holen Sie alle geänderten/neu hinzugefügten Objekte
                 for obj in material_formset.deleted_objects:  # Gelöschte Objekte entfernen
                     obj.delete()
-
-                # Konstruktion speichern
                 for material in materials:
                     material.construction = construction
                     material.save()
-                    for form in material_formset:
-                        if form.cleaned_data.get('add_to_stock'):  # Prüfen, ob die Checkbox ausgewählt wurde
-                            # Hole das Material- und Lager-Objekt
-                            material = form.save(commit=False)
-                            material.construction = construction
-                            material.save()
-                            # Originalmaterial aus dem Formular holen
-                            original_material = form.cleaned_data['material']
+                for form in material_formset:
+                    if form.cleaned_data.get('add_to_stock'):  # Prüfen, ob die Checkbox ausgewählt wurde
+                        # Hole das Material- und Lager-Objekt
+                        material = form.save(commit=False)
+                        material.construction = construction
+                        material.save()
+                        # Originalmaterial aus dem Formular holen
+                        original_material = form.cleaned_data['material']
 
-                            # Prüfen, ob das Material bereits existiert
-                            existing_material = Material.objects.filter(owner=request.org,
-                                                                        name=original_material.name).first()
+                        # Prüfen, ob das Material bereits existiert
+                        existing_material = Material.objects.filter(owner=request.org,
+                                                                    name=original_material.name).first()
 
-                            if not existing_material:
-                                # Neues Material erstellen, indem das Original kopiert wird
-                                cloned_material = Material.objects.create(
-                                    name=original_material.name,
-                                    description=original_material.description,
-                                    owner=request.org,
-                                    public=False
-                                )
-                            else:
-                                # Existierendes Material verwenden
-                                cloned_material = existing_material
-
-##
-                            # Versuche, StockMaterial zu holen oder zu erstellen
-                            stock_material, created = StockMaterial.objects.get_or_create(
-                                material=cloned_material,
-                                organization=request.org,
-                                storage_place=material.storage_place,
-                                defaults={'count': 0}  # Standardwert, falls StockMaterial neu ist
+                        if not existing_material:
+                            # Neues Material erstellen, indem das Original kopiert wird
+                            cloned_material = Material.objects.create(
+                                name=original_material.name,
+                                description=original_material.description,
+                                owner=request.org,
+                                public=False,
+                                image=original_material.image,
+                                weight=original_material.weight,
+                                type=original_material.type,
+                                length_min=original_material.lenghth_min,
+                                length_max=original_material.lenghth_max,
+                                width=original_material.witdh
                             )
+                        else:
+                            # Existierendes Material verwenden
+                            cloned_material = existing_material
 
-                            # Aktualisiere die Menge im Lager
-                            stock_material.count += material.count
-                            stock_material.save()
+                        ##
+                        # Versuche, StockMaterial zu holen oder zu erstellen
+                        stock_material, created = StockMaterial.objects.get_or_create(
+                            material=cloned_material,
+                            organization=request.org,
+                            storage_place=material.storage_place,
+                            defaults={'count': 0}  # Standardwert, falls StockMaterial neu ist
+                        )
+
+                        # Aktualisiere die Menge im Lager
+                        stock_material.count += material.count
+                        stock_material.save()
                 material_formset.save_m2m()
 
                 # Materialzuordnungen für diese Konstruktion
@@ -336,7 +345,13 @@ def material(request):
                         name=original_material.name,
                         description=original_material.description,
                         owner=request.org,
-                        public=False
+                        public=False,
+                        image=original_material.image,
+                        weight=original_material.weight,
+                        type=original_material.type,
+                        length_min=original_material.lenghth_min,
+                        length_max=original_material.lenghth_max,
+                        width=original_material.witdh
                     )
                 else:
                     # Existierendes Material verwenden
