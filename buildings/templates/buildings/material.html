@@ -39,6 +39,7 @@
                 <td>{{ m.material.name }}</td>
                 <td>{{ m.count }}</td>
                 <td>{{ m.storage_place }}</td>
+                <td></td>
                 <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
                     {% if is_material_manager %}
                         <a href="{% url 'edit_material' m.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a>
