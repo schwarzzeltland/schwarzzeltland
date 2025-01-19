@@ -323,7 +323,8 @@ def material(request):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
     # Suchlogik
     search_query = request.GET.get('search', '')
-
+    selected_material_type = request.GET.get('material_type', '')  # Materialtyp
+    print(selected_material_type)
     # Filtere nach Name oder Lagerort, wenn eine Suchanfrage vorliegt
     if search_query:
         materials = StockMaterial.objects.filter(
@@ -333,7 +334,19 @@ def material(request):
         )
     else:
         materials = StockMaterial.objects.filter(organization=request.org)
-
+    # Filterung nach Materialtyp
+    if selected_material_type:
+        materials = materials.filter(material__type=selected_material_type)
+    # Alle Materialtypen abrufen (für Dropdown-Menü)
+    TYPES = (
+        (0, "Dachplane"),
+        (1, "Zeltplane"),
+        (2, "Stange"),
+        (3, "Seil"),
+        (4, "Hering"),
+        (5, "Küchenmaterial"),
+        (6, "Verbrauchsmaterial"),
+    )
     if m.material_manager:
         form = AddMaterialStockForm(organization=request.org)
         if request.method == 'POST':
@@ -383,6 +396,8 @@ def material(request):
         'is_material_manager': m.material_manager,
         'organization': request.org,
         'search_query': search_query,
+        'selected_material_type': selected_material_type,
+        'material_types': TYPES,
     })
 
 

@@ -5,21 +5,35 @@
 {% block content %}
     <form method="get" action="" class="mb-3">
         <div class="input-group">
+            <!-- Suchleiste -->
             <input type="text" class="form-control" name="search" value="{{ search_query }}"
                    placeholder="Suchen nach Name oder Lagerort">
+
+            <!-- Dropdown für Materialtyp -->
+            <select class="form-select" id="material_type" name="material_type">
+                <option value="">Alle Materialtypen</option>
+                {% for value, label in material_types %}
+                    <option value="{{ value }}"
+                            {% if value|stringformat:"s" == selected_material_type %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+            <!-- Suchen-Button -->
             <button class="btn btn-outline-secondary" type="submit">Suchen</button>
         </div>
     </form>
     <table class="table">
+        <tbody>
         <thead>
         <tr>
             <th scope="col">Name</th>
             <th scope="col">Anzahl</th>
             <th scope="col">Lagerort</th>
             <th scope="col"></th>
+            <th scope="col"></th>
         </tr>
         </thead>
-        <tbody>
         {% for m in materials %}
             <tr>
                 <td>{{ m.material.name }}</td>
@@ -31,7 +45,7 @@
                         <a href="{% url 'edit_material' m.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a>
                         <a href="{% url 'delete_material' m.pk %}" class="btn btn-danger btn-sm">Löschen</a>
                     {% else %}
-                        <a href="{% url 'show_material' m.pk%}" class="btn btn-sm btn-outline-primary">Anzeigen</a>
+                        <a href="{% url 'show_material' m.pk %}" class="btn btn-sm btn-outline-primary">Anzeigen</a>
                     {% endif %}
                 </td>
             </tr>
@@ -60,6 +74,7 @@
                             Ins Lager einsortieren
                         </button>
                     </th>
+                    <th></th>
                 </tr>
             </form>
         {% endif %}

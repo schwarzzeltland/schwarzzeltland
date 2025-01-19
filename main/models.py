@@ -21,6 +21,7 @@ class Membership(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     admin = models.BooleanField(default=False)
     material_manager = models.BooleanField(default=False)
+    event_manager = models.BooleanField(default=False)
 
     def __str__(self):
         return self.user.username

@@ -10,6 +10,8 @@ class Material(models.Model):
     TYPE_POLE = 2
     TYPE_ROPE = 3
     TYPE_PEG = 4
+    TYPE_KITCHEN = 5
+    TYPE_CONSUME = 6
 
     TYPES = (
         (TYPE_ROOF, "Dachplane"),
@@ -17,6 +19,8 @@ class Material(models.Model):
         (TYPE_POLE, "Stange"),
         (TYPE_ROPE, "Seil"),
         (TYPE_PEG, "Hering"),
+        (TYPE_KITCHEN, "Küchenmaterial"),
+        (TYPE_CONSUME, "Verbrauchsmaterial"),
     )
     name = CharField(max_length=255)
     description = CharField(max_length=1024, default="", blank=True)

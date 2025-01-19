@@ -30,19 +30,23 @@
                             <td>{% bootstrap_field form.count show_label=False %}</td>
                             <td>{% bootstrap_field form.storage_place show_label=False %}</td>
                             <td>{% bootstrap_field form.add_to_stock show_label=False %}</td>
-                            <td>{% bootstrap_field form.DELETE show_label=False %}</td>
+                            <td >{% bootstrap_field form.DELETE show_label=False %}</td>
                         </tr>
                     {% endfor %}
                     </tbody>
                 </table>
-                <button type="button" id="add-row" class="btn btn-primary">Zeile hinzufügen</button>
-                <button type="submit" class="btn btn-success">Konstruktion speichern</button>
-                {% if construction.pk != None %}
-                    <a href="{% url 'check_material' construction.pk %}" class="btn btn-outline-success">Materialverfügbarkeit
-                        im Lager
-                        prüfen</a>
-                {% endif %}
-                <a href="{% url 'constructions' %}" class="btn btn-secondary">Abbrechen</a>
+                <div class="mb-3">
+                    <button type="button" id="add-row" class="btn btn-outline-primary">Zeile hinzufügen</button>
+                </div>
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-success">Konstruktion speichern</button>
+                    {% if construction.pk != None %}
+                        <a href="{% url 'check_material' construction.pk %}" class="btn btn-outline-success">Materialverfügbarkeit
+                            im Lager
+                            prüfen</a>
+                    {% endif %}
+                    <a href="{% url 'constructions' %}" class="btn btn-secondary">Abbrechen</a>
+                </div>
             </form>
         </div>
         <!-- Vorlage für eine neue Zeile -->
