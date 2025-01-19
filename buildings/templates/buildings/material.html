@@ -24,7 +24,6 @@
         </div>
     </form>
     <table class="table">
-        <tbody>
         <thead>
         <tr>
             <th scope="col">Name</th>
@@ -34,12 +33,12 @@
             <th scope="col"></th>
         </tr>
         </thead>
+        <tbody>
         {% for m in materials %}
             <tr>
                 <td>{{ m.material.name }}</td>
                 <td>{{ m.count }}</td>
                 <td>{{ m.storage_place }}</td>
-                <td></td>
                 <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
                     {% if is_material_manager %}
                         <a href="{% url 'edit_material' m.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a>
@@ -50,37 +49,34 @@
                 </td>
             </tr>
         {% endfor %}
-        {% if form %}
-            <form action="" method="post" class="form">
-                {% csrf_token %}
-                <tr>
-                    {{ form.non_field_errors }}
-
-                    <td>
-                        <div class="input-group">
-                            <label for="id_material"></label>
-                            {{ form.material }}
-                            <a href="{% url 'create_material' %}" class="btn btn-outline-secondary" type="button"
-                               id="button-addon1">Material erstellen
-                            </a>
-                        </div>
-
-                    </td>
-
-                    <td>{% bootstrap_field form.count show_label=False %}</td>
-                    <td>{% bootstrap_field form.storage_place show_label=False %}</td>
-                    <th scope="row" class="text-end">
-                        <button type="submit" class="btn btn-success">
-                            Ins Lager einsortieren
-                        </button>
-                    </th>
-                    <th></th>
-                </tr>
-            </form>
-        {% endif %}
-
         </tbody>
     </table>
+    {% if form %}
+        <form action="" method="post" class="form">
+            {% csrf_token %}
+            <table class="table">
+                <tbody>
+                {{ form.non_field_errors }}
+                <td>
+                    <div class="input-group">
+                        <label for="id_material"></label>
+                        {{ form.material }}
+                        <a href="{% url 'create_material' %}" class="btn btn-outline-secondary" type="button"
+                           id="button-addon1">Material erstellen
+                        </a>
+                    </div>
+                </td>
+                <td>{% bootstrap_field form.count show_label=False %}</td>
+                <td>{% bootstrap_field form.storage_place show_label=False %}</td>
+                <th scope="row" class="text-end">
+                    <button type="submit" class="btn btn-success">
+                        Ins Lager einsortieren
+                    </button>
+                </th>
+                </tbody>
+            </table>
+        </form>
+    {% endif %}
     <!-- Include jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Include Select2 Library -->
