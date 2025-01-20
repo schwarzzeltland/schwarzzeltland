@@ -8,29 +8,25 @@
         <div class="container mt-5">
             <form method="post" enctype='multipart/form-data'>
                 {% csrf_token %}
-                {% bootstrap_form construction_form %}
+                {% bootstrap_form trip_form %}
                 <table>
                     <thead>
                     <tr>
-                        <th>Material</th>
+                        <th>Konstruktion</th>
                         <th>Anzahl</th>
-                        <th>Lagerplatz</th>
-                        <th>Zum Lager hinzufügen</th>
                         <th>Löschen</th>
                     </tr>
                     </thead>
                     <tbody id="form-container">
-                    {{ material_formset.management_form }}
-                    {% for form in material_formset %}
+                    {{ construction_formset.management_form }}
+                    {% for form in construction_formset %}
                         {% for hidden in form.hidden_fields %}
                             {{ hidden }}
                         {% endfor %}
                         <tr>
-                            <td>{% bootstrap_field form.material show_label=False %} </td>
+                            <td>{% bootstrap_field form.construction show_label=False %} </td>
                             <td>{% bootstrap_field form.count show_label=False %}</td>
-                            <td>{% bootstrap_field form.storage_place show_label=False %}</td>
-                            <td>{% bootstrap_field form.add_to_stock show_label=False %}</td>
-                            <td >{% bootstrap_field form.DELETE show_label=False %}</td>
+                            <td>{% bootstrap_field form.DELETE show_label=False %}</td>
                         </tr>
                     {% endfor %}
                     </tbody>
@@ -38,13 +34,13 @@
                 <div class="mb-3">
                     <button type="button" id="add-row" class="btn btn-outline-primary">Zeile hinzufügen</button>
                 </div>
-                <div class="mb-3">
-                    <button type="submit" name="save" class="btn btn-success">Konstruktion speichern</button>
-                    {% if construction.pk != None %}
-                        <button type="submit" name="check_material" class="btn btn-outline-success">Materialverfügbarkeit im Lager prüfen</button>
-                    {% endif %}
-                    <a href="{% url 'constructions' %}" class="btn btn-secondary">Abbrechen</a>
-                </div>
+                <button type="submit" name="save" class="btn btn-success">Veranstaltung speichern</button>
+                {% if trip.pk != None %}
+                    <button type="submit" name="check_material" class="btn btn-outline-success">
+                        Materialverfügbarkeit im Lager prüfen
+                    </button>
+                {% endif %}
+                <a href="{% url 'trip' %}" class="btn btn-secondary">Abbrechen</a>
             </form>
         </div>
         <!-- Vorlage für eine neue Zeile -->
@@ -52,16 +48,16 @@
             <tr>
                 <td>
                     <div class="mb-3">
-                        <select name="constructionmaterial_set-__prefix__-material" class="form-select select2">
+                        <select name="tripconstruction_set-__prefix__-material" class="form-select select2">
                             <option value="" selected>---------</option>
-                            <optgroup label="Eigene Materialien">
-                                {% for material in materials.organization %}
-                                    <option value="{{ material.id }}">{{ material.name }}</option>
+                            <optgroup label="Eigene Konstruktionen">
+                                {% for construction in constructions.organization %}
+                                    <option value="{{ construction.id }}">{{ construction.name }}</option>
                                 {% endfor %}
                             </optgroup>
-                            <optgroup label="Fremde Materialien">
-                                {% for material in materials.external %}
-                                    <option value="{{ material.id }}">{{ material.name }}</option>
+                            <optgroup label="Öffentliche Konstruktionen">
+                                {% for construction in constructions.external %}
+                                    <option value="{{ construction.id }}">{{ construction.name }}</option>
                                 {% endfor %}
                             </optgroup>
                         </select>
@@ -69,20 +65,13 @@
                 </td>
                 <td>
                     <div class="mb-3">
-                        <input type="number" name="constructionmaterial_set-__prefix__-count" class="form-control"
+                        <input type="number" name="tripconstruction_set-__prefix__-count" class="form-control"
                                id="id_{{ formset_prefix }}-__prefix__-count">
                     </div>
                 </td>
                 <td>
                     <div class="mb-3">
-                        <input type="text" name="constructionmaterial_set-__prefix__-storage_place"
-                               class="form-control"
-                               id="id_{{ formset_prefix }}-__prefix__-storage_place">
-                    </div>
-                </td>
-                <td>
-                    <div class="mb-3">
-                        <input type="checkbox" name="constructionmaterial_set-__prefix__-DELETE"
+                        <input type="checkbox" name="tripconstruction_set-__prefix__-DELETE"
                                id="id_{{ formset_prefix }}-__prefix__-DELETE">
                     </div>
                 </td>
@@ -94,13 +83,11 @@
         <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
         <script>
-
             document.addEventListener('DOMContentLoaded', function () {
                 const addRowButton = document.getElementById('add-row');
                 const formContainer = document.getElementById('form-container');
-                const totalFormsInput = document.querySelector(`#id_constructionmaterial_set-TOTAL_FORMS`);
+                const totalFormsInput = document.querySelector(`#id_tripconstruction_set-TOTAL_FORMS`);
                 const template = document.getElementById('empty-form-template').innerHTML;
                 initializeSelect2()
                 addRowButton.addEventListener('click', function () {
@@ -114,20 +101,27 @@
             });
 
             function initializeSelect2() {
-                $('.form-select').each(function () {
+                $('#id_location').each(function () {
                     const $select = $(this);
-                    // Wendet Select2 auf das Dropdown an, das auch die Klasse org-material berücksichtigt
                     $select.select2({
                         placeholder: "---------",
                         allowClear: true,
                         width: '100%'
                     });
                 });
+                $('select[name^="tripconstruction_set"]').each(function () {
+                    const $select = $(this);
+                    $select.select2({
+                        placeholder: "---------",
+                        allowClear: true,
+                        width: '250px'
+                    });
+                });
             }
         </script>
         <style>
             .select2-container--default .select2-selection--single {
-                width: 250px !important;
+                width: 100%;
                 height: 38px; /* Abstimmung mit Bootstrap-Form-Höhe */
                 font-size: 16px;
                 display: flex;

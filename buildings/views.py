@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import HttpResponseRedirect
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
 
 from buildings.forms import AddMaterialStockForm, MaterialForm, ConstructionForm, ImportConstructionForm, \
@@ -205,24 +205,15 @@ def edit_construction(request, pk=None):
                             'missing_quantity': total_required_quantity - available_quantity,
                             'storage_info': storage_info
                         })
-                        missing = True
 
-                    # Wenn Materialien fehlen, zeige eine Warnung und die Liste der fehlenden Materialien an
-                if missing:
-                    messages.warning(request,
-                                     'Konstruktion gespeichert. Einige Materialien sind jedoch nicht vorhanden.')
-                else:
-                    # Alle Materialien sind verfügbar, also keine Fehlermeldung anzeigen
-                    messages.success(request, 'Alle Materialien sind ausreichend vorhanden.')
-                m: Membership = request.user.membership_set.filter(organization=request.org).first()
-                # Weiterleitung zum Verfügbarkeitsfenster (immer, auch wenn keine Materialien fehlen)
-                return render(request, 'buildings/check_material.html', {
-                    'title': 'Materialübersicht',
-                    'construction': construction,
-                    'available_materials': available_materials,
-                    'missing_materials': missing_materials,
-                    'is_material_manager': m.material_manager,
-                })
+                # Unterscheidung der Weiterleitungen basierend auf dem Button
+                if 'save' in request.POST:
+                    # Wenn der Speichern-Button gedrückt wurde, weiter zu Trips
+                    messages.success(request, f'Konstruktion {construction.name} gespeichert.')
+                    return redirect('constructions')  # Hier 'trip' zu deiner Trip-Liste oder Detail-Seite weiterleiten
+                elif 'check_material' in request.POST:
+                    # Wenn der Materialverfügbarkeits-Button gedrückt wurde, weiter zu Materialverfügbarkeit prüfen
+                    return redirect('check_material', construction.pk)  # Weiterleitung zur Materialverfügbarkeitspr
     else:
         construction_form = ConstructionForm(instance=construction)
         material_formset = ConstructionMaterialFormSet(instance=construction, form_kwargs={'organization': request.org})

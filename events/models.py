@@ -2,6 +2,7 @@ from django.db import models
 from django.db.models import CharField
 
 from buildings.models import Construction
+from main.models import Organization
 
 
 # Create your models here.
@@ -43,12 +44,13 @@ class Trip(models.Model):
         (TYPE_DAYTRIP, "Tagesaktion")
     )
     name = CharField(max_length=255)
-    type = models.IntegerField(choices=TYPES, null=True, blank=True, help_text="Typ des Events")
+    owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
+    type = models.IntegerField(choices=TYPES, null=True, blank=True)
     description = CharField(max_length=1024, default="", blank=True)
     start_date = models.DateTimeField("Startdatum")
     end_date = models.DateTimeField("Enddatum")
     location = models.ForeignKey(Location, on_delete=models.CASCADE, null=True, blank=True)
-    tn_count = models.IntegerField(default=0, help_text="TN Anzahl")
+    tn_count = models.IntegerField(default=0)
 
     def __str__(self):
         return self.name
@@ -57,4 +59,4 @@ class Trip(models.Model):
 class TripConstruction(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE)
     construction = models.ForeignKey(Construction, on_delete=models.CASCADE)
-    count = models.IntegerField(default=1)
+    count = models.IntegerField(default=0)

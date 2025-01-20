@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+{% block content %}
+    <div class="form">
+        {% csrf_token %}
+        <div class="container mt-5">
+            <form method="post" enctype='multipart/form-data'>
+                {% csrf_token %}
+            <h4>Tripdaten:</h4>
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <td><strong>Name:</strong></td>
+                            <td>{{ trip.name }}</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Beschreibung:</strong></td>
+                            <td>{{ trip.description}}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Typ:</strong></td>
+                            <td>{{ trip.type }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Startdatum:</strong></td>
+                            <td>{{ trip.start_date }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Enddatum:</strong></td>
+                            <td>{{ trip.end_date }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ort:</strong></td>
+                            <td>{{ trip.location }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>TN-Zahl:</strong></td>
+                            <td>{{ trip.tn_count }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>Konstruktionen:</h4>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Konstruktionsname</th>
+                            <th>Anzahl</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tc in tripconstructions %}
+                            <tr>
+                                <td>{{ tc.construction.name}}</td>
+                                <td>{{ tc.count }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <a href="{% url 'trip' %}" class="btn btn-secondary">Zurück</a>
+                <a href="{% url 'check_trip_material' trip.pk %}" class="btn btn-outline-success">Materialverfügbarkeit im Lager prüfen</a>
+            </form>
+        </div>
+    </div>
+{% endblock %}

@@ -2,7 +2,59 @@
 {% load bootstrap5 %}
 
 {% block content %}
-    <p>
-        Tolle Veranstaltungen
-    </p>
+<form method="get" action="" class="mb-3">
+        <div class="input-group">
+            <!-- Suchleiste -->
+            <input type="text" class="form-control" name="search" value="{{ search_query }}"
+                   placeholder="Suchen nach Name">
+
+            <!-- Dropdown für Triptyp -->
+            <select class="form-select" id="trip_type" name="trip_type">
+                <option value="">Alle Veranstaltungstypen</option>
+                {% for value, label in trip_types %}
+                    <option value="{{ value }}"
+                            {% if value|stringformat:"s" == selected_trip_type %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+            <!-- Suchen-Button -->
+            <button class="btn btn-outline-secondary" type="submit">Suchen</button>
+        </div>
+    </form>
+    <table class="table">
+        <thead>
+        <tr>
+            <th scope="col">Name</th>
+            <th scope="col"></th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for t in trips %}
+            <tr>
+                <td>{{ t.name }}
+                <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
+                    {% if is_event_manager %}
+                        <a href="{% url 'edit_trip' t.pk %}"
+                           class="btn btn-outline-primary btn-sm me-2">Bearbeiten</a>
+                        <a href="{% url 'delete_trip' t.pk %}" class="btn btn-danger btn-sm">Löschen</a>
+                    {% else %}
+                        <a href="{% url 'show_trip' t.pk %}"
+                           class="btn btn-outline-primary btn-sm me-2">Anzeigen</a>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {% if is_event_manager %}
+        <form action="" method="post" class="form">
+            {% csrf_token %}
+                    <a href="{% url 'edit_trip' %}" class="btn btn-success" type="button"
+                       id="button-addon1">Neue Veranstaltung erstellen
+                    </a>
+        </form>
+    {% endif %}
+
 {% endblock %}
