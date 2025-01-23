@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+
+{% block content %}
+    <form method="post">
+        {% csrf_token %}
+        <p>Möchten Sie den Ort "{{ location.name }}" wirklich löschen?</p>
+        <button type="submit" class="btn btn-danger">Löschen</button>
+        <a href="{% url 'location' %}" class="btn btn-secondary">Abbrechen</a>
+    </form>
+{% endblock %}

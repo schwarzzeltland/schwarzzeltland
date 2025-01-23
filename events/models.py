@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import CharField
+from django.db.models import CharField, BooleanField
 
 from buildings.models import Construction
 from main.models import Organization
@@ -26,7 +26,8 @@ class Location(models.Model):
     description = CharField(max_length=1024, default="", blank=True)
     latitude = models.FloatField(default=00.000000, help_text="Latitude")
     longitude = models.FloatField(default=00.000000, help_text="Longitude")
-
+    owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
+    public = BooleanField(default=False)
     def __str__(self):
         return self.name
 

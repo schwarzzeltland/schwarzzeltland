@@ -25,11 +25,11 @@
                         </tr>
                         <tr>
                             <td><strong>Startdatum:</strong></td>
-                            <td>{{ trip.start_date }}</td>
+                            <td>{{ trip.start_date|date:"d.m.Y H:i" }}</td>
                         </tr>
                         <tr>
                             <td><strong>Enddatum:</strong></td>
-                            <td>{{ trip.end_date }}</td>
+                            <td>{{ trip.end_date|date:"d.m.Y H:i" }}</td>
                         </tr>
                         <tr>
                             <td><strong>Ort:</strong></td>
@@ -39,24 +39,6 @@
                             <td><strong>TN-Zahl:</strong></td>
                             <td>{{ trip.tn_count }}</td>
                         </tr>
-                    </tbody>
-                </table>
-
-                <h4>Konstruktionen:</h4>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Konstruktionsname</th>
-                            <th>Anzahl</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for tc in tripconstructions %}
-                            <tr>
-                                <td>{{ tc.construction.name}}</td>
-                                <td>{{ tc.count }}</td>
-                            </tr>
-                        {% endfor %}
                     </tbody>
                 </table>
                 <a href="{% url 'trip' %}" class="btn btn-secondary">Zurück</a>

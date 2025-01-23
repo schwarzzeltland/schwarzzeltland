@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+
+{% block content %}
+    <form method="post" enctype="multipart/form-data"
+          action="{% if location %}{% url 'edit_location' location.pk %}{% else %}{% url 'edit_location' %}{% endif %}">
+        {% csrf_token %}
+        {% bootstrap_form location_form %}
+        <!-- Adresseingabe -->
+        <div class="form-group mt-3">
+            <label for="address-input">Adresse</label>
+            <input id="address-input" type="text" class="form-control" placeholder="Adresse eingeben">
+        </div>
+
+        <!-- Google Maps Karte -->
+        <div class="mb-3" id="map" style="height: 400px; width: 100%; margin-top: 20px;"></div>
+        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDloySH4V6VQFZJ3dIwdCkw5PuAxS6cQFU&libraries=places"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const latitudeField = document.getElementById('id_latitude');
+                const longitudeField = document.getElementById('id_longitude');
+                const addressInput = document.getElementById('address-input');
+
+                const defaultLat = latitudeField.value ? parseFloat(latitudeField.value) : 48.1351; // Standard auf München
+                const defaultLng = longitudeField.value ? parseFloat(longitudeField.value) : 11.5820;
+
+                // Google Maps Karte initialisieren
+                const map = new google.maps.Map(document.getElementById('map'), {
+                    center: {lat: defaultLat, lng: defaultLng},
+                    zoom: 12,
+                });
+
+                // Marker auf der Karte
+                const marker = new google.maps.Marker({
+                    position: {lat: defaultLat, lng: defaultLng},
+                    map: map,
+                    draggable: true,
+                });
+
+                // Update Latitude/Longitude beim Verschieben des Markers
+                marker.addListener('dragend', function (event) {
+                    latitudeField.value = event.latLng.lat().toFixed(6);
+                    longitudeField.value = event.latLng.lng().toFixed(6);
+                });
+
+                // Autocomplete-Funktion für die Adresseingabe
+                const autocomplete = new google.maps.places.Autocomplete(addressInput);
+                autocomplete.setFields(['geometry', 'formatted_address']);
+
+                // Wenn eine Adresse ausgewählt wird, Karte und Marker aktualisieren
+                autocomplete.addListener('place_changed', function () {
+                    const place = autocomplete.getPlace();
+                    if (!place.geometry) {
+                        alert("Keine Geodaten für diesen Ort gefunden!");
+                        return;
+                    }
+
+                    // Koordinaten und Adresse auslesen
+                    const lat = place.geometry.location.lat();
+                    const lng = place.geometry.location.lng();
+                    const formattedAddress = place.formatted_address;
+
+                    // Karte und Marker aktualisieren
+                    map.setCenter({lat: lat, lng: lng});
+                    marker.setPosition({lat: lat, lng: lng});
+
+                    // Koordinaten und Adresse in Formular eintragen
+                    latitudeField.value = lat.toFixed(6);
+                    longitudeField.value = lng.toFixed(6);
+                    addressInput.value = formattedAddress;
+                });
+            });
+        </script>
+
+        {% buttons %}
+            <button type="submit" class="btn btn-success">
+                <span data-feather="alert-triangle"></span>
+                Ort speichern
+            </button>
+            <a href="{% url 'location' %}" class="btn btn-secondary">Abbrechen</a>
+        {% endbuttons %}
+    </form>
+{% endblock %}

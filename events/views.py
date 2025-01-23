@@ -8,8 +8,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
 
 from buildings.models import Construction, StockMaterial, ConstructionMaterial
-from events.forms import TripForm, TripConstructionFormSet
-from events.models import Trip, TripConstruction
+from events.forms import TripForm, TripConstructionFormSet, LocationForm, ImportLocationForm
+from events.models import Trip, TripConstruction, Location
 from main.decorators import organization_admin_required, event_manager_required
 from main.models import Membership
 
@@ -48,8 +48,9 @@ def trip(request):
 def show_trip(request, pk=None):
     trip = get_object_or_404(Trip, pk=pk, owner=request.org)
     tripconstruction = TripConstruction.objects.filter(trip=trip)
+    trip.type = trip.get_type_display()
     return render(request, 'events/show_trip.html', {
-        'title': 'Konstruktion anzeigen',
+        'title': 'Veranstaltung anzeigen',
         'trip': trip,
         'tripconstructions': tripconstruction,
     })
@@ -204,25 +205,102 @@ def location(request):
 
     search_query = request.GET.get('search', '')  # Hole die Suchanfrage
     # Filtere Konstruktionen basierend auf der Suchanfrage
-    locations_query = Trip.objects.filter(owner=request.org)
+    locations_query = Location.objects.filter(owner=request.org)
     selected_location_type = request.GET.get('location_type', '')
     if search_query:
         locations_query = locations_query.filter(
             Q(name__icontains=search_query) | Q(owner__name__icontains=search_query)
         )
     if selected_location_type:
-        locations_query = locations_query.filter(type=selected_trip_type)
+        locations_query = locations_query.filter(type=selected_location_type)
+    if m.event_manager:
+        form = ImportLocationForm(organization=request.org)
+        if request.method == 'POST':
+            form = ImportLocationForm(request.POST, organization=request.org)
+            if form.is_valid():
+                original_location = form.cleaned_data['location']
+                existing_location = Location.objects.filter(owner=request.org, name=original_location.name).first()
+                if not existing_location:
+                    # Neuen Ort erstellen, indem das Original kopiert wird
+                    cloned_location = Location.objects.create(
+                        name=original_location.name,
+                        description=original_location.description,
+                        type=original_location.type,
+                        owner=request.org,
+                        public=False,
+                        latitude=original_location.latitude,
+                        longitude=original_location.longitude,
+                    )
+
+                    messages.success(request, f'Ort "{original_location.name}" wurde hinzugefügt.')
+                else:
+                    # Existierendes Material verwenden
+                    cloned_location = existing_location
+                    messages.info(request,f'Ort "{original_location.name}" existiert bereits und wurde nicht erneut hinzugefügt.')
+                return HttpResponseRedirect(reverse_lazy('location'))
+    else:
+        form = None
     TYPES = (
-        (0, "Lager"),
-        (1, "Fahrt"),
-        (2, "Haik"),
-        (3, "Tagesaktion"),
+        (0, "Haus"),
+        (1, "Pfadfinderzeltplatz"),
+        (2, "Campingplatz"),
+        (3, "Freier Platz"),
+        (4, "Privater Platz"),
     )
-    return render(request, 'events/trip.html', {
-        'title': 'Veranstaltungen',
-        'trips': trips_query,
+    return render(request, 'events/locations.html', {
+        'title': 'Orte',
+        'locations': locations_query,
         'is_event_manager': m.event_manager,
         'search_query': search_query,
-        'selected_trip_type': selected_trip_type,
-        'trip_types': TYPES,
+        'selected_location_type': selected_location_type,
+        'location_types': TYPES,
+        'form': form,
+    })
+
+
+@login_required
+@event_manager_required
+def delete_location(request, pk=None):
+    location_d = get_object_or_404(Location, pk=pk)
+    if request.method == 'POST':
+        location_d.delete()
+        messages.success(request, f'Ort {location_d.name} erfolgreich gelöscht.')
+        return HttpResponseRedirect(reverse_lazy('location'))
+    return render(request, 'events/delete_location.html', {'title': 'Ort löschen', 'location': location_d})
+
+
+@login_required
+def show_location(request, pk=None):
+    location = get_object_or_404(Location, pk=pk, owner=request.org)
+    location.type = location.get_type_display()
+    return render(request, 'events/show_location.html', {
+        'title': 'Ort anzeigen',
+        'location': location,
+    })
+
+
+@login_required
+@event_manager_required
+def edit_location(request, pk=None):
+    if pk:
+        location_d = get_object_or_404(Location, pk=pk)
+        print(location_d)
+    else:
+        location_d = None
+    if request.method == 'POST':
+
+        print(location_d)
+        location_form = LocationForm(request.POST, request.FILES, instance=location_d)
+        if location_form.is_valid():
+            location_d = location_form.save(commit=False)
+            location_d.owner = request.org
+            location_d.save()
+            messages.success(request, f'Ort {location_d.name} gespeichert.')
+            return redirect('location')
+    else:
+        location_form = LocationForm(instance=location_d)
+    return render(request, 'events/edit_location.html', {
+        'title': 'Ort bearbeiten',
+        'location_form': location_form,
+        'location': location_d,
     })

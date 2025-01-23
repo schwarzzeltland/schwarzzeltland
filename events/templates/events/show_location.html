@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+{% block content %}
+    <div class="form">
+        {% csrf_token %}
+        <div class="container mt-5">
+            <form method="post" enctype='multipart/form-data'>
+                {% csrf_token %}
+                <h4>Ortdaten:</h4>
+                <table class="table">
+                    <tbody>
+                    <tr>
+                        <td><strong>Name:</strong></td>
+                        <td>{{ location.name }}</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Beschreibung:</strong></td>
+                        <td>{{ location.description }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Typ:</strong></td>
+                        <td>{{ location.type }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Latitude:</strong></td>
+                        <td>{{ location.latitude }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Longitude:</strong></td>
+                        <td>{{ location.longitude }}</td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <div class="mb-3" id="map" style="height: 400px; width: 100%;"></div>
+                <a href="{% url 'location' %}" class="btn btn-secondary">Zurück</a>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDloySH4V6VQFZJ3dIwdCkw5PuAxS6cQFU"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const latitude = {{ location.latitude }};
+            const longitude = {{ location.longitude }};
+
+            const map = new google.maps.Map(document.getElementById('map'), {
+                center: {lat: latitude, lng: longitude},
+                zoom: 12, // Zoom-Level
+            });
+
+            // Marker hinzufügen
+            const marker = new google.maps.Marker({
+                position: {lat: latitude, lng: longitude},
+                map: map,
+                title: "{{ location.name }}", // Optional: Name des Ortes
+            });
+        });
+    </script>
+    <style>
+    #map {
+        height: 400px; /* Höhe der Karte */
+        width: 100%;   /* Karte nimmt die gesamte Breite ein */
+    }
+</style>
+{% endblock %}

@@ -469,6 +469,7 @@ def delete_material(request, pk=None):
 @login_required
 def show_material(request, pk=None):
     material = get_object_or_404(StockMaterial, pk=pk, organization=request.org)
+    material.material.type=material.material.get_type_display()
     return render(request, 'buildings/show_material.html', {
         'title': 'Material anzeigen',
         'material': material

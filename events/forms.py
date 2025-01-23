@@ -1,9 +1,11 @@
+from time import timezone
+
 from django import forms
 from django.db.models import Q
-from django.forms import ModelForm, IntegerField, inlineformset_factory
+from django.forms import ModelForm, IntegerField, inlineformset_factory, Form, ModelChoiceField
 
 from buildings.models import Construction
-from events.models import Trip, TripConstruction
+from events.models import Trip, TripConstruction, Location
 
 
 class TripForm(ModelForm):
@@ -59,3 +61,37 @@ TripConstructionFormSet = inlineformset_factory(
     fields=("construction", "count"),
     extra=1, can_delete=True
 )
+
+
+class LocationForm(ModelForm):
+    def __init__(self, *args, **kwargs):
+        organization = kwargs.pop('organization', None)
+        super(LocationForm, self).__init__(*args, **kwargs)
+        self.instance.organization = organization
+
+    class Meta:
+        model = Location
+        fields = '__all__'
+        exclude = ['owner']
+
+
+class ImportLocationForm(Form):
+    location = ModelChoiceField(queryset=Location.objects.none())
+
+    def __init__(self, *args, **kwargs):
+        organization = kwargs.pop('organization', None)
+        super(ImportLocationForm, self).__init__(*args, **kwargs)
+        self.organization = organization
+        # Externe Orte, entweder öffentlich oder ohne zugewiesenen Eigentümer
+        external_locations = Location.objects.filter(
+            Q(owner__isnull=True) | Q(public=True) & ~Q(owner=organization)
+        )
+        # Setze das Queryset für das `ModelChoiceField`
+        self.fields['location'].queryset = external_locations
+        self.fields['location'].empty_label = "---------"
+        # Erstelle Optiongroups
+        choices = [
+            ('', '---------'),
+            ("Öffentliche Orte", [(c.id, c.name) for c in external_locations]),
+        ]
+        self.fields['location'].choices = choices

@@ -2,7 +2,114 @@
 {% load bootstrap5 %}
 
 {% block content %}
-    <p>
-        Tolle Orte
-    </p>
+    <form method="get" action="" class="mb-3">
+        <div class="input-group">
+            <!-- Suchleiste -->
+            <input type="text" class="form-control" name="search" value="{{ search_query }}"
+                   placeholder="Suchen nach Name">
+
+            <!-- Dropdown für Locationtyp -->
+            <select class="form-select" id="location_type" name="location_type">
+                <option value="">Alle Ortstypen</option>
+                {% for value, label in location_types %}
+                    <option value="{{ value }}"
+                            {% if value|stringformat:"s" == selected_location_type %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+            <!-- Suchen-Button -->
+            <button class="btn btn-outline-secondary" type="submit">Suchen</button>
+        </div>
+    </form>
+    <table class="table">
+        <thead>
+        <tr>
+            <th scope="col">Name</th>
+            <th scope="col"></th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for l in locations %}
+            <tr>
+                <td>{{ l.name }}
+                <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
+                    {% if is_event_manager %}
+                        <a href="{% url 'edit_location' l.pk %}"
+                           class="btn btn-outline-primary btn-sm me-2">Bearbeiten</a>
+                        <a href="{% url 'delete_location' l.pk %}" class="btn btn-danger btn-sm">Löschen</a>
+                    {% else %}
+                        <a href="{% url 'show_location' l.pk %}"
+                           class="btn btn-outline-primary btn-sm me-2">Anzeigen</a>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% if form %}
+        <form action="" method="post" class="form">
+            {% csrf_token %}
+            <table class="table">
+                <tbody>
+                {{ form.non_field_errors }}
+                <td>
+                    <div class="input-group">
+                        <label for="id_location"></label>
+                        {{ form.location }}
+                        <button type="submit" class="btn btn-outline-secondary">
+                            Ort hinzufügen
+                        </button>
+                    </div>
+                </td>
+                <th scope="row" class="text-end">
+                    <a href="{% url 'edit_location' %}" class="btn btn-success" type="button"
+                       id="button-addon1">Neuen Ort erstellen
+                    </a>
+                </th>
+                </tbody>
+            </table>
+        </form>
+    {% endif %}
+<!-- Include jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Include Select2 Library -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $('#id_location').select2({
+                placeholder: "--------",
+                allowClear: true,
+                width: 'resolve' // Automatische Breite basierend auf dem Container
+            });
+        });
+    </script>
+    <style>
+        .select2-container--default .select2-selection--single {
+            height: 38px; /* Abstimmung mit Bootstrap-Form-Höhe */
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px; /* Nur horizontale Innenabstände */
+        }
+
+        .select2-container--default .select2-selection--single {
+            border: 1px solid #ced4da; /* Bootstrap-Standard-Rahmenfarbe */
+            background-color: #fff; /* Hintergrundfarbe */
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 100%; /* Pfeil anpassen */
+            right: 10px; /* Pfeil-Abstand */
+        }
+
+
+        .select2-container--default .select2-selection--single:focus,
+        .select2-container--default .select2-selection--single:hover {
+            border-color: #80bdff; /* Bootstrap-Fokusfarbe */
+            outline: 0;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Fokus-Schlagschatten */
+        }
+    </style>
 {% endblock %}
