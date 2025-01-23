@@ -14,6 +14,17 @@ class TripForm(ModelForm):
         organization = kwargs.pop('organization', None)
         super(TripForm, self).__init__(*args, **kwargs)
         self.instance.organization = organization
+        # Eigene Orte
+        org_locations = Location.objects.filter(Q(owner=organization))
+        # Setze das Queryset für das `ModelChoiceField`
+        self.fields['location'].queryset = org_locations
+        self.fields['location'].empty_label = "---------"
+        # Erstelle Optiongroups
+        choices = [
+            ('', '---------'),
+            ("Eigene Orte", [(c.id, c.name) for c in org_locations]),
+        ]
+        self.fields['location'].choices = choices
 
     class Meta:
         model = Trip

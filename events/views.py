@@ -157,7 +157,7 @@ def edit_trip(request, pk=None):
     else:
         trip_d = None
     if request.method == 'POST':
-        trip_form = TripForm(request.POST, request.FILES, instance=trip_d)
+        trip_form = TripForm(request.POST, request.FILES, instance=trip_d, organization=request.org)
         tripconstruction_formset = TripConstructionFormSet(request.POST, instance=trip_d,
                                                            form_kwargs={'organization': request.org})
         if trip_form.is_valid() & tripconstruction_formset.is_valid():
@@ -180,7 +180,7 @@ def edit_trip(request, pk=None):
                 # Wenn der Materialverfügbarkeits-Button gedrückt wurde, weiter zu Materialverfügbarkeit prüfen
                 return redirect('check_trip_material', trip_d.pk)  # Weiterleitung zur Materialverfügbarkeitsprüfung
     else:
-        trip_form = TripForm(instance=trip_d)
+        trip_form = TripForm(instance=trip_d, organization=request.org)
         construction_formset = TripConstructionFormSet(instance=trip_d, form_kwargs={'organization': request.org})
     org_constructions = Construction.objects.filter(owner=request.org).order_by('name')
     external_constructions = Construction.objects.filter(
