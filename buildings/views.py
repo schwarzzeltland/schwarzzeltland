@@ -375,7 +375,8 @@ def material(request):
                     storage_place=form.cleaned_data['storage_place']
                 )
 
-                messages.success(request, f'Material "{original_material.name}" wurde kopiert und einsortiert.')
+                messages.success(request,
+                                 f'Material "{original_material.name}" wurde kopiert und einsortiert. Änderungen an einer der Kopien werden auf alle Kopien angewandt!')
                 return HttpResponseRedirect(reverse_lazy('material'))
 
     else:
@@ -404,7 +405,6 @@ def create_material(request):
             StockMaterial.objects.create(material=form.instance, organization=request.org,
                                          count=form.cleaned_data['count'],
                                          storage_place=form.cleaned_data['storage_place'])
-
             messages.success(request, 'Material einsortiert')
         return HttpResponseRedirect(reverse_lazy('material'))
     return render(request, 'buildings/create_material.html', {
@@ -416,7 +416,7 @@ def create_material(request):
 @login_required
 @material_manager_required
 def edit_material(request, pk=None):
-    mat = get_object_or_404(StockMaterial, pk=pk)
+    mat = get_object_or_404(StockMaterial, pk=pk, organization=request.org)
     if request.method == 'POST':
         form = StockMaterialForm(request.POST, instance=mat)
         mat_form = PlainMaterialForm(request.POST, instance=mat.material)
@@ -450,7 +450,7 @@ def delete_construction(request, pk=None):
 @login_required
 @material_manager_required
 def delete_material(request, pk=None):
-    mat = get_object_or_404(StockMaterial, pk=pk)
+    mat = get_object_or_404(StockMaterial, pk=pk, organization=request.org)
     if request.method == 'POST':
         deleted_st_mat = mat.material
         mat.delete()
@@ -469,7 +469,7 @@ def delete_material(request, pk=None):
 @login_required
 def show_material(request, pk=None):
     material = get_object_or_404(StockMaterial, pk=pk, organization=request.org)
-    material.material.type=material.material.get_type_display()
+    material.material.type = material.material.get_type_display()
     return render(request, 'buildings/show_material.html', {
         'title': 'Material anzeigen',
         'material': material

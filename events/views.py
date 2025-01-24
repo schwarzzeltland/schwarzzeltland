@@ -59,7 +59,7 @@ def show_trip(request, pk=None):
 @login_required
 @event_manager_required
 def delete_trip(request, pk=None):
-    trip_d = get_object_or_404(Trip, pk=pk)
+    trip_d = get_object_or_404(Trip, pk=pk, owner=request.org)
     if request.method == 'POST':
         trip_d.delete()
         messages.success(request, f'Veranstaltung {trip_d.name} erfolgreich gelöscht.')
@@ -153,7 +153,7 @@ def check_trip_material(request, pk=None):
 @event_manager_required
 def edit_trip(request, pk=None):
     if pk:
-        trip_d = get_object_or_404(Trip, pk=pk)
+        trip_d = get_object_or_404(Trip, pk=pk, owner=request.org)
     else:
         trip_d = None
     if request.method == 'POST':
@@ -179,6 +179,8 @@ def edit_trip(request, pk=None):
             elif 'check_material' in request.POST:
                 # Wenn der Materialverfügbarkeits-Button gedrückt wurde, weiter zu Materialverfügbarkeit prüfen
                 return redirect('check_trip_material', trip_d.pk)  # Weiterleitung zur Materialverfügbarkeitsprüfung
+            elif 'construction_summary' in request.POST:
+                return redirect('construction_summary', trip_d.pk)
     else:
         trip_form = TripForm(instance=trip_d, organization=request.org)
         construction_formset = TripConstructionFormSet(instance=trip_d, form_kwargs={'organization': request.org})
@@ -261,7 +263,7 @@ def location(request):
 @login_required
 @event_manager_required
 def delete_location(request, pk=None):
-    location_d = get_object_or_404(Location, pk=pk)
+    location_d = get_object_or_404(Location, pk=pk, owner=request.org)
     if request.method == 'POST':
         location_d.delete()
         messages.success(request, f'Ort {location_d.name} erfolgreich gelöscht.')
@@ -283,7 +285,7 @@ def show_location(request, pk=None):
 @event_manager_required
 def edit_location(request, pk=None):
     if pk:
-        location_d = get_object_or_404(Location, pk=pk)
+        location_d = get_object_or_404(Location, pk=pk, owner=request.org)
         print(location_d)
     else:
         location_d = None
@@ -303,4 +305,40 @@ def edit_location(request, pk=None):
         'title': 'Ort bearbeiten',
         'location_form': location_form,
         'location': location_d,
+    })
+
+@login_required
+def construction_summary(request, pk=None):
+    m: Membership = request.user.membership_set.filter(organization=request.org).first()
+    trip = get_object_or_404(Trip, pk=pk, owner=request.org)
+    constructions = TripConstruction.objects.filter(trip=trip)
+    # Initialisiere Variablen für Gesamtgewicht und Gesamtschlafplätze
+    total_weight = 0
+    total_sleep_place_count = 0
+    total_covered_area = 0
+    total_required_space = 0
+    # Erstelle eine Liste aller Materialien und summiere die benötigten Mengen
+    for tc in constructions:
+        # Berechne Gesamtschlafplatzanzahl der Konstruktionen
+        if tc.construction.sleep_place_count:
+            total_sleep_place_count += tc.construction.sleep_place_count * tc.count
+        if tc.construction.covered_area:
+            total_covered_area += tc.construction.covered_area * tc.count
+        if tc.construction.required_space:
+            total_required_space += tc.construction.required_space * tc.count
+        # Materialien der Konstruktionen holen
+        construction_materials = ConstructionMaterial.objects.filter(construction=tc.construction)
+        for cm in construction_materials:
+            required_quantity = cm.count * tc.count  # Gesamtmenge = Anzahl der Konstruktionen * benötigte Menge pro Konstruktion
+            # Gewicht berechnen
+            if cm.material.weight:  # Falls ein Gewicht angegeben ist
+                total_weight += cm.material.weight * required_quantity
+    return render(request, 'events/construction_summary.html', {
+        'title': 'Konstruktions-Zusammenfassung',
+        'trip': trip,
+        'total_weight':total_weight,
+        'total_sleep_place_count':total_sleep_place_count,
+        'total_covered_area':total_covered_area,
+        'total_required_space':total_required_space,
+        'is_event_manager': m.event_manager,
     })

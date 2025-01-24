@@ -15,5 +15,6 @@ urlpatterns = [
     path('location/edit/', views.edit_location, name='edit_location'),
     path('location/show/<int:pk>/', views.show_location, name='show_location'),
     path('location/delete/<int:pk>/', views.delete_location, name='delete_location'),
+    path('trip/summary/<int:pk>/', views.construction_summary, name='construction_summary'),
 
 ]

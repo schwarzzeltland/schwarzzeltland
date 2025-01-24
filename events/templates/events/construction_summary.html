@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+{% block content %}
+    <div class="form">
+        {% csrf_token %}
+        <div class="container mt-5">
+            <form method="post" enctype='multipart/form-data'>
+                {% csrf_token %}
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <td><strong>Gesamt-Schlafplatz-Anzahl:</strong></td>
+                            <td>{{ total_sleep_place_count}}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gesamt-Überdachte-Fläche:</strong></td>
+                            <td>{{ total_covered_area}}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gesamt-Benötigter-Platz:</strong></td>
+                            <td>{{ total_required_space}}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gesamt-Gewicht-Material (in kg):</strong></td>
+                            <td>{{ total_weight}}</td>
+                        </tr>
+                </table>
+                {% if is_event_manager %}
+                <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary">Zurück zur
+                    Bearbeitung</a>
+            {% else %}
+                <a href="{% url 'show_trip' trip.pk %}" class="btn btn-secondary">Zurück zur
+                    Veranstaltung</a>
+            {% endif %}
+            </form>
+        </div>
+    </div>
+{% endblock %}
