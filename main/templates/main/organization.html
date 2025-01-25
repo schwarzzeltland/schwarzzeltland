@@ -27,6 +27,7 @@
         {% for m in members %}
             {% include "./member_list_entry.html" %}
         {% endfor %}
+        {% if membership.admin %}
         <tr id="new_member">
             <form hx-post="{% url 'add_user' %}" hx-swap="beforebegin" hx-target="#new_member"
                   hx-on::after-request="
@@ -54,8 +55,8 @@
                     </button>
                 </td>
             </form>
-
         </tr>
+        {% endif %}
         </tbody>
     </table>
 {% endblock %}

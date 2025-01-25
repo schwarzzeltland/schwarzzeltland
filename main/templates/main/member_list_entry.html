@@ -2,16 +2,16 @@
     <td>{{ m.user.username }}</td>
     <td><input class="form-check-input" type="checkbox" hx-trigger="change"
                hx-post="{% url 'change_admin' m.id %}" hx-swap="none"
-            {% if m.admin %} checked {% endif %} {% if m.user == request.user %} disabled {% endif %}
+            {% if m.admin %} checked {% endif %} {% if m.user == request.user or not membership.admin %} disabled {% endif %}
     />
     </td>
     <td><input class="form-check-input" type="checkbox" hx-trigger="change"
                hx-post="{% url 'change_material_manager' m.id %}" hx-swap="none"
-            {% if m.material_manager %} checked {% endif %}  {% if m.user == request.user %} disabled {% endif %}
+            {% if m.material_manager %} checked {% endif %}  {% if m.user == request.user or not membership.admin %} disabled {% endif %}
     />
     </td>
     <td>
-        {% if m.user != request.user %}
+        {% if m.user != request.user and membership.admin %}
             <button type="button" class="btn btn-outline-danger"
                     hx-post="{% url 'delete_membership' m.id %}" hx-swap="outerHTML" hx-target="#member-{{ m.id }}">
                 Delete
