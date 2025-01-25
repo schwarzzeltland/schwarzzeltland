@@ -11,6 +11,7 @@ services:
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DJANGO_DEBUG: ${DJANGO_DEBUG}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
       SQL_ENGINE: django.db.backends.postgresql
       SQL_DATABASE: schwarzzeltland
       SQL_USER: django
