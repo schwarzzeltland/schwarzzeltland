@@ -7,4 +7,5 @@ def current_organization(request):
     # Define variables you want to provide in every template
     return {
         'organization': request.org,
+        'membership': request.membership,
     }

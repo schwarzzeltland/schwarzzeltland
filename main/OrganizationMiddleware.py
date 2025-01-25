@@ -1,6 +1,8 @@
 from django.http import HttpResponseRedirect
 from django.utils.deprecation import MiddlewareMixin
 
+from main.models import Organization
+
 
 class OrganizationMiddleware:
     def __init__(self, get_response):
@@ -10,7 +12,8 @@ class OrganizationMiddleware:
     def __call__(self, request):
         # Code to be executed for each request before
         # the view (and later middleware) are called.
-        org = None
+        org: Organization | None = None
+        membership = None
         if request.user.is_authenticated:
             if "org" in request.POST:
                 org = request.user.organization_set.filter(id=request.POST["org"]).first()
@@ -20,8 +23,10 @@ class OrganizationMiddleware:
                 org = request.user.organization_set.filter(id=request.session["org"]).first()
             if org is None:
                 org = request.user.organization_set.first()
+            membership = org.membership_set.filter(user=request.user).get()
 
         setattr(request, "org", org)
+        setattr(request, "membership", membership)
 
         response = self.get_response(request)
 
