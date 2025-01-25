@@ -84,6 +84,15 @@ def change_material_manager(request, pk):
     m.save()
     return HttpResponse(status=200)
 
+@organization_admin_required
+def change_event_manager(request, pk):
+    m : Membership = request.org.membership_set.get(pk=pk)
+    if m.user == request.user:
+        return HttpResponse("You're not allowed to change yourself", status=403)
+    m.event_manager = not m.event_manager
+    m.save()
+    return HttpResponse(status=200)
+
 
 @organization_admin_required
 def delete_membership(request, pk):
@@ -99,7 +108,8 @@ def add_user(request):
     if user:
         m = Membership.objects.create(organization=request.org, user=user,
                                       admin=request.POST.get("admin", None) == "on",
-                                      material_manager=request.POST.get("material_manager", None) == "on")
+                                      material_manager=request.POST.get("material_manager", None) == "on",
+                                      event_manager=request.POST.get("event_manager", None) == "on")
         return render(request, 'main/member_list_entry.html', {
             'm': m,
         })

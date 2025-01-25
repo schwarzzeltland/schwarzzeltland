@@ -10,6 +10,11 @@
             {% if m.material_manager %} checked {% endif %}  {% if m.user == request.user or not membership.admin %} disabled {% endif %}
     />
     </td>
+    <td><input class="form-check-input" type="checkbox" hx-trigger="change"
+               hx-post="{% url 'change_event_manager' m.id %}" hx-swap="none"
+            {% if m.event_manager %} checked {% endif %}  {% if m.user == request.user or not membership.admin %} disabled {% endif %}
+    />
+    </td>
     <td>
         {% if m.user != request.user and membership.admin %}
             <button type="button" class="btn btn-outline-danger"
