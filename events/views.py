@@ -204,7 +204,7 @@ def edit_trip(request, pk=None):
                 return redirect('construction_summary', trip_d.pk)
     else:
         trip_form = TripForm(instance=trip_d, organization=request.org)
-        construction_formset = TripConstructionFormSet(instance=trip_d, form_kwargs={'organization': request.org})
+        tripconstruction_formset = TripConstructionFormSet(instance=trip_d, form_kwargs={'organization': request.org})
     org_constructions = Construction.objects.filter(owner=request.org).order_by('name')
     external_constructions = Construction.objects.filter(
         Q(owner__isnull=True) | Q(public=True) & ~Q(owner=request.org)
@@ -217,7 +217,7 @@ def edit_trip(request, pk=None):
         'title': 'Veranstaltung bearbeiten',
         'trip_form': trip_form,
         'trip': trip_d,
-        'construction_formset': construction_formset,
+        'construction_formset': tripconstruction_formset,
         'constructions': constructions,
     })
 

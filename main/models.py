@@ -6,7 +6,7 @@ from django.dispatch import receiver
 
 class Organization(models.Model):
     name = models.CharField(unique=True, max_length=254)
-    image = models.ImageField(upload_to="users/", blank=True, null=True)
+    image = models.ImageField(upload_to="users/", blank=True, null=True,verbose_name="Bild")
     members = models.ManyToManyField(
         User,
         through='Membership',
@@ -22,7 +22,7 @@ class Organization(models.Model):
 class Membership(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
-    admin = models.BooleanField(default=False)
+    admin = models.BooleanField(default=False,verbose_name="Admin")
     material_manager = models.BooleanField(default=False)
     event_manager = models.BooleanField(default=False)
 

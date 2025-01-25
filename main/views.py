@@ -25,10 +25,11 @@ def home_view(request):
 @login_required
 def organization_view(request):
     if request.method == 'POST':
-        form = OrganizationForm(request.POST, instance=request.org)
+        form = OrganizationForm(request.POST, request.FILES, instance=request.org)
         if form.is_valid():
             form.save()
             messages.success(request, "Saved")
+            return redirect('organization')  # 'organization' sollte der URL-Name für diese Seite sein
     else:
         form = OrganizationForm(instance=request.org)
     return render(request, 'main/organization.html', {
@@ -41,7 +42,7 @@ def organization_view(request):
 @login_required
 def create_organization(request):
     if request.method == 'POST':
-        form = OrganizationForm(request.POST)
+        form = OrganizationForm(request.POST, request.FILES)
         formset = MembershipFormset(request.POST)
         if form.is_valid() and formset.is_valid():
             org = form.save()

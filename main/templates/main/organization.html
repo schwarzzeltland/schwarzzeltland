@@ -2,15 +2,12 @@
 {% load bootstrap5 %}
 
 {% block content %}
-    <p>
-        Tolle Orga
-    </p>
-    <form method="post" class="form">
+    <form method="post" class="form"  enctype="multipart/form-data">
         {% csrf_token %}
         {% bootstrap_form form %}
         {% buttons %}
             <button type="submit" class="btn btn-primary">
-                Save
+                Speichern
             </button>
         {% endbuttons %}
     </form>
@@ -52,7 +49,7 @@
                 <td><input name="material_manager" class="form-check-input" style="vertical-align: middle" type="checkbox"/></td>
                 <td><input name="event_manager" class="form-check-input" style="vertical-align: middle" type="checkbox"/></td>
                 <td>
-                    <button type="submit" class="btn btn-success">Add User
+                    <button type="submit" class="btn btn-success">Benutzer hinzufügen
                     </button>
                 </td>
             </form>

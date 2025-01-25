@@ -398,11 +398,11 @@ def material(request):
 def create_material(request):
     form = MaterialForm(organization=request.org)
     if request.method == 'POST':
-        form = MaterialForm(request.POST, organization=request.org)
+        form = MaterialForm(request.POST, request.FILES, organization=request.org)
         if form.is_valid():
             form.instance.owner = request.org
-            form.save()
-            StockMaterial.objects.create(material=form.instance, organization=request.org,
+            material = form.save()
+            StockMaterial.objects.create(material=material, organization=request.org,
                                          count=form.cleaned_data['count'],
                                          storage_place=form.cleaned_data['storage_place'])
             messages.success(request, 'Material einsortiert')
@@ -419,7 +419,7 @@ def edit_material(request, pk=None):
     mat = get_object_or_404(StockMaterial, pk=pk, organization=request.org)
     if request.method == 'POST':
         form = StockMaterialForm(request.POST, instance=mat)
-        mat_form = PlainMaterialForm(request.POST, instance=mat.material)
+        mat_form = PlainMaterialForm(request.POST, request.FILES, instance=mat.material)
         if form.is_valid() and mat_form.is_valid():
             form.save()
             mat_form.save()

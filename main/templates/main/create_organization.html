@@ -2,7 +2,7 @@
 {% load bootstrap5 %}
 
 {% block content %}
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         {% bootstrap_form form %}
         {{ formset.management_form }}
@@ -13,7 +13,7 @@
                 {% for field in formset.form.visible_fields %}
                     <th>{{ field.label }}</th>
                 {% endfor %}
-                <th>Delete</th>
+                <th>Löschen</th>
             </tr>
             </thead>
             <tbody id="id_formset">
@@ -39,7 +39,7 @@
             {% endfor %}
             <tr id="add_row">
                 <td colspan="100" class="text-end">
-                    <button type="button" id="add_form" class="btn btn-outline-primary">Add User</button>
+                    <button type="button" id="add_form" class="btn btn-outline-primary">Benutzer Hinzufügen</button>
                 </td>
             </tr>
             </tbody>
@@ -61,7 +61,7 @@
             }
         </script>
 
-        {% bootstrap_button "Save" button_type="submit" button_class="btn-success" %}
+        {% bootstrap_button "Speichern" button_type="submit" button_class="btn-success" %}
     </form>
 
 {% endblock %}

@@ -1,6 +1,7 @@
 from typing import Type
 
 from django import forms
+from django.core.validators import MinValueValidator
 from django.db.models import Q
 from urllib3.filepost import iter_field_objects
 
@@ -37,8 +38,8 @@ class AddMaterialStockForm(ModelForm):
 
 
 class MaterialForm(ModelForm):
-    count = IntegerField(required=True)
-    storage_place = CharField(required=False)
+    count = IntegerField(required=True, validators=[MinValueValidator(0)],label='Anzahl')
+    storage_place = CharField(required=False,label='Lagerort')
 
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop('organization', None)
@@ -113,8 +114,8 @@ class ImportConstructionForm(Form):
 
 
 class ConstructionMaterialForm(ModelForm):
-    count = IntegerField(required=True)
-    storage_place = CharField(required=False)
+    count = IntegerField(required=True,validators=[MinValueValidator(0)],label='Anzahl')
+    storage_place = CharField(required=False,label='Lagerort')
     add_to_stock = forms.BooleanField(
         required=False,
         label="In Lager übernehmen",

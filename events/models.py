@@ -1,3 +1,4 @@
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import CharField, BooleanField
 
@@ -22,12 +23,12 @@ class Location(models.Model):
         (TYPE_PRIVATEPLACE, "Privater Platz")
     )
     name = CharField(max_length=255)
-    type = models.IntegerField(choices=TYPES, null=True, blank=True, help_text="Typ des Platzes")
-    description = CharField(max_length=1024, default="", blank=True)
-    latitude = models.FloatField(default=00.000000, help_text="Latitude")
-    longitude = models.FloatField(default=00.000000, help_text="Longitude")
+    type = models.IntegerField(choices=TYPES, null=True, blank=True, verbose_name="Typ")
+    description = CharField(max_length=1024, default="", blank=True, verbose_name="Beschreibung")
+    latitude = models.FloatField(default=00.000000, verbose_name="Breitengrad")
+    longitude = models.FloatField(default=00.000000,  verbose_name="Längengrad")
     owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
-    public = BooleanField(default=False)
+    public = BooleanField(default=False, verbose_name="Öffentlich")
 
     def __str__(self):
         return self.name
@@ -47,16 +48,16 @@ class Trip(models.Model):
     )
     name = CharField(max_length=255)
     owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
-    type = models.IntegerField(choices=TYPES, null=True, blank=True)
-    description = CharField(max_length=1024, default="", blank=True)
+    type = models.IntegerField(choices=TYPES, null=True, blank=True, verbose_name="Typ")
+    description = CharField(max_length=1024, default="", blank=True, verbose_name="Beschreibung")
     start_date = models.DateTimeField("Startdatum")
     end_date = models.DateTimeField("Enddatum")
     location = models.ForeignKey(Location, on_delete=models.CASCADE, null=True, blank=True)
-    tn_male_u16 = models.IntegerField(default=0)
-    tn_male_a16 = models.IntegerField(default=0)
-    tn_female_u16 = models.IntegerField(default=0)
-    tn_female_a16 = models.IntegerField(default=0)
-    tn_count = models.IntegerField(default=0)
+    tn_male_u16 = models.IntegerField(default=0,verbose_name="TN männlich unter 16",validators=[MinValueValidator(0)])
+    tn_male_a16 = models.IntegerField(default=0,verbose_name="TN männlich über 16",validators=[MinValueValidator(0)])
+    tn_female_u16 = models.IntegerField(default=0,verbose_name="TN weiblich unter 16",validators=[MinValueValidator(0)])
+    tn_female_a16 = models.IntegerField(default=0,verbose_name="TN weiblich über 16",validators=[MinValueValidator(0)])
+    tn_count = models.IntegerField(default=0,verbose_name="TN-Anzahl")
 
     def __str__(self):
         return self.name
@@ -70,8 +71,8 @@ class Trip(models.Model):
 class TripConstruction(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE)
     construction = models.ForeignKey(Construction, on_delete=models.CASCADE)
-    count = models.IntegerField(default=0)
-    description = CharField(max_length=1024, default="", blank=True)
+    count = models.IntegerField(default=0,verbose_name="Anzahl",validators=[MinValueValidator(0)])
+    description = CharField(max_length=1024, default="", blank=True,verbose_name="Beschreibung")
 
 
 class PackedMaterial(models.Model):

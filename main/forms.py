@@ -11,9 +11,8 @@ class OrganizationForm(ModelForm):
         model = Organization
         fields = ['name', 'image']
 
-
 class MembershipForm(ModelForm):
-    user = CharField()  # Override with a CharField
+    user = CharField(label='Benutzer')  # Override with a CharField
 
     def clean_user(self):
         username = self.cleaned_data['user']
