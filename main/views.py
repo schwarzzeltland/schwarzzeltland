@@ -68,7 +68,7 @@ def create_organization(request):
 @organization_admin_required
 def change_admin(request, pk):
     m = request.org.membership_set.get(pk=pk)
-    if m.user == request.user:
+    if m.user == request.user or request.org.get_owner() == m:
         return HttpResponse("You're not allowed to change yourself", status=403)
     m.admin = not m.admin
     m.save()
@@ -97,6 +97,8 @@ def change_event_manager(request, pk):
 @organization_admin_required
 def delete_membership(request, pk):
     m = request.org.membership_set.get(pk=pk)
+    if m == request.org.get_owner():
+        return HttpResponse("You're not allowed to delete the owner", status=403)
     m.delete()
     return HttpResponse(status=200)
 
@@ -106,6 +108,8 @@ def add_user(request):
     username = request.POST.get("name2", None)
     user = User.objects.filter(username=username).first()
     if user:
+        if request.org.membership_set.filter(user=user).exists():
+            return HttpResponse("The person is already a member", status=403)
         m = Membership.objects.create(organization=request.org, user=user,
                                       admin=request.POST.get("admin", None) == "on",
                                       material_manager=request.POST.get("material_manager", None) == "on",

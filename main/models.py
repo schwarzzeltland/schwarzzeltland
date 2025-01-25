@@ -12,6 +12,9 @@ class Organization(models.Model):
         through='Membership',
     )
 
+    def get_owner(self) -> 'Membership':
+        return self.membership_set.earliest("id")
+
     def __str__(self):
         return self.name
 
