@@ -36,81 +36,66 @@
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
 <!-- ======= Header ======= -->
-<header id="header" class="fixed-top header-inner-pages">
-    <div class="container d-flex align-items-center justify-content-lg-between">
-
-        <h1 class="logo me-auto me-lg-0"><a href="/">Schwarzzeltland<span>.</span></a></h1>
-        <!-- Uncomment below if you prefer to use an image logo -->
-        <!-- <a href="index.html" class="logo me-auto me-lg-0"><img src="static/img/logo.png" alt="" class="img-fluid"></a>-->
-{% comment %}
-<div style="display: flex;flex-direction: row;justify-content: flex-end">
-{% endcomment %}
-
-        <nav id="navbar" class="navbar order-last order-lg-0">
-            <ul>
-                {% comment %}<li><a class="nav-link scrollto " href="/">Home</a></li>{% endcomment %}
-                <li><a class="nav-link scrollto" href="/main/contacts">Kontakt</a></li>
-                <li><a class="nav-link scrollto" href="/main/help">Was ist Schwarzzeltland?</a></li>
-                {% comment %} <li><a class="nav-link scrollto" href="#services">Services</a></li>
-          <li><a class="nav-link scrollto " href="#portfolio">Portfolio</a></li>
-          <li><a class="nav-link scrollto" href="#team">Team</a></li>
-          <li class="dropdown"><a href="#"><span>Drop Down</span> <i class="bi bi-chevron-down"></i></a>
-            <ul>
-              <li><a href="#">Drop Down 1</a></li>
-              <li class="dropdown"><a href="#"><span>Deep Drop Down</span> <i class="bi bi-chevron-right"></i></a>
-                <ul>
-                  <li><a href="#">Deep Drop Down 1</a></li>
-                  <li><a href="#">Deep Drop Down 2</a></li>
-                  <li><a href="#">Deep Drop Down 3</a></li>
-                  <li><a href="#">Deep Drop Down 4</a></li>
-                  <li><a href="#">Deep Drop Down 5</a></li>
-                </ul>
-              </li>
-              <li><a href="#">Drop Down 2</a></li>
-              <li><a href="#">Drop Down 3</a></li>
-              <li><a href="#">Drop Down 4</a></li>
-            </ul>{% endcomment %}
-                {% comment %} </li>
-          <li><a class="nav-link scrollto" href="#contact">Contact</a></li>{% endcomment %}
+<nav class="navbar navbar-expand-lg navbar-dark fixed-top navbar-background py-3">
+    <div class="container">
+        <h1 class="logo me-auto me-lg-0">
+            <a href="/" class="ps-0">
+                <div class="d-none d-sm-inline">Schwarzzeltland<span>.</span></div>
+                <div class="d-inline d-sm-none">S<span>.</span></div>
+            </a>
+        </h1>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarTogglerDemo02"
+                aria-controls="navbarTogglerDemo02" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarTogglerDemo02">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-0 ms-lg-4">
+                <li class="nav-item">
+                    <a class="nav-link yellow-hover fw-semibold text-white" href="/main/contacts">Kontakt</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link yellow-hover fw-semibold text-white" href="/main/help">Was ist
+                        Schwarzzeltland?</a>
+                </li>
             </ul>
-            <i class="bi bi-list mobile-nav-toggle"></i>
-        </nav><!-- .navbar -->
+            <div class="d-flex flex-wrap flex-md-nowrap row-gap-3">
+                {% if user.is_authenticated %}
+                    <div class="dropdown" style="margin-right: 1rem">
+                        <a class="btn btn-secondary dropdown-toggle" style="min-width: 15rem" href="#" role="button"
+                           data-bs-toggle="dropdown"
+                           aria-expanded="false">
+                            <div style="display: inline-flex; width: 93%;">{{ organization.name }}</div>
+                        </a>
 
-        <div style="display: flex">
-            {% if user.is_authenticated %}
-                <div class="dropdown" style="margin-right: 1rem">
-                    <a class="btn btn-secondary dropdown-toggle" style="min-width: 15rem" href="#" role="button" data-bs-toggle="dropdown"
-                       aria-expanded="false">
-                        <div style="display: inline-flex; width: 93%;">{{ organization.name }}</div>
-                    </a>
-
-                    <ul class="dropdown-menu">
-                        {% for org in user.organization_set.all %}
-                            {% if org.id != organization.id %}
-                                <form method="POST">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="org" value="{{ org.id }}">
-                                    <li>
-                                        <button type="submit" class="dropdown-item">{{ org.name }}</button>
-                                    </li>
-                                </form>
-                            {% endif %}
-                        {% endfor %}
-                        <li><a class="dropdown-item" href="{% url 'create_organization' %}">Neue Organisation</a></li>
-                    </ul>
-                </div>
-            {% endif %}
-            {% if user.is_authenticated %}
-                <form action="{% url 'logout' %}" method="post">
-                    {% csrf_token %}
-                    <button class="get-started-btn" type="submit">Log out</button>
-                </form>
-            {% else %}
-                <a href="/main/login/" class="get-started-btn">Login</a>
-            {% endif %}</div>
+                        <ul class="dropdown-menu">
+                            {% for org in user.organization_set.all %}
+                                {% if org.id != organization.id %}
+                                    <form method="POST">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="org" value="{{ org.id }}">
+                                        <li>
+                                            <button type="submit" class="dropdown-item">{{ org.name }}</button>
+                                        </li>
+                                    </form>
+                                {% endif %}
+                            {% endfor %}
+                            <li><a class="dropdown-item" href="{% url 'create_organization' %}">Neue Organisation</a>
+                            </li>
+                        </ul>
+                    </div>
+                {% endif %}
+                {% if user.is_authenticated %}
+                    <form action="{% url 'logout' %}" method="post">
+                        {% csrf_token %}
+                        <button class="get-started-btn" type="submit">Log out</button>
+                    </form>
+                {% else %}
+                    <a href="/main/login/" class="get-started-btn">Login</a>
+                {% endif %}
+            </div>
+        </div>
     </div>
-    </div>
-</header><!-- End Header -->
+</nav>
 
 <main id="main" style="min-height: 65vh">
 
