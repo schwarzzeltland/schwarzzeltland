@@ -77,9 +77,9 @@
         <div style="display: flex">
             {% if user.is_authenticated %}
                 <div class="dropdown" style="margin-right: 1rem">
-                    <a class="btn btn-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                    <a class="btn btn-secondary dropdown-toggle" style="min-width: 15rem" href="#" role="button" data-bs-toggle="dropdown"
                        aria-expanded="false">
-                        {{ organization.name }}
+                        <div style="display: inline-flex; width: 93%;">{{ organization.name }}</div>
                     </a>
 
                     <ul class="dropdown-menu">
