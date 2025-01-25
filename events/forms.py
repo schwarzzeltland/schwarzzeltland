@@ -25,6 +25,7 @@ class TripForm(ModelForm):
             ("Eigene Orte", [(c.id, c.name) for c in org_locations]),
         ]
         self.fields['location'].choices = choices
+        self.fields['tn_count'].disabled = True
 
     class Meta:
         model = Trip
@@ -69,7 +70,7 @@ class TripConstructionForm(ModelForm):
 
 TripConstructionFormSet = inlineformset_factory(
     Trip, TripConstruction, form=TripConstructionForm,
-    fields=("construction", "count"),
+    fields=("construction", "count","description"),
     extra=1, can_delete=True
 )
 

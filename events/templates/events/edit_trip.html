@@ -14,6 +14,7 @@
                     <tr>
                         <th>Konstruktion</th>
                         <th>Anzahl</th>
+                        <th>Beschreibung</th>
                         <th>Löschen</th>
                     </tr>
                     </thead>
@@ -26,6 +27,7 @@
                         <tr>
                             <td>{% bootstrap_field form.construction show_label=False %} </td>
                             <td>{% bootstrap_field form.count show_label=False %}</td>
+                            <td>{% bootstrap_field form.description show_label=False %}</td>
                             <td>{% bootstrap_field form.DELETE show_label=False %}</td>
                         </tr>
                     {% endfor %}

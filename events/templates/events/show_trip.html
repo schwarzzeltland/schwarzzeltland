@@ -7,42 +7,80 @@
         <div class="container mt-5">
             <form method="post" enctype='multipart/form-data'>
                 {% csrf_token %}
-            <h4>Tripdaten:</h4>
+                <h4>Tripdaten:</h4>
                 <table class="table">
                     <tbody>
-                        <tr>
-                            <td><strong>Name:</strong></td>
-                            <td>{{ trip.name }}</td>
-                        </tr>
+                    <tr>
+                        <td><strong>Name:</strong></td>
+                        <td>{{ trip.name }}</td>
+                    </tr>
 
+                    <tr>
+                        <td><strong>Beschreibung:</strong></td>
+                        <td>{{ trip.description }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Typ:</strong></td>
+                        <td>{{ trip.type }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Startdatum:</strong></td>
+                        <td>{{ trip.start_date|date:"d.m.Y H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Enddatum:</strong></td>
+                        <td>{{ trip.end_date|date:"d.m.Y H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Ort:</strong></td>
+                        <td>{{ trip.location }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TN-Zahl:</strong></td>
+                        <td>{{ trip.tn_count }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TN-Zahl männlich unter 16:</strong></td>
+                        <td>{{ trip.tn_male_u16 }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TN-Zahl männlich über 16:</strong></td>
+                        <td>{{ trip.tn_male_a16 }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TN-Zahl weiblich unter 16:</strong></td>
+                        <td>{{ trip.tn_female_u16 }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TN-Zahl weiblich über 16:</strong></td>
+                        <td>{{ trip.tn_female_a16 }}</td>
+                    </tr>
+                    </tbody>
+                </table>
+                <h4>Konstruktionen:</h4>
+                <table class="table">
+                    <tbody>
+                    {% for tc in tripconstructions %}
                         <tr>
-                            <td><strong>Beschreibung:</strong></td>
-                            <td>{{ trip.description}}</td>
+                            <td>
+                                <strong>Name:</strong>
+                                {{ tc.construction.name }}
+                            </td>
+                            <td>
+                                <strong>Anzahl:</strong>
+                                {{ tc.count }}
+                            </td>
+                            <td>
+                                <strong>Beschreibung:</strong>
+                                {{ tc.description }}
+                            </td>
                         </tr>
-                        <tr>
-                            <td><strong>Typ:</strong></td>
-                            <td>{{ trip.type }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Startdatum:</strong></td>
-                            <td>{{ trip.start_date|date:"d.m.Y H:i" }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Enddatum:</strong></td>
-                            <td>{{ trip.end_date|date:"d.m.Y H:i" }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Ort:</strong></td>
-                            <td>{{ trip.location }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>TN-Zahl:</strong></td>
-                            <td>{{ trip.tn_count }}</td>
-                        </tr>
+                    {% endfor %}
                     </tbody>
                 </table>
                 <a href="{% url 'trip' %}" class="btn btn-secondary">Zurück</a>
-                <a href="{% url 'check_trip_material' trip.pk %}" class="btn btn-outline-success">Materialverfügbarkeit im Lager prüfen</a>
+                <a href="{% url 'check_trip_material' trip.pk %}" class="btn btn-outline-success">Materialverfügbarkeit
+                    im Lager prüfen</a>
                 <a href="{% url 'construction_summary' trip.pk %}" class="btn btn-outline-success">Konstruktions-Zusammenfassung</a>
             </form>
         </div>

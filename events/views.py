@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 
 from django.contrib import messages
@@ -9,7 +10,7 @@ from django.urls import reverse_lazy
 
 from buildings.models import Construction, StockMaterial, ConstructionMaterial
 from events.forms import TripForm, TripConstructionFormSet, LocationForm, ImportLocationForm
-from events.models import Trip, TripConstruction, Location
+from events.models import Trip, TripConstruction, Location, PackedMaterial
 from main.decorators import organization_admin_required, event_manager_required
 from main.models import Membership
 
@@ -131,7 +132,27 @@ def check_trip_material(request, pk=None):
             })
             missing = True
 
-        # Wenn Materialien fehlen, zeige eine Warnung und die Liste der fehlenden Materialien an
+    # Informationen zu eingepackten Materialien abrufen
+    packed_materials = PackedMaterial.objects.filter(trip=trip).values_list('material_name', flat=True)
+
+    # Markiere Materialien als "eingepackt"
+    for material in available_materials + missing_materials:
+        material['packed'] = material['material'] in packed_materials
+    # Wenn das Formular abgeschickt wurde, Checkbox-Werte verarbeiten
+    if request.method == 'POST':
+        packed_materials = request.POST.getlist('packed_materials')
+
+        # Vorhandene Einträge löschen, um nur die aktuellen zu speichern
+        PackedMaterial.objects.filter(trip=trip).delete()
+
+        # Neue Daten speichern
+        for material_name in packed_materials:
+            PackedMaterial.objects.create(trip=trip, material_name=material_name, packed=True)
+        messages.success(request, f"Die eingepackten Materialien wurden gespeichert!")
+        print(request.POST.getlist('packed_materials'))
+        return redirect('check_trip_material', pk=pk)
+
+    # Wenn Materialien fehlen, zeige eine Warnung und die Liste der fehlenden Materialien an
     if missing:
         messages.warning(request,
                          'Einige Materialien sind nicht ausreichend vorhanden.')
@@ -238,7 +259,8 @@ def location(request):
                 else:
                     # Existierendes Material verwenden
                     cloned_location = existing_location
-                    messages.info(request,f'Ort "{original_location.name}" existiert bereits und wurde nicht erneut hinzugefügt.')
+                    messages.info(request,
+                                  f'Ort "{original_location.name}" existiert bereits und wurde nicht erneut hinzugefügt.')
                 return HttpResponseRedirect(reverse_lazy('location'))
     else:
         form = None
@@ -275,9 +297,11 @@ def delete_location(request, pk=None):
 def show_location(request, pk=None):
     location = get_object_or_404(Location, pk=pk, owner=request.org)
     location.type = location.get_type_display()
+    google_maps_api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
     return render(request, 'events/show_location.html', {
         'title': 'Ort anzeigen',
         'location': location,
+        'GOOGLE_MAPS_API_KEY':google_maps_api_key,
     })
 
 
@@ -301,11 +325,14 @@ def edit_location(request, pk=None):
             return redirect('location')
     else:
         location_form = LocationForm(instance=location_d)
+    google_maps_api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
     return render(request, 'events/edit_location.html', {
         'title': 'Ort bearbeiten',
         'location_form': location_form,
         'location': location_d,
+        'GOOGLE_MAPS_API_KEY':google_maps_api_key,
     })
+
 
 @login_required
 def construction_summary(request, pk=None):
@@ -336,9 +363,9 @@ def construction_summary(request, pk=None):
     return render(request, 'events/construction_summary.html', {
         'title': 'Konstruktions-Zusammenfassung',
         'trip': trip,
-        'total_weight':total_weight,
-        'total_sleep_place_count':total_sleep_place_count,
-        'total_covered_area':total_covered_area,
-        'total_required_space':total_required_space,
+        'total_weight': total_weight,
+        'total_sleep_place_count': total_sleep_place_count,
+        'total_covered_area': total_covered_area,
+        'total_required_space': total_required_space,
         'is_event_manager': m.event_manager,
     })

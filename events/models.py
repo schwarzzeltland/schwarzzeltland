@@ -28,6 +28,7 @@ class Location(models.Model):
     longitude = models.FloatField(default=00.000000, help_text="Longitude")
     owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
     public = BooleanField(default=False)
+
     def __str__(self):
         return self.name
 
@@ -51,13 +52,32 @@ class Trip(models.Model):
     start_date = models.DateTimeField("Startdatum")
     end_date = models.DateTimeField("Enddatum")
     location = models.ForeignKey(Location, on_delete=models.CASCADE, null=True, blank=True)
+    tn_male_u16 = models.IntegerField(default=0)
+    tn_male_a16 = models.IntegerField(default=0)
+    tn_female_u16 = models.IntegerField(default=0)
+    tn_female_a16 = models.IntegerField(default=0)
     tn_count = models.IntegerField(default=0)
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        # tn_count wird als Summe
+        self.tn_count = self.tn_male_a16 + self.tn_male_a16 + self.tn_female_u16 + self.tn_female_a16
+        super().save(*args, **kwargs)  # Speichert das Objekt
 
 
 class TripConstruction(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE)
     construction = models.ForeignKey(Construction, on_delete=models.CASCADE)
     count = models.IntegerField(default=0)
+    description = CharField(max_length=1024, default="", blank=True)
+
+
+class PackedMaterial(models.Model):
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name='packed_materials')
+    material_name = models.CharField(max_length=255)
+    packed = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.material_name} - {'Eingepackt' if self.packed else 'Nicht eingepackt'}"

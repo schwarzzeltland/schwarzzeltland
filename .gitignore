@@ -8,6 +8,7 @@ uploads
 # ignore env files
 .env.prod
 .env.prod.db
+.env
 
 .DS_Store
 

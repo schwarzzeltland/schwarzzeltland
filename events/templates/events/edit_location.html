@@ -15,7 +15,7 @@
 
         <!-- Google Maps Karte -->
         <div class="mb-3" id="map" style="height: 400px; width: 100%; margin-top: 20px;"></div>
-        <script src="https://maps.googleapis.com/maps/api/js?key=       &libraries=places"></script>
+        <script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&libraries=places"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const latitudeField = document.getElementById('id_latitude');

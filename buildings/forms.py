@@ -142,7 +142,7 @@ class ConstructionMaterialForm(ModelForm):
     class Meta:
         model = ConstructionMaterial
         fields = '__all__'
-        exclude = ['construction']
+        exclude = ['construction','packed']
 
 
 ConstructionMaterialFormSet = inlineformset_factory(
