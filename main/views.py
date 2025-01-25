@@ -65,26 +65,34 @@ def create_organization(request):
     })
 
 
+@organization_admin_required
 def change_admin(request, pk):
     m = request.org.membership_set.get(pk=pk)
+    if m.user == request.user:
+        return HttpResponse("You're not allowed to change yourself", status=403)
     m.admin = not m.admin
     m.save()
     return HttpResponse(status=200)
 
 
+@organization_admin_required
 def change_material_manager(request, pk):
     m = request.org.membership_set.get(pk=pk)
+    if m.user == request.user:
+        return HttpResponse("You're not allowed to change yourself", status=403)
     m.material_manager = not m.material_manager
     m.save()
     return HttpResponse(status=200)
 
 
+@organization_admin_required
 def delete_membership(request, pk):
     m = request.org.membership_set.get(pk=pk)
     m.delete()
     return HttpResponse(status=200)
 
 
+@organization_admin_required
 def add_user(request):
     username = request.POST.get("name2", None)
     user = User.objects.filter(username=username).first()
