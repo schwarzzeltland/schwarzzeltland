@@ -78,8 +78,6 @@ def change_admin(request, pk):
 @organization_admin_required
 def change_material_manager(request, pk):
     m = request.org.membership_set.get(pk=pk)
-    if m.user == request.user:
-        return HttpResponse("You're not allowed to change yourself", status=403)
     m.material_manager = not m.material_manager
     m.save()
     return HttpResponse(status=200)
@@ -87,8 +85,6 @@ def change_material_manager(request, pk):
 @organization_admin_required
 def change_event_manager(request, pk):
     m : Membership = request.org.membership_set.get(pk=pk)
-    if m.user == request.user:
-        return HttpResponse("You're not allowed to change yourself", status=403)
     m.event_manager = not m.event_manager
     m.save()
     return HttpResponse(status=200)
