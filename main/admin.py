@@ -22,10 +22,9 @@ class ConstructionInLine(NestedTabularInline):
 @admin.register(Organization)
 class OrganizationAdmin(NestedModelAdmin):
     inlines = [MembershipInline,MaterialInline,ConstructionInLine]
-    def get_queryset(self, request):
-        return Organization.objects.filter(membership__user=request.user)
 
 
 @admin.register(Membership)
 class MembershipAdmin(admin.ModelAdmin):
-    pass
+    search_fields = ['user__username', 'user__first_name', 'user__last_name']
+    list_display = ["user", "organization", "admin", "material_manager", "event_manager"]
