@@ -2,12 +2,13 @@
     <td>{{ m.user.username }}</td>
     <td><input class="form-check-input" type="checkbox" hx-trigger="change"
                hx-post="{% url 'change_admin' m.id %}" hx-swap="none"
-            {% if m.admin %} checked {% endif %}
+            {% if m.admin %} checked {% endif %} {% if m.user == request.user %} disabled {% endif %}
     />
     </td>
     <td><input class="form-check-input" type="checkbox" hx-trigger="change"
                hx-post="{% url 'change_material_manager' m.id %}" hx-swap="none"
-            {% if m.material_manager %} checked {% endif %} />
+            {% if m.material_manager %} checked {% endif %}  {% if m.user == request.user %} disabled {% endif %}
+    />
     </td>
     <td>
         {% if m.user != request.user %}
