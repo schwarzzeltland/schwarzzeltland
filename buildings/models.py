@@ -31,7 +31,7 @@ class Material(models.Model):
     type = models.IntegerField(choices=TYPES, null=True, blank=True,verbose_name="Typ")
     length_min = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True,verbose_name="Mindestlänge", help_text="in cm",validators=[MinValueValidator(0)])
     length_max = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True,verbose_name="Maximallänge", help_text="in cm",validators=[MinValueValidator(0)])
-    width = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True,verbose_name="Breite", help_text="in m",validators=[MinValueValidator(0)])
+    width = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True,verbose_name="Breite", help_text="in cm",validators=[MinValueValidator(0)])
     public = BooleanField(default=False,verbose_name="Öffentlich")
 
     def __str__(self):
