@@ -1,10 +1,19 @@
+from builtins import str
+
+from django.contrib.auth.tokens import default_token_generator
+from django.conf import settings
+from django.contrib.auth import get_user_model, login
 from django.contrib.auth.models import User
+from django.contrib.sites.shortcuts import get_current_site
+from django.core.mail import send_mail
 from django.http import HttpResponse
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import render
 from django.contrib import messages
+from django.template.loader import render_to_string
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 from buildings.models import Construction
 from django.shortcuts import redirect
@@ -36,7 +45,7 @@ def organization_view(request):
         'title': 'Organisation',
         'form': form,
         'members': request.org.membership_set.all(),
-        'organization':request.org,
+        'organization': request.org,
     })
 
 
@@ -84,9 +93,10 @@ def change_material_manager(request, pk):
     m.save()
     return HttpResponse(status=200)
 
+
 @organization_admin_required
 def change_event_manager(request, pk):
-    m : Membership = request.org.membership_set.get(pk=pk)
+    m: Membership = request.org.membership_set.get(pk=pk)
     m.event_manager = not m.event_manager
     m.save()
     return HttpResponse(status=200)
@@ -147,3 +157,56 @@ def help_view(request):
     return render(request, 'main/help.html', {
         'title': 'Was ist Schwarzzeltland?',
     })
+
+
+def register(request):
+    if request.method == "POST":
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.is_active= False
+            user.set_password(form.cleaned_data['password'])
+            user.save()
+
+            # Erstelle Token und sende E-Mail
+            token = default_token_generator.make_token(user)
+            uid = urlsafe_base64_encode(str(user.pk).encode('utf-8'))
+            domain = get_current_site(request).domain
+            link = f"http://{domain}/main/activate/{uid}/{token}/"
+
+            subject = 'Aktiviere dein Konto'
+            message = render_to_string('main/activation_email.html', {
+                'user': user,
+                'link': link,
+            })
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email],html_message=message)
+
+            return redirect('email_verification')
+    else:
+        form = CustomUserCreationForm()
+    return render(request, 'main/register.html', {'form': form})
+
+
+def activate(request, uidb64, token):
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = get_user_model().objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, get_user_model().DoesNotExist):
+        user = None
+
+    if user is not None and default_token_generator.check_token(user, token):
+        user.is_active = True
+        user.save()
+        login(request, user)
+        return redirect('home')
+    else:
+        return redirect('invalid_activation_link')
+
+
+def email_verification(request):
+
+        return render(request, 'main/email_verification.html')
+
+
+def invalid_activation_link(request):
+    return render(request, 'main/invalid_activation_link.html')

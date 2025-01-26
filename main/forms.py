@@ -31,19 +31,21 @@ MembershipFormset = inlineformset_factory(Organization, Organization.members.thr
                                           can_delete=False)
 
 class CustomUserCreationForm(forms.ModelForm):
-    password1 = forms.CharField(label='Passwort', widget=forms.PasswordInput)
-    password2 = forms.CharField(label='Passwort bestätigen', widget=forms.PasswordInput)
+    password = forms.CharField(widget=forms.PasswordInput)
+    password_confirm = forms.CharField(widget=forms.PasswordInput)
 
     class Meta:
         model = User
-        fields = ['first_name','last_name','username', 'email', 'password1', 'password2']
+        fields = ['username', 'email']
 
-    def clean_password2(self):
-        password1 = self.cleaned_data.get('password1')
-        password2 = self.cleaned_data.get('password2')
-        if password1 and password2 and password1 != password2:
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        password_confirm = cleaned_data.get("password_confirm")
+
+        if password != password_confirm:
             raise forms.ValidationError("Die Passwörter stimmen nicht überein.")
-        return password2
+        return cleaned_data
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
