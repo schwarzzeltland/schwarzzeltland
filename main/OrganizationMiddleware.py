@@ -23,7 +23,8 @@ class OrganizationMiddleware:
                 org = request.user.organization_set.filter(id=request.session["org"]).first()
             if org is None:
                 org = request.user.organization_set.first()
-            membership = org.membership_set.filter(user=request.user).get()
+            if org:
+                membership = org.membership_set.filter(user=request.user).get()
 
         setattr(request, "org", org)
         setattr(request, "membership", membership)

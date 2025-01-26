@@ -28,4 +28,5 @@ urlpatterns = [
     path('register/email_verification/', views.email_verification, name='email_verification'),
     path('invalid_activationlink/', views.invalid_activation_link, name='invalid_activation_link'),
     path('send_username_email/', views.send_username_email, name='send_username_email'),
+    path('organization/delete/<int:pk>/', views.delete_organization, name='delete_organization'),
 ]

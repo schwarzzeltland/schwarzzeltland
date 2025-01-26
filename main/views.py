@@ -6,13 +6,14 @@ from django.contrib.auth import get_user_model, login
 from django.contrib.auth.models import User
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import send_mail
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.contrib import messages
 from django.template.loader import render_to_string
+from django.urls import reverse_lazy
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 from buildings.models import Construction
@@ -164,7 +165,7 @@ def register(request):
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            user.is_active= False
+            user.is_active = False
             user.set_password(form.cleaned_data['password'])
             user.save()
 
@@ -179,7 +180,7 @@ def register(request):
                 'user': user,
                 'link': link,
             })
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email],html_message=message)
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], html_message=message)
 
             return redirect('email_verification')
     else:
@@ -204,8 +205,7 @@ def activate(request, uidb64, token):
 
 
 def email_verification(request):
-
-        return render(request, 'main/email_verification.html')
+    return render(request, 'main/email_verification.html')
 
 
 def invalid_activation_link(request):
@@ -243,3 +243,20 @@ def send_username_email(request):
         form = UsernameReminderForm()
 
     return render(request, 'main/username_sent.html', {'form': form})
+
+
+@login_required
+@organization_admin_required
+def delete_organization(request, pk=None):
+    organization_d = get_object_or_404(Organization, pk=pk)
+    # Überprüfe, ob der Organisationsname das Format 'benutzername's Organisation' hat
+    if organization_d.name == f"{request.user.username}s Organisation":
+        messages.error(request, "Du kannst diese Organisation nicht löschen, da sie deine Hauptorganisation ist.")
+        return HttpResponseRedirect(reverse_lazy('organization'))  # Zurück zur Organisationsseite oder anderen Seite
+    if request.method == 'POST':
+        if request.membership.organization == organization_d and request.membership.admin:
+            organization_d.delete()
+            messages.success(request, f'Organisation {organization_d.name} erfolgreich gelöscht.')
+            return HttpResponseRedirect(reverse_lazy('home'))
+    return render(request, 'main/delete_organization.html',
+                  {'title': 'Organisation löschen', 'organization': organization_d})
