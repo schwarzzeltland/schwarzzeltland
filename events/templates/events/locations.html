@@ -87,7 +87,7 @@
             $('#id_location').select2({
                 placeholder: "--------",
                 allowClear: true,
-                width: 'resolve'
+                width: $(window).width() < 1000 ? '100%' : '70%'
             });
         });
     </script>

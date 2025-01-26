@@ -97,7 +97,7 @@
             $('#id_material').select2({
                 placeholder: "--------",
                 allowClear: true,
-                width: 'resolve' // Automatische Breite basierend auf dem Container
+                width:  $(window).width() < 1000 ? '100%' : '40%' // Automatische Breite basierend auf dem Container
             });
         });
     </script>
