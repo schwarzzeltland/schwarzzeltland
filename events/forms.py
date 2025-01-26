@@ -32,11 +32,11 @@ class TripForm(ModelForm):
         fields = '__all__'
         exclude = ['owner']
         widgets = {
-            'start_date': forms.DateTimeInput(attrs={
+            'start_date': forms.DateTimeInput(format='%Y-%m-%dT%H:%M:%S', attrs={
                 'type': 'datetime-local',  # HTML5-Attribut für DateTime-Picker
                 'class': 'form-control',
             }),
-            'end_date': forms.DateTimeInput(attrs={
+            'end_date': forms.DateTimeInput(format='%Y-%m-%dT%H:%M:%S', attrs={
                 'type': 'datetime-local',
                 'class': 'form-control',
             }),
@@ -70,7 +70,7 @@ class TripConstructionForm(ModelForm):
 
 TripConstructionFormSet = inlineformset_factory(
     Trip, TripConstruction, form=TripConstructionForm,
-    fields=("construction", "count","description"),
+    fields=("construction", "count", "description"),
     extra=1, can_delete=True
 )
 
