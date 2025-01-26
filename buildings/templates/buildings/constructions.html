@@ -9,32 +9,35 @@
             <button class="btn btn-outline-secondary" type="submit">Suchen</button>
         </div>
     </form>
-    <table class="table">
-        <thead>
-        <tr>
-            <th scope="col">Name</th>
-            <th scope="col"></th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for c in construction %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
             <tr>
-                <td>{{ c.name }}
-                <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
-                    {% if is_material_manager %}
-                        <a href="{% url 'edit_constructions' c.pk %}"
-                           class="btn btn-outline-primary btn-sm me-2">Bearbeiten</a>
-                        <a href="{% url 'delete_construction' c.pk %}" class="btn btn-danger btn-sm">Löschen</a>
-                    {% else %}
-                        <a href="{% url 'show_construction' c.pk %}"
-                           class="btn btn-outline-primary btn-sm me-2">Anzeigen</a>
-                    {% endif %}
-                </td>
+                <th scope="col">Name</th>
+                <th scope="col"></th>
             </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-
+            </thead>
+            <tbody>
+            {% for c in construction %}
+                <tr>
+                    <td>{{ c.name }}
+                    <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
+                       <div class="d-flex flex-wrap justify-content-end gap-1">
+                            {% if is_material_manager %}
+                                <a href="{% url 'edit_constructions' c.pk %}"
+                                   class="btn btn-outline-primary btn-sm me-2">Bearbeiten</a>
+                                <a href="{% url 'delete_construction' c.pk %}" class="btn btn-danger btn-sm">Löschen</a>
+                            {% else %}
+                                <a href="{% url 'show_construction' c.pk %}"
+                                   class="btn btn-outline-primary btn-sm me-2">Anzeigen</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% if form %}
         <form action="" method="post" class="form">
             {% csrf_token %}
@@ -42,11 +45,11 @@
                 <tbody>
                 <td>
                     <div class="input-group">
-                    {{ form.construction }}
-                    <button type="submit" class="btn btn-success">
-                        Konstruktion hinzufügen
-                    </button>
-                        </div>
+                        {{ form.construction }}
+                        <button type="submit" class="btn btn-success">
+                            Konstruktion hinzufügen
+                        </button>
+                    </div>
                 </td>
                 <td class="text-end">
                     <a href="{% url 'edit_constructions' %}" class="btn btn-outline-secondary" type="button"
@@ -69,7 +72,7 @@
             $('#id_construction').select2({
                 placeholder: "--------",
                 allowClear: true,
-                width: '275px'
+                width: $(window).width() < 1000 ? '100%' : '70%'
             });
         });
     </script>

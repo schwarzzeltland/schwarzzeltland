@@ -9,39 +9,43 @@
             <form method="post" enctype='multipart/form-data'>
                 {% csrf_token %}
                 {% bootstrap_form construction_form %}
-                <table>
-                    <thead>
-                    <tr>
-                        <th>Material</th>
-                        <th>Anzahl</th>
-                        <th>Lagerort</th>
-                        <th>Zum Lager hinzufügen</th>
-                        <th>Löschen</th>
-                    </tr>
-                    </thead>
-                    <tbody id="form-container">
-                    {{ material_formset.management_form }}
-                    {% for form in material_formset %}
-                        {% for hidden in form.hidden_fields %}
-                            {{ hidden }}
-                        {% endfor %}
+                <div class="table-responsive">
+                    <table>
+                        <thead>
                         <tr>
-                            <td>{% bootstrap_field form.material show_label=False %} </td>
-                            <td>{% bootstrap_field form.count show_label=False %}</td>
-                            <td>{% bootstrap_field form.storage_place show_label=False %}</td>
-                            <td>{% bootstrap_field form.add_to_stock show_label=False %}</td>
-                            <td >{% bootstrap_field form.DELETE show_label=False %}</td>
+                            <th>Material</th>
+                            <th>Anzahl</th>
+                            <th>Lagerort</th>
+                            <th>Zum Lager hinzufügen</th>
+                            <th>Löschen</th>
                         </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody id="form-container">
+                        {{ material_formset.management_form }}
+                        {% for form in material_formset %}
+                            {% for hidden in form.hidden_fields %}
+                                {{ hidden }}
+                            {% endfor %}
+                            <tr>
+                                <td>{% bootstrap_field form.material show_label=False %} </td>
+                                <td>{% bootstrap_field form.count show_label=False %}</td>
+                                <td>{% bootstrap_field form.storage_place show_label=False %}</td>
+                                <td>{% bootstrap_field form.add_to_stock show_label=False %}</td>
+                                <td>{% bootstrap_field form.DELETE show_label=False %}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 <div class="mb-3">
                     <button type="button" id="add-row" class="btn btn-outline-primary">Zeile hinzufügen</button>
                 </div>
                 <div class="mb-3">
                     <button type="submit" name="save" class="btn btn-success">Konstruktion speichern</button>
                     {% if construction.pk != None %}
-                        <button type="submit" name="check_material" class="btn btn-outline-success">Materialverfügbarkeit im Lager prüfen</button>
+                        <button type="submit" name="check_material" class="btn btn-outline-success">
+                            Materialverfügbarkeit im Lager prüfen
+                        </button>
                     {% endif %}
                     <a href="{% url 'constructions' %}" class="btn btn-secondary">Abbrechen</a>
                 </div>

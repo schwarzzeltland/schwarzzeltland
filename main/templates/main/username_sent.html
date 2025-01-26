@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>Benutzernamen anfragen</h2>
+    <p>Gib deine E-Mail-Adresse ein, um einen deinen Benutzernamen zu erhalten:</p>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Benutzername anfragen</button>
+    </form>
+{% endblock %}

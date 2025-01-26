@@ -24,11 +24,13 @@
                 <div class="card-header">Probleme?</div>
                 <div class="card-body text-dark">
                     <h5 class="card-title">Ich kenne meinen Usernamen nicht!</h5>
-                    <p class="card-text">Versuche deinen "Vornamen.Nachname" <br>  Sollte das nicht funktionieren sende uns eine Email!<br>
-                        <a href="mailto:info@schwarzzeltland.de">info@schwarzzeltland.de</a></p>
+                        <a href="{% url 'send_username_email' %}">Hier klicken!</a></p>
                     <h5 class="card-title">Ich habe mein Passwort vergessen!</h5>
                     <p class="card-text">
-                        Nutze den Link hinter "Passwort vergessen"<br>
+                        Nutze den Link hinter "Passwort vergessen"</p>
+                    <h5 class="card-title">Bei anderen Problemen wende dich gerne an:</h5>
+
+                        <a href="mailto:info@schwarzzeltland.de">info@schwarzzeltland.de</a></p>
                 </div>
             </div>
         </div>

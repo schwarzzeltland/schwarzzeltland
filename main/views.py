@@ -19,7 +19,7 @@ from buildings.models import Construction
 from django.shortcuts import redirect
 
 from main.decorators import organization_admin_required
-from main.forms import OrganizationForm, MembershipFormset, CustomUserCreationForm
+from main.forms import OrganizationForm, MembershipFormset, CustomUserCreationForm, UsernameReminderForm
 from main.models import Organization, Membership
 
 
@@ -210,3 +210,36 @@ def email_verification(request):
 
 def invalid_activation_link(request):
     return render(request, 'main/invalid_activation_link.html')
+
+
+def send_username_email(request):
+    if request.method == 'POST':
+        form = UsernameReminderForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email']
+
+            try:
+                # Benutzer anhand der E-Mail finden
+                user = User.objects.get(email=email)
+                username = user.username
+
+                # E-Mail mit Benutzernamen senden
+                subject = "Dein Benutzername"
+                message = f"Hallo {user.username},\n\nDein Benutzername lautet: {username}."
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [email],
+                    html_message=message
+                )
+
+                # Erfolgreiche Nachricht anzeigen
+                return render(request, 'main/username_sent.html', {'email': email})
+
+            except User.DoesNotExist:
+                form.add_error('email', "Es wurde kein Benutzer mit dieser E-Mail-Adresse gefunden.")
+    else:
+        form = UsernameReminderForm()
+
+    return render(request, 'main/username_sent.html', {'form': form})

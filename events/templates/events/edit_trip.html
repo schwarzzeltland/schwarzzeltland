@@ -9,6 +9,7 @@
             <form method="post" enctype='multipart/form-data'>
                 {% csrf_token %}
                 {% bootstrap_form trip_form %}
+            <div class="table-responsive">
                 <table>
                     <thead>
                     <tr>
@@ -33,6 +34,7 @@
                     {% endfor %}
                     </tbody>
                 </table>
+            </div>
                 <div class="mb-3">
                     <button type="button" id="add-row" class="btn btn-outline-primary">Zeile hinzufügen</button>
                 </div>

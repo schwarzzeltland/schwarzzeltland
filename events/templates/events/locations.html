@@ -22,56 +22,62 @@
             <button class="btn btn-outline-secondary" type="submit">Suchen</button>
         </div>
     </form>
-    <table class="table">
-        <thead>
-        <tr>
-            <th scope="col">Name</th>
-            <th scope="col"></th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for l in locations %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
             <tr>
-                <td>{{ l.name }}
-                <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
-                    {% if is_event_manager %}
-                        <a href="{% url 'edit_location' l.pk %}"
-                           class="btn btn-outline-primary btn-sm me-2">Bearbeiten</a>
-                        <a href="{% url 'delete_location' l.pk %}" class="btn btn-danger btn-sm">Löschen</a>
-                    {% else %}
-                        <a href="{% url 'show_location' l.pk %}"
-                           class="btn btn-outline-primary btn-sm me-2">Anzeigen</a>
-                    {% endif %}
-                </td>
+                <th scope="col">Name</th>
+                <th scope="col"></th>
             </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+            {% for l in locations %}
+                <tr>
+                    <td>{{ l.name }}
+                    <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
+                        <div class="d-flex flex-wrap justify-content-end gap-1">
+                            {% if is_event_manager %}
+                                <a href="{% url 'edit_location' l.pk %}"
+                                   class="btn btn-outline-primary btn-sm me-2">Bearbeiten</a>
+                                <a href="{% url 'delete_location' l.pk %}" class="btn btn-danger btn-sm">Löschen</a>
+                            {% else %}
+                                <a href="{% url 'show_location' l.pk %}"
+                                   class="btn btn-outline-primary btn-sm me-2">Anzeigen</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% if form %}
         <form action="" method="post" class="form">
             {% csrf_token %}
-            <table class="table">
-                <tbody>
-                {{ form.non_field_errors }}
-                <td>
-                    <div class="input-group">
-                        <label for="id_location"></label>
-                        {{ form.location }}
-                        <button type="submit" class="btn btn-outline-secondary">
-                            Ort hinzufügen
-                        </button>
-                    </div>
-                </td>
-                <th scope="row" class="text-end">
-                    <a href="{% url 'edit_location' %}" class="btn btn-success" type="button"
-                       id="button-addon1">Neuen Ort erstellen
-                    </a>
-                </th>
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="table">
+                    <tbody>
+                    {{ form.non_field_errors }}
+                    <td>
+                        <div class="input-group">
+                            <label for="id_location"></label>
+                            {{ form.location }}
+                            <button type="submit" class="btn btn-outline-secondary">
+                                Ort hinzufügen
+                            </button>
+                        </div>
+                    </td>
+                    <th scope="row" class="text-end">
+                        <a href="{% url 'edit_location' %}" class="btn btn-success" type="button"
+                           id="button-addon1">Neuen Ort erstellen
+                        </a>
+                    </th>
+                    </tbody>
+                </table>
+            </div>
         </form>
     {% endif %}
-<!-- Include jQuery -->
+    <!-- Include jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Include Select2 Library -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
@@ -81,7 +87,7 @@
             $('#id_location').select2({
                 placeholder: "--------",
                 allowClear: true,
-                width: 'resolve' // Automatische Breite basierend auf dem Container
+                width: $(window).width() < 1000 ? '70%' : '70%'
             });
         });
     </script>
@@ -104,6 +110,12 @@
             right: 10px; /* Pfeil-Abstand */
         }
 
+        @media (max-width: 576px) {
+            .btn {
+                font-size: 14px;
+                padding: 6px 8px;
+            }
+        }
 
         .select2-container--default .select2-selection--single:focus,
         .select2-container--default .select2-selection--single:hover {

@@ -30,24 +30,26 @@
             </tr>
         {% endif %}
     </form>
-    <table class="table">
-        <thead>
-        <tr>
-            <th scope="col">Name</th>
-            <th scope="col">Admin</th>
-            <th scope="col">Material Manager</th>
-            <th scope="col">Event Manager</th>
-            <th scope="col"></th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for m in members %}
-            {% include "./member_list_entry.html" %}
-        {% endfor %}
-        {% if membership.admin %}
-            <tr id="new_member">
-                <form hx-post="{% url 'add_user' %}" hx-swap="beforebegin" hx-target="#new_member"
-                      hx-on::after-request="
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Admin</th>
+                <th scope="col">Material Manager</th>
+                <th scope="col">Event Manager</th>
+                <th scope="col"></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for m in members %}
+                {% include "./member_list_entry.html" %}
+            {% endfor %}
+            {% if membership.admin %}
+                <tr id="new_member">
+                    <form hx-post="{% url 'add_user' %}" hx-swap="beforebegin" hx-target="#new_member"
+                          hx-on::after-request="
                     const element = document.querySelector('input[name=name2]');
                     if (event.detail.failed) {
                         element.classList.add('is-invalid');
@@ -63,20 +65,22 @@
                         element.classList.remove('is-invalid');
                         element.value = '';
                     }">
-                    <td><input name="name2" type="text" class="form-control" required></td>
-                    <td><input name="admin" class="form-check-input" style="vertical-align: middle" type="checkbox"/>
-                    </td>
-                    <td><input name="material_manager" class="form-check-input" style="vertical-align: middle"
-                               type="checkbox"/></td>
-                    <td><input name="event_manager" class="form-check-input" style="vertical-align: middle"
-                               type="checkbox"/></td>
-                    <td>
-                        <button type="submit" class="btn btn-success">Benutzer hinzufügen
-                        </button>
-                    </td>
-                </form>
-            </tr>
-        {% endif %}
-        </tbody>
-    </table>
+                        <td><input name="name2" type="text" class="form-control" required></td>
+                        <td><input name="admin" class="form-check-input" style="vertical-align: middle"
+                                   type="checkbox"/>
+                        </td>
+                        <td><input name="material_manager" class="form-check-input" style="vertical-align: middle"
+                                   type="checkbox"/></td>
+                        <td><input name="event_manager" class="form-check-input" style="vertical-align: middle"
+                                   type="checkbox"/></td>
+                        <td>
+                            <button type="submit" class="btn btn-success">Benutzer hinzufügen
+                            </button>
+                        </td>
+                    </form>
+                </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
 {% endblock %}

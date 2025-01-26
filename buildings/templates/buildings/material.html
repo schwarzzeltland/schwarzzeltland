@@ -23,59 +23,68 @@
             <button class="btn btn-outline-secondary" type="submit">Suchen</button>
         </div>
     </form>
-    <table class="table">
-        <thead>
-        <tr>
-            <th scope="col">Name</th>
-            <th scope="col">Anzahl</th>
-            <th scope="col">Lagerort</th>
-            <th scope="col"></th>
-            <th scope="col"></th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for m in materials %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
             <tr>
-                <td>{{ m.material.name }}</td>
-                <td>{{ m.count }}</td>
-                <td>{{ m.storage_place }}</td>
-                <td></td>
-                <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
-                    {% if is_material_manager %}
-                        <a href="{% url 'edit_material' m.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a>
-                        <a href="{% url 'delete_material' m.pk %}" class="btn btn-danger btn-sm">Löschen</a>
-                    {% else %}
-                        <a href="{% url 'show_material' m.pk %}" class="btn btn-sm btn-outline-primary">Anzeigen</a>
-                    {% endif %}
-                </td>
+                <th scope="col">Name</th>
+                <th scope="col">Anzahl</th>
+                <th scope="col">Lagerort</th>
+                <th scope="col"></th>
+                <th scope="col"></th>
             </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+            {% for m in materials %}
+                <tr>
+                    <td>{{ m.material.name }}</td>
+                    <td>{{ m.count }}</td>
+                    <td>{{ m.storage_place }}</td>
+                    <td></td>
+                    <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
+                        <div class="d-flex flex-wrap justify-content-end gap-2">
+                            {% if is_material_manager %}
+                                <a href="{% url 'edit_material' m.pk %}"
+                                   class="btn btn-sm btn-outline-primary">Bearbeiten</a>
+                                <a href="{% url 'delete_material' m.pk %}" class="btn btn-danger btn-sm">Löschen</a>
+                            {% else %}
+                                <a href="{% url 'show_material' m.pk %}"
+                                   class="btn btn-sm btn-outline-primary">Anzeigen</a>
+                            {% endif %}
+
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% if form %}
         <form action="" method="post" class="form">
             {% csrf_token %}
-            <table class="table">
-                <tbody>
-                {{ form.non_field_errors }}
-                <td>
-                    <div class="input-group">
-                        <label for="id_material"></label>
-                        {{ form.material }}
-                        <a href="{% url 'create_material' %}" class="btn btn-outline-secondary" type="button"
-                           id="button-addon1">Neues Material erstellen
-                        </a>
-                    </div>
-                </td>
-                <td>{% bootstrap_field form.count show_label=False %}</td>
-                <td>{% bootstrap_field form.storage_place show_label=False %}</td>
-                <th scope="row" class="text-end">
-                    <button type="submit" class="btn btn-success">
-                        Ins Lager einsortieren
-                    </button>
-                </th>
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="table">
+                    <tbody>
+                    {{ form.non_field_errors }}
+                    <td>
+                        <div class="input-group">
+                            <label for="id_material"></label>
+                            {{ form.material }}
+                            <a href="{% url 'create_material' %}" class="btn btn-outline-secondary" type="button"
+                               id="button-addon1">Neues Material erstellen
+                            </a>
+                        </div>
+                    </td>
+                    <td>{% bootstrap_field form.count show_label=False %}</td>
+                    <td>{% bootstrap_field form.storage_place show_label=False %}</td>
+                    <th scope="row" class="text-end">
+                        <button type="submit" class="btn btn-success">
+                            Ins Lager einsortieren
+                        </button>
+                    </th>
+                    </tbody>
+                </table>
+            </div>
         </form>
     {% endif %}
     <!-- Include jQuery -->
@@ -110,7 +119,36 @@
             height: 100%; /* Pfeil anpassen */
             right: 10px; /* Pfeil-Abstand */
         }
+        .select2-container--default .select2-selection--single {
+            height: 38px; /* Touch-freundlich */
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+        }
 
+        .table-responsive {
+            overflow-x: auto; /* Scrollen ermöglichen */
+        }
+
+        .btn {
+            min-width: 100px; /* Einheitliche Breite für Buttons */
+        }
+
+        @media (max-width: 576px) {
+            .btn {
+                font-size: 14px;
+                padding: 6px 8px;
+            }
+
+            .form-select,
+            .form-control {
+                font-size: 14px;
+            }
+        }
+        .form-control {
+            min-width: 75px; /* Mindestbreite für Felder (Lagerort und Anzahl) */
+        }
 
         .select2-container--default .select2-selection--single:focus,
         .select2-container--default .select2-selection--single:hover {
