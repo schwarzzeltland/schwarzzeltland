@@ -10,7 +10,7 @@ from buildings.models import Construction
 from django.shortcuts import redirect
 
 from main.decorators import organization_admin_required
-from main.forms import OrganizationForm, MembershipFormset
+from main.forms import OrganizationForm, MembershipFormset, CustomUserCreationForm
 from main.models import Organization, Membership
 
 
@@ -24,7 +24,7 @@ def home_view(request):
 
 @login_required
 def organization_view(request):
-    if request.method == 'POST':
+    if request.method == 'POST' and request.membership.admin:
         form = OrganizationForm(request.POST, request.FILES, instance=request.org)
         if form.is_valid():
             form.save()
@@ -36,6 +36,7 @@ def organization_view(request):
         'title': 'Organisation',
         'form': form,
         'members': request.org.membership_set.all(),
+        'organization':request.org,
     })
 
 

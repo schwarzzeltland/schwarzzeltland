@@ -19,7 +19,7 @@
         {% if m.user != request.user and membership.admin %}
             <button type="button" class="btn btn-outline-danger"
                     hx-post="{% url 'delete_membership' m.id %}" hx-swap="outerHTML" hx-target="#member-{{ m.id }}">
-                Delete
+                Löschen
             </button>
         {% endif %}
     </td>

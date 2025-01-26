@@ -5,29 +5,30 @@
     <div class="row mt-3">
         <div class="col-md-4">
             <div class="container">
-                <form action="/main/login/" method="post" class="form">
+                <form action="{% url 'account_login' %}" method="post" class="form">
                     {% csrf_token %}
                     {% bootstrap_form form %}
                     {% buttons %}
                         <input type="hidden" name="next" value="{{ next }}">
                         <button type="submit" class="btn btn-primary">
-                            Log in
+                            Einloggen
                         </button>
+                        <a href="{% url 'account_signup' %}" class="btn btn-secondary">Registrieren</a>
+                        <p>Passwort vergessen? <a href="{% url 'password_reset' %}">Passwort zurücksetzen</a></p>
                     {% endbuttons %}
                 </form>
             </div>
         </div>
         <div class="col-md-8">
             <div class="card border-dark mb-4">
-                <div class="card-header">Issues?</div>
+                <div class="card-header">Probleme?</div>
                 <div class="card-body text-dark">
-                    <h5 class="card-title">I don't know my username</h5>
-                    <p class="card-text">Try the first letter of your first name concatenated with your last name.
-                        If this does not work send us an email.<br>
+                    <h5 class="card-title">Ich kenne meinen Usernamen nicht!</h5>
+                    <p class="card-text">Versuche deinen "Vornamen.Nachname" <br>  Sollte das nicht funktionieren sende uns eine Email!<br>
                         <a href="mailto:info@schwarzzeltland.de">info@schwarzzeltland.de</a></p>
-                    <h5 class="card-title">I don't know my password</h5>
+                    <h5 class="card-title">Ich habe mein Passwort vergessen!</h5>
                     <p class="card-text">
-                        You can reset your password <a href="/user/password_reset/">here</a>.</p>
+                        Nutze den Link hinter "Passwort vergessen"<br>
                 </div>
             </div>
         </div>

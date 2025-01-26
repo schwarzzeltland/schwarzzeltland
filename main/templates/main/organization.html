@@ -2,14 +2,33 @@
 {% load bootstrap5 %}
 
 {% block content %}
-    <form method="post" class="form"  enctype="multipart/form-data">
+    <form method="post" class="form" enctype="multipart/form-data">
         {% csrf_token %}
-        {% bootstrap_form form %}
-        {% buttons %}
-            <button type="submit" class="btn btn-primary">
-                Speichern
-            </button>
-        {% endbuttons %}
+        {% if membership.admin %}
+            {% bootstrap_form form %}
+            {% buttons %}
+                <button type="submit" class="btn btn-primary">
+                    Speichern
+                </button>
+            {% endbuttons %}
+        {% else %}
+            <table class="table">
+            <thead>
+            <tr>
+                <td><strong>Name:</strong></td>
+                <td> {{ organization.name }} </td>
+            </tr>
+            <tr>
+                <td><strong>Bild:</strong></td>
+                <td>
+                    {% if construction.image %}
+                        <img src="{{ construction.image.url }}" alt="Bild" width="200">
+                    {% else %}
+                        Kein Bild vorhanden
+                    {% endif %}
+                </td>
+            </tr>
+        {% endif %}
     </form>
     <table class="table">
         <thead>
@@ -26,9 +45,9 @@
             {% include "./member_list_entry.html" %}
         {% endfor %}
         {% if membership.admin %}
-        <tr id="new_member">
-            <form hx-post="{% url 'add_user' %}" hx-swap="beforebegin" hx-target="#new_member"
-                  hx-on::after-request="
+            <tr id="new_member">
+                <form hx-post="{% url 'add_user' %}" hx-swap="beforebegin" hx-target="#new_member"
+                      hx-on::after-request="
                     const element = document.querySelector('input[name=name2]');
                     if (event.detail.failed) {
                         element.classList.add('is-invalid');
@@ -44,16 +63,19 @@
                         element.classList.remove('is-invalid');
                         element.value = '';
                     }">
-                <td><input name="name2" type="text" class="form-control" required></td>
-                <td><input name="admin" class="form-check-input" style="vertical-align: middle" type="checkbox"/></td>
-                <td><input name="material_manager" class="form-check-input" style="vertical-align: middle" type="checkbox"/></td>
-                <td><input name="event_manager" class="form-check-input" style="vertical-align: middle" type="checkbox"/></td>
-                <td>
-                    <button type="submit" class="btn btn-success">Benutzer hinzufügen
-                    </button>
-                </td>
-            </form>
-        </tr>
+                    <td><input name="name2" type="text" class="form-control" required></td>
+                    <td><input name="admin" class="form-check-input" style="vertical-align: middle" type="checkbox"/>
+                    </td>
+                    <td><input name="material_manager" class="form-check-input" style="vertical-align: middle"
+                               type="checkbox"/></td>
+                    <td><input name="event_manager" class="form-check-input" style="vertical-align: middle"
+                               type="checkbox"/></td>
+                    <td>
+                        <button type="submit" class="btn btn-success">Benutzer hinzufügen
+                        </button>
+                    </td>
+                </form>
+            </tr>
         {% endif %}
         </tbody>
     </table>
