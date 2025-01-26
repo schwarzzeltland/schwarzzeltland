@@ -112,7 +112,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "de-de"
 
 TIME_ZONE = "UTC"
 
@@ -143,3 +143,11 @@ LOGOUT_REDIRECT_URL = '/'
 
 IMAGEKIT_DEFAULT_THUMBNAIL_FORMAT = "WEBP"
 IMAGEKIT_DEFAULT_THUMBNAIL_SRCSET_SCALES = [1.5, 2, 2.5, 3]
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.environ.get('EMAIL_HOST')
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
