@@ -48,7 +48,7 @@ class StockMaterial(models.Model):
 class Construction(models.Model):
     name = CharField(max_length=255)
     description = CharField(max_length=1024, default="", blank=True,verbose_name="Beschreibung")
-    sleep_place_count = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True,verbose_name="Schlafplatz-Anzahl",validators=[MinValueValidator(0)])
+    sleep_place_count = IntegerField(null=True, blank=True,default=0 ,verbose_name="Schlafplatz-Anzahl",validators=[MinValueValidator(0)])
     covered_area = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True,verbose_name="Überdachte Fläche", help_text="in m²",validators=[MinValueValidator(0)])
     required_space = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True,verbose_name="Benötigte Fläche", help_text="in m²",validators=[MinValueValidator(0)])
     image = models.ImageField(upload_to="constructions/", blank=True, null=True,verbose_name="Bild")

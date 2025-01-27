@@ -1,12 +1,14 @@
 import os
 from collections import defaultdict
 
+from _decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
+from unicodedata import decimal
 
 from buildings.models import Construction, StockMaterial, ConstructionMaterial
 from events.forms import TripForm, TripConstructionFormSet, LocationForm, ImportLocationForm
@@ -159,7 +161,10 @@ def check_trip_material(request, pk=None):
     else:
         # Alle Materialien sind verfügbar, also keine Fehlermeldung anzeigen
         messages.success(request, 'Alle Materialien sind ausreichend vorhanden.')
-
+    total_weigth_av_m = 0
+    for material in materials:
+        # Angenommen, jedes Material hat ein Attribut `weight`, das das Gewicht pro Einheit beschreibt.
+        total_weigth_av_m += material.count * material.material.weight
     # Weiterleitung zum Verfügbarkeitsfenster (immer, auch wenn keine Materialien fehlen)
     return render(request, 'events/check_trip_material.html', {
         'title': 'Materialübersicht',
@@ -167,6 +172,7 @@ def check_trip_material(request, pk=None):
         'available_materials': available_materials,
         'missing_materials': missing_materials,
         'is_event_manager': m.event_manager,
+        'total_weigth_av_m': total_weigth_av_m,
     })
 
 
@@ -202,6 +208,8 @@ def edit_trip(request, pk=None):
                 return redirect('check_trip_material', trip_d.pk)  # Weiterleitung zur Materialverfügbarkeitsprüfung
             elif 'construction_summary' in request.POST:
                 return redirect('construction_summary', trip_d.pk)
+            elif 'find_construction_combination' in request.POST:
+                return redirect('find_construction_combination', trip_d.pk)
     else:
         trip_form = TripForm(instance=trip_d, organization=request.org)
         tripconstruction_formset = TripConstructionFormSet(instance=trip_d, form_kwargs={'organization': request.org})
@@ -301,7 +309,7 @@ def show_location(request, pk=None):
     return render(request, 'events/show_location.html', {
         'title': 'Ort anzeigen',
         'location': location,
-        'GOOGLE_MAPS_API_KEY':google_maps_api_key,
+        'GOOGLE_MAPS_API_KEY': google_maps_api_key,
     })
 
 
@@ -330,7 +338,7 @@ def edit_location(request, pk=None):
         'title': 'Ort bearbeiten',
         'location_form': location_form,
         'location': location_d,
-        'GOOGLE_MAPS_API_KEY':google_maps_api_key,
+        'GOOGLE_MAPS_API_KEY': google_maps_api_key,
     })
 
 
@@ -369,3 +377,169 @@ def construction_summary(request, pk=None):
         'total_required_space': total_required_space,
         'is_event_manager': m.event_manager,
     })
+
+
+def calculate_construction_weight(materials):
+    total_weight = Decimal(0)
+    for material in materials:
+        total_weight += material.material.weight * material.count
+    return total_weight
+
+
+def calculate_total_weight_for_group(group_combination):
+    total_weight = Decimal(0)
+    for konstruktion in group_combination:
+        materials = ConstructionMaterial.objects.filter(construction=konstruktion)
+        konstruktion_weight = calculate_construction_weight(materials)
+        total_weight += konstruktion_weight
+    return total_weight
+
+
+def find_optimal_construction_combination(teilnehmergruppen, konstruktionen, request):
+    # Maximal mögliche Schlafplätze (Summe aller Gruppengrößen)
+    max_sleep_places = sum(teilnehmergruppen)
+    min_sleep_place_count = min(k.sleep_place_count for k in konstruktionen if k.sleep_place_count > 0)
+    # DP-Array initialisieren: dp[x] speichert das minimale Gewicht für genau x oder mehr Schlafplätze
+    dp = [Decimal('1000000000000')] * (max_sleep_places + min_sleep_place_count)  # Ein hoher Wert für "Unendlich"
+    dp[0] = Decimal(0)  # 0 Schlafplätze brauchen 0 Gewicht
+
+    # Rückverfolgung für optimale Kombinationen
+    backtrace = defaultdict(list)
+
+    # Konstruktionen iterativ verarbeiten
+    for konstruktion in konstruktionen:
+        # Wenn die Konstruktion keine Schlafplätze bietet, überspringen
+        if konstruktion.sleep_place_count == 0:
+            continue
+        materials = ConstructionMaterial.objects.filter(construction=konstruktion)
+        konstruktion_weight = calculate_construction_weight(materials)
+
+        # Iteration durch alle möglichen Schlafplätze und auch die mit mehr Schlafplätzen
+        for sleep_places in range(konstruktion.sleep_place_count, max_sleep_places + min_sleep_place_count):
+            # Berechnung des neuen Gewichts, wenn wir diese Konstruktion zu einer bestehenden Gruppe hinzufügen
+            new_weight = dp[sleep_places - konstruktion.sleep_place_count] + konstruktion_weight
+            # Wenn das neue Gewicht besser (geringer) ist als das aktuelle Gewicht für diese Anzahl Schlafplätze
+            if new_weight < dp[sleep_places]:
+                dp[sleep_places] = new_weight
+                backtrace[sleep_places] = backtrace[sleep_places - konstruktion.sleep_place_count] + [konstruktion]
+
+    # Ergebnis für jede Gruppe berechnen
+    result = []
+    for group_size in teilnehmergruppen:
+        # Hier suchen wir nach der kleinstmöglichen Anzahl von Schlafplätzen, die abgedeckt werden können
+        best_combination = None
+        for sleep_places in range(group_size, max_sleep_places + min_sleep_place_count):
+            if dp[sleep_places] != Decimal('1000000000000'):
+                best_combination = backtrace[sleep_places]
+                break
+
+        # Wenn keine Kombination gefunden wurde, die die Gruppe abdeckt
+        if best_combination is None:
+            messages.warning(request,
+                             f"Größe {group_size} kann mit den verfügbaren Konstruktionen nicht abgedeckt werden!")
+            result.append([])  # Leere Liste für diese Gruppe hinzufügen
+        else:
+            result.append(best_combination)
+
+    # Berechne das Gesamtgewicht für jede Gruppe
+    group_weights = []
+    for group_combination in result:
+        group_weight = calculate_total_weight_for_group(group_combination)
+        group_weights.append(group_weight)
+
+    # Berechne das minimale Gesamtgewicht
+    min_total_weight = sum(group_weights)
+    return result, min_total_weight
+
+
+def find_construction_combination(request, pk=None):
+    # Hole die Reise-Daten basierend auf der ID
+    trip = get_object_or_404(Trip, pk=pk, owner=request.org)
+
+    # Teilnehmergruppen definieren
+    teilnehmergruppen = [trip.tn_male_u16, trip.tn_male_a16, trip.tn_female_u16, trip.tn_female_a16]
+
+    # Konstruktionen abrufen
+    konstruktionen = Construction.objects.filter(owner=request.org)
+
+    # Finde die optimale Kombination der Konstruktionen und das minimalste Gesamtgewicht
+    optimal_combination, min_total_weight = find_optimal_construction_combination(teilnehmergruppen, konstruktionen,
+                                                                                  request)
+
+    # Liste von QuerySets für jede Gruppe erstellen
+    group_construction_data = []
+
+    for group_index, group_combination in enumerate(optimal_combination):
+        group_data = {
+            'group_index': group_index + 1,  # Die Gruppen beginnen bei 1, nicht bei 0
+            'constructs': [],
+            'total_weight': 0
+        }
+
+        for konstruktion in group_combination:
+            group_data['constructs'].append({
+                'name': konstruktion.name,
+                'sleep_places': konstruktion.sleep_place_count
+            })
+
+        # Die erstellte Querylist der aktuellen Gruppe hinzufügen
+        group_construction_data.append(group_data)
+    # Aufteilung der optimalen Kombination in vier separate Variablen
+    gruppe_1_combination = optimal_combination[0]  # Für Gruppe 1
+    gruppe_2_combination = optimal_combination[1]  # Für Gruppe 2
+    gruppe_3_combination = optimal_combination[2]  # Für Gruppe 3
+    gruppe_4_combination = optimal_combination[3]  # Für Gruppe 4
+
+    # Rückgabe an Template
+    return render(request, 'events/find_construction_combination.html', {
+        'title': 'Optimale Konstruktions-Kombination finden',
+        'trip': trip,
+        'gruppe_1_combination': gruppe_1_combination,
+        'gruppe_2_combination': gruppe_2_combination,
+        'gruppe_3_combination': gruppe_3_combination,
+        'gruppe_4_combination': gruppe_4_combination,
+        'tn_male_u16': trip.tn_male_u16,
+        'tn_male_a16': trip.tn_male_a16,
+        'tn_female_u16': trip.tn_female_u16,
+        'tn_female_a16': trip.tn_female_a16,
+        'min_total_weight': min_total_weight,
+    })
+
+
+def save_constructions_for_trip(request, pk=None):
+    # Hole die Reise-Daten basierend auf der ID
+    trip = get_object_or_404(Trip, pk=pk, owner=request.org)
+    # Teilnehmergruppen definieren
+    teilnehmergruppen = [trip.tn_male_u16, trip.tn_male_a16, trip.tn_female_u16, trip.tn_female_a16]
+
+    # Konstruktionen abrufen
+    konstruktionen = Construction.objects.filter(owner=request.org)
+
+    # Finde die optimale Kombination der Konstruktionen und das minimalste Gesamtgewicht
+    optimal_combination, min_total_weight = find_optimal_construction_combination(teilnehmergruppen, konstruktionen,
+                                                                                  request)
+    # Alte TripConstruction-Einträge für diesen Trip löschen
+    TripConstruction.objects.filter(trip=trip).delete()
+    # Speichere die Konstruktionen für jede Gruppe
+    for group_index, group_combination in enumerate(optimal_combination):
+        group_description = ''
+        if group_index == 0:
+            group_description = 'TN männlich unter 16'
+        elif group_index == 1:
+            group_description = 'TN männlich über 16'
+        elif group_index == 2:
+            group_description = 'TN weiblich unter 16'
+        elif group_index == 3:
+            group_description = 'TN weiblich über 16'
+        for konstruktion in group_combination:
+            # Beispielhafte Logik, wie man die Konstruktion speichern könnte
+            trip_construction = TripConstruction(
+                trip=trip,
+                construction=konstruktion,
+                count=1,
+                description=group_description
+            )
+            trip_construction.save()
+
+    # Erfolgreiches Speichern, um den Benutzer zurück zur Übersicht zu leiten
+    return redirect('edit_trip', pk=pk)  # Beispielhafte URL für Trip-Übersicht

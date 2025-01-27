@@ -68,8 +68,8 @@
             <!-- Zurück zur Übersicht -->
         {% else %}
             <p>Alle Materialien sind ausreichend vorhanden.</p>
-
         {% endif %}
+            <h4>Gesamtgewicht der Materialien: {{ total_weigth_av_m }} kg</h4>
         {% csrf_token %}
         <a href="{% url 'trip' %}" class="btn btn-secondary">Zurück zur Übersicht</a>
 

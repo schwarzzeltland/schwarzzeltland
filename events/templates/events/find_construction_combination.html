@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+{% block content %}
+    <div class="container mt-3">
+        <h3>Trip: {{ trip.name }}</h3>
+
+        <h4>Optimale Konstruktionen pro Gruppe basierend auf der Altersstruktur der Teilnehmer und dem geringsten
+            Gesamtgewicht</h4>
+
+        <!-- Gruppe 1 -->
+        <h5>Teilnehmer männlich unter 16</h5>
+        <p>Benötigte Schlfaplätze: {{ tn_male_u16 }}</p>
+        <h6>Konstruktionen:</h6>
+        <ul>
+            {% for konstruktion in gruppe_1_combination %}
+                <li>{{ konstruktion.name }} ({{ konstruktion.sleep_place_count }} Schlafplätze verfügbar)</li>
+            {% empty %}
+                <li>Keine Konstruktionen für diese Gruppe gefunden.</li>
+            {% endfor %}
+        </ul>
+
+        <!-- Gruppe 2 -->
+        <h5>Teilnehmer männlich über 16</h5>
+        <p>Benötigte Schlfaplätze: {{ tn_male_a16 }}</p>
+        <h6>Konstruktionen:</h6>
+        <ul>
+            {% for konstruktion in gruppe_2_combination %}
+                <li>{{ konstruktion.name }} ({{ konstruktion.sleep_place_count }} Schlafplätze verfügbar)</li>
+            {% empty %}
+                <li>Keine Konstruktionen für diese Gruppe gefunden.</li>
+            {% endfor %}
+        </ul>
+
+        <!-- Gruppe 3 -->
+        <h5>Teilnehmer weiblich unter 16</h5>
+        <p>Benötigte Schlfaplätze: {{ tn_female_u16 }}</p>
+        <h6>Konstruktionen:</h6>
+        <ul>
+            {% for konstruktion in gruppe_3_combination %}
+                <li>{{ konstruktion.name }} ({{ konstruktion.sleep_place_count }} Schlafplätze verfügbar)</li>
+            {% empty %}
+                <li>Keine Konstruktionen für diese Gruppe gefunden.</li>
+            {% endfor %}
+        </ul>
+
+        <!-- Gruppe 4 -->
+        <h5>Teilnehmer weiblich über 16</h5>
+        <p>Benötigte Schlfaplätze: {{ tn_female_a16 }}</p>
+        <h6>Konstruktionen:</h6>
+        <ul>
+            {% for konstruktion in gruppe_4_combination %}
+                <li>{{ konstruktion.name }} ({{ konstruktion.sleep_place_count }} Schlafplätze verfügbar)</li>
+            {% empty %}
+                <li>Keine Konstruktionen für diese Gruppe gefunden.</li>
+            {% endfor %}
+        </ul>
+
+        <h4>Minimales Gesamtgewicht für alle Gruppen: {{ min_total_weight }} kg</h4>
+
+        <div class="mt-3">
+
+            <form action="{% url 'save_constructions_for_trip' trip.pk %}" method="post">
+                {% csrf_token %}
+                <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary">Zurück zur Berarbeitung</a>
+                <button type="submit" class="btn btn-success">Vorgeschlagene Konstruktionen speichern</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

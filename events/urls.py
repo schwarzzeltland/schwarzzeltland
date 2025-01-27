@@ -16,5 +16,6 @@ urlpatterns = [
     path('location/show/<int:pk>/', views.show_location, name='show_location'),
     path('location/delete/<int:pk>/', views.delete_location, name='delete_location'),
     path('trip/summary/<int:pk>/', views.construction_summary, name='construction_summary'),
-
+    path('trip/find_construction_combination/<int:pk>/', views.find_construction_combination, name='find_construction_combination'),
+    path('save_constructions/<int:pk>/', views.save_constructions_for_trip, name='save_constructions_for_trip'),
 ]

@@ -9,32 +9,32 @@
             <form method="post" enctype='multipart/form-data'>
                 {% csrf_token %}
                 {% bootstrap_form trip_form %}
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                    <tr>
-                        <th>Konstruktion</th>
-                        <th>Anzahl</th>
-                        <th>Beschreibung</th>
-                        <th>Löschen</th>
-                    </tr>
-                    </thead>
-                    <tbody id="form-container">
-                    {{ construction_formset.management_form }}
-                    {% for form in construction_formset %}
-                        {% for hidden in form.hidden_fields %}
-                            {{ hidden }}
-                        {% endfor %}
+                <div class="table-responsive">
+                    <table>
+                        <thead>
                         <tr>
-                            <td>{% bootstrap_field form.construction show_label=False %} </td>
-                            <td>{% bootstrap_field form.count show_label=False %}</td>
-                            <td>{% bootstrap_field form.description show_label=False %}</td>
-                            <td>{% bootstrap_field form.DELETE show_label=False %}</td>
+                            <th>Konstruktion</th>
+                            <th>Anzahl</th>
+                            <th>Beschreibung</th>
+                            <th>Löschen</th>
                         </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody id="form-container">
+                        {{ construction_formset.management_form }}
+                        {% for form in construction_formset %}
+                            {% for hidden in form.hidden_fields %}
+                                {{ hidden }}
+                            {% endfor %}
+                            <tr>
+                                <td>{% bootstrap_field form.construction show_label=False %} </td>
+                                <td>{% bootstrap_field form.count show_label=False %}</td>
+                                <td>{% bootstrap_field form.description show_label=False %}</td>
+                                <td>{% bootstrap_field form.DELETE show_label=False %}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 <div class="mb-3">
                     <button type="button" id="add-row" class="btn btn-outline-primary">Zeile hinzufügen</button>
                 </div>
@@ -46,8 +46,11 @@
                     <button type="submit" name="construction_summary" class="btn btn-outline-success">
                         Konstruktions-Zusammenfassung
                     </button>
+                    <button type="submit" name="find_construction_combination" class="btn btn-outline-success">
+                        Optimale Konstruktions-Kombination finden
+                    </button>
                 {% endif %}
-                <a href="{% url 'trip' %}" class="btn btn-secondary">Abbrechen</a>
+                    <a href="{% url 'trip' %}" class="btn btn-secondary">Abbrechen</a>
             </form>
         </div>
         <!-- Vorlage für eine neue Zeile -->
