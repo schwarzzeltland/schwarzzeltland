@@ -164,7 +164,8 @@ def check_trip_material(request, pk=None):
     total_weigth_av_m = 0
     for material in materials:
         # Angenommen, jedes Material hat ein Attribut `weight`, das das Gewicht pro Einheit beschreibt.
-        total_weigth_av_m += material.count * material.material.weight
+        if material.material.weight:
+            total_weigth_av_m += material.count * material.material.weight
     # Weiterleitung zum Verfügbarkeitsfenster (immer, auch wenn keine Materialien fehlen)
     return render(request, 'events/check_trip_material.html', {
         'title': 'Materialübersicht',
