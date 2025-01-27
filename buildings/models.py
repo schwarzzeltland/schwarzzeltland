@@ -27,7 +27,7 @@ class Material(models.Model):
     description = CharField(max_length=1024, default="", blank=True,verbose_name="Beschreibung")
     image = models.ImageField(upload_to="materials/", blank=True, null=True,verbose_name="Bild")
     owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
-    weight = DecimalField(max_digits=10, decimal_places=3, help_text="in kg", blank=True, null=True,verbose_name="Gewicht",validators=[MinValueValidator(0)])
+    weight = DecimalField(max_digits=10, decimal_places=3, default=0,help_text="in kg", blank=True, null=True,verbose_name="Gewicht",validators=[MinValueValidator(0)])
     type = models.IntegerField(choices=TYPES, null=True, blank=True,verbose_name="Typ")
     length_min = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True,verbose_name="Mindestlänge", help_text="in cm",validators=[MinValueValidator(0)])
     length_max = DecimalField(max_digits=10, decimal_places=2,null=True, blank=True,verbose_name="Maximallänge", help_text="in cm",validators=[MinValueValidator(0)])
