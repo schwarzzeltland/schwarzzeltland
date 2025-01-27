@@ -2,50 +2,23 @@
 
 {% block content %}
     <h4>Verfügbare Materialien:</h4>
-    <table class="table">
-        <thead>
-        <tr>
-            <th>Material</th>
-            <th>Benötigte Menge</th>
-            <th>Verfügbare Menge</th>
-            <th>Lagerorte und Mengen</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for material in available_materials %}
-            <tr>
-                <td>{{ material.material }}</td>
-                <td>{{ material.required_quantity }}</td> <!-- Benötigte Menge anzeigen -->
-                <td>{{ material.available_quantity }}</td>
-                <td>
-                    {% for storage in material.storage_info %}
-                        <span>{{ storage.storage_place }}: {{ storage.available_quantity }} Stück</span><br>
-                    {% endfor %}
-                </td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
 
-    <h4>Fehlendes Material:</h4>
-    {% if missing_materials %}
+    <div class="table-responsive">
         <table class="table">
             <thead>
             <tr>
-                <th>Materialname</th>
+                <th>Material</th>
                 <th>Benötigte Menge</th>
                 <th>Verfügbare Menge</th>
-                <th>Fehlende Menge</th>
-                <th>Lagerorte</th>
+                <th>Lagerorte und Mengen</th>
             </tr>
             </thead>
             <tbody>
-            {% for material in missing_materials %}
+            {% for material in available_materials %}
                 <tr>
                     <td>{{ material.material }}</td>
-                    <td>{{ material.required_quantity }}</td>
+                    <td>{{ material.required_quantity }}</td> <!-- Benötigte Menge anzeigen -->
                     <td>{{ material.available_quantity }}</td>
-                    <td>{{ material.missing_quantity }}</td>
                     <td>
                         {% for storage in material.storage_info %}
                             <span>{{ storage.storage_place }}: {{ storage.available_quantity }} Stück</span><br>
@@ -55,6 +28,38 @@
             {% endfor %}
             </tbody>
         </table>
+    </div>
+    <h4>Fehlendes Material:</h4>
+    {% if missing_materials %}
+
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Materialname</th>
+                    <th>Benötigte Menge</th>
+                    <th>Verfügbare Menge</th>
+                    <th>Fehlende Menge</th>
+                    <th>Lagerorte</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for material in missing_materials %}
+                    <tr>
+                        <td>{{ material.material }}</td>
+                        <td>{{ material.required_quantity }}</td>
+                        <td>{{ material.available_quantity }}</td>
+                        <td>{{ material.missing_quantity }}</td>
+                        <td>
+                            {% for storage in material.storage_info %}
+                                <span>{{ storage.storage_place }}: {{ storage.available_quantity }} Stück</span><br>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
         <form method="POST" action="{% url 'constructions' %}">
             {% csrf_token %}
             <button type="submit" class="btn btn-warning">Zur Überischt</button>

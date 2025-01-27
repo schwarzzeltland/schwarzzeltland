@@ -400,7 +400,7 @@ def calculate_total_weight_for_group(group_combination):
 def find_optimal_construction_combination(teilnehmergruppen, konstruktionen, request):
     # Maximal mögliche Schlafplätze (Summe aller Gruppengrößen)
     max_sleep_places = sum(teilnehmergruppen)
-    min_sleep_place_count = min(k.sleep_place_count for k in konstruktionen if k.sleep_place_count > 0)
+    min_sleep_place_count = min(k.sleep_place_count for k in konstruktionen if k.sleep_place_count >= 0)
     # DP-Array initialisieren: dp[x] speichert das minimale Gewicht für genau x oder mehr Schlafplätze
     dp = [Decimal('1000000000000')] * (max_sleep_places + min_sleep_place_count)  # Ein hoher Wert für "Unendlich"
     dp[0] = Decimal(0)  # 0 Schlafplätze brauchen 0 Gewicht
@@ -414,6 +414,9 @@ def find_optimal_construction_combination(teilnehmergruppen, konstruktionen, req
         if konstruktion.sleep_place_count == 0:
             continue
         materials = ConstructionMaterial.objects.filter(construction=konstruktion)
+        if not materials.exists():
+            messages.warning(request, "Du hast keine Konstruktionen")
+            return redirect('trip')
         konstruktion_weight = calculate_construction_weight(materials)
 
         # Iteration durch alle möglichen Schlafplätze und auch die mit mehr Schlafplätzen
@@ -463,7 +466,9 @@ def find_construction_combination(request, pk=None):
 
     # Konstruktionen abrufen
     konstruktionen = Construction.objects.filter(owner=request.org)
-
+    if not konstruktionen.exists():
+        messages.warning(request,"Du hast keine Konstruktionen")
+        return redirect('edit_trip', pk=pk)
     # Finde die optimale Kombination der Konstruktionen und das minimalste Gesamtgewicht
     optimal_combination, min_total_weight = find_optimal_construction_combination(teilnehmergruppen, konstruktionen,
                                                                                   request)

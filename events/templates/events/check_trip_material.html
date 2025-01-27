@@ -4,72 +4,81 @@
     <h4>Verfügbare Materialien:</h4>
 
     <form method="POST">
-        <table class="table">
-            <thead>
-            <tr>
-                <th>Material</th>
-                <th>Benötigte Menge</th>
-                <th>Verfügbare Menge</th>
-                <th>Lagerorte und Mengen</th>
-                <th>Eingepackt?</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for material in available_materials %}
-                <tr>
-                    <td>{{ material.material }}</td>
-                    <td>{{ material.required_quantity }}</td> <!-- Benötigte Menge anzeigen -->
-                    <td>{{ material.available_quantity }}</td>
-                    <td>
-                        {% for storage in material.storage_info %}
-                            <span>{{ storage.storage_place }}: {{ storage.available_quantity }} Stück</span><br>
-                        {% endfor %}
-                    </td>
-                    <td>
-                        <input
-                                type="checkbox"
-                                name="packed_materials"
-                                value="{{ material.material }}"
-                                {% if material.packed %}checked{% endif %}>
-                    </td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
 
-        <h4>Fehlendes Material:</h4>
-        {% if missing_materials %}
+
+        <div class="table-responsive">
             <table class="table">
                 <thead>
                 <tr>
-                    <th>Materialname</th>
+                    <th>Material</th>
                     <th>Benötigte Menge</th>
                     <th>Verfügbare Menge</th>
-                    <th>Fehlende Menge</th>
-                    <th>Lagerorte</th>
+                    <th>Lagerorte und Mengen</th>
+                    <th>Eingepackt?</th>
                 </tr>
                 </thead>
                 <tbody>
-                {% for material in missing_materials %}
+                {% for material in available_materials %}
                     <tr>
                         <td>{{ material.material }}</td>
-                        <td>{{ material.required_quantity }}</td>
+                        <td>{{ material.required_quantity }}</td> <!-- Benötigte Menge anzeigen -->
                         <td>{{ material.available_quantity }}</td>
-                        <td>{{ material.missing_quantity }}</td>
                         <td>
                             {% for storage in material.storage_info %}
                                 <span>{{ storage.storage_place }}: {{ storage.available_quantity }} Stück</span><br>
                             {% endfor %}
                         </td>
+                        <td>
+                            <input
+                                    type="checkbox"
+                                    name="packed_materials"
+                                    value="{{ material.material }}"
+                                    {% if material.packed %}checked{% endif %}>
+                        </td>
                     </tr>
                 {% endfor %}
                 </tbody>
             </table>
+
+        </div>
+        <h4>Fehlendes Material:</h4>
+        {% if missing_materials %}
+
+
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Materialname</th>
+                        <th>Benötigte Menge</th>
+                        <th>Verfügbare Menge</th>
+                        <th>Fehlende Menge</th>
+                        <th>Lagerorte</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for material in missing_materials %}
+                        <tr>
+                            <td>{{ material.material }}</td>
+                            <td>{{ material.required_quantity }}</td>
+                            <td>{{ material.available_quantity }}</td>
+                            <td>{{ material.missing_quantity }}</td>
+                            <td>
+                                {% for storage in material.storage_info %}
+                                    <span>{{ storage.storage_place }}: {{ storage.available_quantity }} Stück</span><br>
+                                {% endfor %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+
+            </div>
             <!-- Zurück zur Übersicht -->
         {% else %}
             <p>Alle Materialien sind ausreichend vorhanden.</p>
         {% endif %}
-            <h4>Gesamtgewicht der Materialien: {{ total_weigth_av_m }} kg</h4>
+        <h4>Gesamtgewicht der Materialien: {{ total_weigth_av_m }} kg</h4>
         {% csrf_token %}
         <a href="{% url 'trip' %}" class="btn btn-secondary">Zurück zur Übersicht</a>
 
