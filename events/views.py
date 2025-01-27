@@ -382,7 +382,8 @@ def construction_summary(request, pk=None):
 def calculate_construction_weight(materials):
     total_weight = Decimal(0)
     for material in materials:
-        total_weight += material.material.weight * material.count
+        if material.material.weight:
+            total_weight += material.material.weight * material.count
     return total_weight
 
 
