@@ -445,7 +445,6 @@ def find_optimal_construction_combination(teilnehmergruppen, konstruktionen, req
             if new_weight < dp[sleep_places]:
                 dp[sleep_places] = new_weight
                 backtrace[sleep_places] = backtrace[sleep_places - konstruktion.sleep_place_count] + [konstruktion]
-    print(dp)
     # Ergebnis für jede Gruppe berechnen
     result = []
     for group_size in teilnehmergruppen:

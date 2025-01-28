@@ -43,8 +43,8 @@
     <script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const latitude = {{ location.latitude }};
-            const longitude = {{ location.longitude }};
+            const latitude = parseFloat("{{ location.latitude|floatformat:6 }}");
+            const longitude = parseFloat("{{ location.longitude|floatformat:6 }}");
 
             const map = new google.maps.Map(document.getElementById('map'), {
                 center: {lat: latitude, lng: longitude},
