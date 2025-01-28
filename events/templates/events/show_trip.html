@@ -36,25 +36,26 @@
                         <td>{{ trip.location }}</td>
                     </tr>
                     <tr>
-                        <td><strong>TN-Zahl:</strong></td>
-                        <td>{{ trip.tn_count }}</td>
+                        <td><strong>TN-Gesamt-Anzahl:</strong></td>
+                        <td>{{ total_tn_count }}</td>
                     </tr>
-                    <tr>
-                        <td><strong>TN-Zahl männlich unter 16:</strong></td>
-                        <td>{{ trip.tn_male_u16 }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>TN-Zahl männlich über 16:</strong></td>
-                        <td>{{ trip.tn_male_a16 }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>TN-Zahl weiblich unter 16:</strong></td>
-                        <td>{{ trip.tn_female_u16 }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>TN-Zahl weiblich über 16:</strong></td>
-                        <td>{{ trip.tn_female_a16 }}</td>
-                    </tr>
+                    </tbody>
+                </table>
+                <h4>Gruppen:</h4>
+                <table class="table">
+                    <tbody>
+                    {% for gr in tripgroups %}
+                        <tr>
+                            <td>
+                                <strong>Name:</strong>
+                                {{ gr.name }}
+                            </td>
+                            <td>
+                                <strong>TN-Anzahl:</strong>
+                                {{ gr.count }}
+                            </td>
+                        </tr>
+                    {% endfor %}
                     </tbody>
                 </table>
                 <h4>Konstruktionen:</h4>

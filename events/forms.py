@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.forms import ModelForm, IntegerField, inlineformset_factory, Form, ModelChoiceField
 
 from buildings.models import Construction
-from events.models import Trip, TripConstruction, Location
+from events.models import Trip, TripConstruction, Location, TripGroup
 
 
 class TripForm(ModelForm):
@@ -25,7 +25,6 @@ class TripForm(ModelForm):
             ("Eigene Orte", [(c.id, c.name) for c in org_locations]),
         ]
         self.fields['location'].choices = choices
-        self.fields['tn_count'].disabled = True
 
     class Meta:
         model = Trip
@@ -107,3 +106,21 @@ class ImportLocationForm(Form):
             ("Öffentliche Orte", [(c.id, c.name) for c in external_locations]),
         ]
         self.fields['location'].choices = choices
+
+class TripGroupForm(ModelForm):
+    def __init__(self, *args, **kwargs):
+        organization = kwargs.pop('organization', None)
+        super(TripGroupForm, self).__init__(*args, **kwargs)
+        self.instance.organization = organization
+
+    class Meta:
+        model = TripGroup
+        fields = '__all__'
+        exclude = ['owner']
+
+
+TripGroupFormSet = inlineformset_factory(
+    Trip, TripGroup, form=TripGroupForm,
+    fields=("name", "count"),
+    extra=1, can_delete=True
+)

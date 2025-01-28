@@ -9,6 +9,35 @@
             <form method="post" enctype='multipart/form-data'>
                 {% csrf_token %}
                 {% bootstrap_form trip_form %}
+                <p>Unterteile deine Teilmnehmer in Gruppen, z.B. nach Alter oder nach Sippen.</p>
+                <p>Gesamt TN-Anzahl: {{ total_tn_count }}</p>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Gruppe</th>
+                            <th>TN-Anzahl</th>
+                            <th>Löschen</th>
+                        </tr>
+                        </thead>
+                        <tbody id="form-container-group">
+                        {{ group_formset.management_form }}
+                        {% for form in group_formset %}
+                            {% for hidden in form.hidden_fields %}
+                                {{ hidden }}
+                            {% endfor %}
+                            <tr>
+                                <td>{% bootstrap_field form.name show_label=False %} </td>
+                                <td>{% bootstrap_field form.count show_label=False %}</td>
+                                <td>{% bootstrap_field form.DELETE show_label=False %}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mb-3">
+                    <button type="button" id="add-row-group" class="btn btn-outline-primary">Zeile hinzufügen</button>
+                </div>
                 <div class="table-responsive">
                     <table>
                         <thead>
@@ -36,21 +65,30 @@
                     </table>
                 </div>
                 <div class="mb-3">
-                    <button type="button" id="add-row" class="btn btn-outline-primary">Zeile hinzufügen</button>
+
+                    <div class="mb-4">
+                        <button type="button" id="add-row" class="btn btn-outline-primary">Zeile hinzufügen</button>
+                    </div>
+                    <div class="mb-2">
+                        <button type="submit" name="save" class="btn btn-success btn-green">Veranstaltung speichern</button>
+                    </div>
+                    <div class="mb-2">
+                        {% if trip.pk != None %}
+                            <button type="submit" name="check_material" class="btn btn-outline-success btn-green">
+                                Materialverfügbarkeit im Lager prüfen
+                            </button>
+                            <button type="submit" name="construction_summary" class="btn btn-outline-success btn-green">
+                                Konstruktions-Zusammenfassung
+                            </button>
+                            <button type="submit" name="find_construction_combination" class="btn btn-outline-success btn-green">
+                                Optimale Konstruktions-Kombination finden
+                            </button>
+                        {% endif %}
+                    </div>
+                    <div class="mb-2">
+                        <a href="{% url 'trip' %}" class="btn btn-secondary">Abbrechen</a>
+                    </div>
                 </div>
-                <button type="submit" name="save" class="btn btn-success">Veranstaltung speichern</button>
-                {% if trip.pk != None %}
-                    <button type="submit" name="check_material" class="btn btn-outline-success">
-                        Materialverfügbarkeit im Lager prüfen
-                    </button>
-                    <button type="submit" name="construction_summary" class="btn btn-outline-success">
-                        Konstruktions-Zusammenfassung
-                    </button>
-                    <button type="submit" name="find_construction_combination" class="btn btn-outline-success">
-                        Optimale Konstruktions-Kombination finden
-                    </button>
-                {% endif %}
-                    <a href="{% url 'trip' %}" class="btn btn-secondary">Abbrechen</a>
             </form>
         </div>
         <!-- Vorlage für eine neue Zeile -->
@@ -94,7 +132,29 @@
             </tr>
 
         </script>
+        <script type="text/template" id="empty-form-template-group">
+            <tr>
+                <td>
+                    <div class="mb-3">
+                        <input type="text" name="tripgroup_set-__prefix__-name" class="form-control"
+                               id="id_{{ formset_prefix_group }}-__prefix__-name">
+                    </div>
+                </td>
+                <td>
+                    <div class="mb-3">
+                        <input type="number" name="tripgroup_set-__prefix__-count" class="form-control"
+                               id="id_{{ formset_prefix_group }}-__prefix__-count">
+                    </div>
+                </td>
+                <td>
+                    <div class="mb-3">
+                        <input type="checkbox" name="tripgroup_set-__prefix__-DELETE"
+                               id="id_{{ formset_prefix_group }}-__prefix__-DELETE">
+                    </div>
+                </td>
+            </tr>
 
+        </script>
         <!-- Include Select2 Library -->
         <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -113,6 +173,17 @@
                     totalFormsInput.value = parseInt(formIndex) + 1; // Anzahl erhöhen
                     // Wendet Select2 auf das neue Dropdown-Menü an
                     initializeSelect2()
+                });
+
+                const addRowButton_group = document.getElementById('add-row-group');
+                const formContainer_group = document.getElementById('form-container-group');
+                const totalFormsInput_group = document.querySelector(`#id_tripgroup_set-TOTAL_FORMS`);
+                const template_group = document.getElementById('empty-form-template-group').innerHTML;
+                addRowButton_group.addEventListener('click', function () {
+                    const formIndex_group = totalFormsInput_group.value; // Aktuelle Anzahl der Formulare
+                    const newRow_group = template_group.replace(/__prefix__/g, formIndex_group);
+                    formContainer_group.insertAdjacentHTML('beforeend', newRow_group);
+                    totalFormsInput_group.value = parseInt(formIndex_group) + 1; // Anzahl erhöhen
                 });
             });
 
@@ -161,6 +232,19 @@
                 border-color: #80bdff; /* Bootstrap-Fokusfarbe */
                 outline: 0;
                 box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Fokus-Schlagschatten */
+            }
+
+            .btn-green {
+            }
+
+            @media (max-width: 576px) {
+                .btn-green {
+                display: flex;
+                justify-content: center; /* Zentriert den Text */
+                width: 100%; /* Gleiche Breite bei mobilen Geräten */
+                max-width: 250px; /* Optional: maximale Breite für größere Geräte */
+                margin: 5px 0; /* Abstand zwischen den Buttons */
+                }
             }
         </style>
 {% endblock %}

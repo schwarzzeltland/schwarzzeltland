@@ -53,20 +53,9 @@ class Trip(models.Model):
     start_date = models.DateTimeField("Startdatum")
     end_date = models.DateTimeField("Enddatum")
     location = models.ForeignKey(Location, on_delete=models.CASCADE, null=True, blank=True)
-    tn_male_u16 = models.IntegerField(default=0,verbose_name="TN männlich unter 16",validators=[MinValueValidator(0)])
-    tn_male_a16 = models.IntegerField(default=0,verbose_name="TN männlich über 16",validators=[MinValueValidator(0)])
-    tn_female_u16 = models.IntegerField(default=0,verbose_name="TN weiblich unter 16",validators=[MinValueValidator(0)])
-    tn_female_a16 = models.IntegerField(default=0,verbose_name="TN weiblich über 16",validators=[MinValueValidator(0)])
-    tn_count = models.IntegerField(default=0,verbose_name="TN-Anzahl")
 
     def __str__(self):
         return self.name
-
-    def save(self, *args, **kwargs):
-        # tn_count wird als Summe
-        self.tn_count = self.tn_male_a16 + self.tn_male_a16 + self.tn_female_u16 + self.tn_female_a16
-        super().save(*args, **kwargs)  # Speichert das Objekt
-
 
 class TripConstruction(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE)
@@ -82,3 +71,9 @@ class PackedMaterial(models.Model):
 
     def __str__(self):
         return f"{self.material_name} - {'Eingepackt' if self.packed else 'Nicht eingepackt'}"
+
+class TripGroup(models.Model):
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE)
+    count = models.IntegerField(default=0,verbose_name="Anzahl",validators=[MinValueValidator(0)])
+    name = CharField(max_length=1024, default="", blank=True,verbose_name="Gruppenname")
+

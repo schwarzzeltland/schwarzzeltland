@@ -5,57 +5,31 @@
     <div class="container mt-3">
         <h3>Trip: {{ trip.name }}</h3>
 
-        <h4>Optimale Konstruktionen pro Gruppe basierend auf der Altersstruktur der Teilnehmer und dem geringsten
+        <h4>Optimale Konstruktionen pro Gruppe basierend auf den Teilnehmergruppen und dem geringsten
             Gesamtgewicht</h4>
 
-        <!-- Gruppe 1 -->
-        <h5>Teilnehmer männlich unter 16</h5>
-        <p>Benötigte Schlfaplätze: {{ tn_male_u16 }}</p>
-        <h6>Konstruktionen:</h6>
-        <ul>
-            {% for konstruktion in gruppe_1_combination %}
-                <li>{{ konstruktion.name }} ({{ konstruktion.sleep_place_count }} Schlafplätze verfügbar)</li>
-            {% empty %}
-                <li>Keine Konstruktionen für diese Gruppe gefunden.</li>
-            {% endfor %}
-        </ul>
-
-        <!-- Gruppe 2 -->
-        <h5>Teilnehmer männlich über 16</h5>
-        <p>Benötigte Schlfaplätze: {{ tn_male_a16 }}</p>
-        <h6>Konstruktionen:</h6>
-        <ul>
-            {% for konstruktion in gruppe_2_combination %}
-                <li>{{ konstruktion.name }} ({{ konstruktion.sleep_place_count }} Schlafplätze verfügbar)</li>
-            {% empty %}
-                <li>Keine Konstruktionen für diese Gruppe gefunden.</li>
-            {% endfor %}
-        </ul>
-
-        <!-- Gruppe 3 -->
-        <h5>Teilnehmer weiblich unter 16</h5>
-        <p>Benötigte Schlfaplätze: {{ tn_female_u16 }}</p>
-        <h6>Konstruktionen:</h6>
-        <ul>
-            {% for konstruktion in gruppe_3_combination %}
-                <li>{{ konstruktion.name }} ({{ konstruktion.sleep_place_count }} Schlafplätze verfügbar)</li>
-            {% empty %}
-                <li>Keine Konstruktionen für diese Gruppe gefunden.</li>
-            {% endfor %}
-        </ul>
-
-        <!-- Gruppe 4 -->
-        <h5>Teilnehmer weiblich über 16</h5>
-        <p>Benötigte Schlfaplätze: {{ tn_female_a16 }}</p>
-        <h6>Konstruktionen:</h6>
-        <ul>
-            {% for konstruktion in gruppe_4_combination %}
-                <li>{{ konstruktion.name }} ({{ konstruktion.sleep_place_count }} Schlafplätze verfügbar)</li>
-            {% empty %}
-                <li>Keine Konstruktionen für diese Gruppe gefunden.</li>
-            {% endfor %}
-        </ul>
-
+        {% for group_data in group_construction_data %}
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body">
+                    <h4 class="card-title">Gruppe {{ group_data.group_name }}</h4>
+                    <p class="card-text"><strong>Benötigte Schlafplätze: {{ group_data.required_sleep_place_count }}</strong></p>
+                    <p class="card-text"><strong>Konstruktionen:</strong></p>
+                    <ul class="list-group mb-3">
+                        {% if group_data.constructs %}
+                            {% for construct in group_data.constructs %}
+                                <li class="list-group-item">
+                                    <strong>Name:</strong> {{ construct.name }} <br>
+                                    <strong>Schlafplätze:</strong> {{ construct.sleep_places }}
+                                </li>
+                            {% endfor %}
+                        {% else %}
+                            <li class="list-group-item text-danger">Keine passende Konstruktion gefunden.</li>
+                        {% endif %}
+                    </ul>
+                    <p><strong>Gesamtgewicht der Gruppe:</strong> {{ group_data.total_weight }} kg</p>
+                </div>
+            </div>
+        {% endfor %}
         <h4>Minimales Gesamtgewicht für alle Gruppen: {{ min_total_weight }} kg</h4>
 
         <div class="mt-3">
