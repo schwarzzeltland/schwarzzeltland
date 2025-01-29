@@ -210,7 +210,7 @@ def edit_construction(request, pk=None):
                 if 'save' in request.POST:
                     # Wenn der Speichern-Button gedrückt wurde, weiter zu Trips
                     messages.success(request, f'Konstruktion {construction.name} gespeichert.')
-                    return redirect('constructions')  # Hier 'trip' zu deiner Trip-Liste oder Detail-Seite weiterleiten
+                    return redirect('constructions')
                 elif 'check_material' in request.POST:
                     # Wenn der Materialverfügbarkeits-Button gedrückt wurde, weiter zu Materialverfügbarkeit prüfen
                     return redirect('check_material', construction.pk)  # Weiterleitung zur Materialverfügbarkeitspr

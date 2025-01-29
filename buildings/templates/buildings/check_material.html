@@ -62,27 +62,36 @@
         </div>
         <form method="POST" action="{% url 'constructions' %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-warning">Zur Überischt</button>
             {% if is_material_manager %}
-                <a href="{% url 'edit_constructions' construction.pk %}" class="btn btn-secondary">Zurück zur
-                    Bearbeitung</a>
+                <div class="mb-2">
+                    <a href="{% url 'edit_constructions' construction.pk %}" class="btn btn-secondary">Zurück zur
+                        Bearbeitung</a>
+                </div>
             {% else %}
-                <a href="{% url 'show_construction' construction.pk %}" class="btn btn-secondary">Zurück zur
-                    Konstruktion</a>
+                <div class="mb-2">
+                    <a href="{% url 'show_construction' construction.pk %}" class="btn btn-secondary">Zurück zur
+                        Konstruktion</a>
+                </div>
             {% endif %}
+
+            <button type="submit" class="btn btn-warning">Zur Überischt</button>
         </form>
     {% else %}
         <p>Alle Materialien sind ausreichend vorhanden.</p>
         <form method="POST" action="{% url 'constructions' %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-success">Zur Überischt</button>
             {% if is_material_manager %}
-                <a href="{% url 'edit_constructions' construction.pk %}" class="btn btn-secondary">Zurück zur
-                    Bearbeitung</a>
+                <div class="mb-2">
+                    <a href="{% url 'edit_constructions' construction.pk %}" class="btn btn-secondary">Zurück zur
+                        Bearbeitung</a>
+                </div>
             {% else %}
-                <a href="{% url 'show_construction' construction.pk %}" class="btn btn-secondary">Zurück zur
-                    Konstruktion</a>
+                <div class="mb-2">
+                    <a href="{% url 'show_construction' construction.pk %}" class="btn btn-secondary">Zurück zur
+                        Konstruktion</a>
+                </div>
             {% endif %}
+            <button type="submit" class="btn btn-success">Zur Überischt</button>
         </form>
     {% endif %}
 {% endblock %}
