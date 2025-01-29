@@ -7,45 +7,46 @@
         {% bootstrap_form form %}
         {{ formset.management_form }}
 
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-            <tr>
-                {% for field in formset.form.visible_fields %}
-                    <th>{{ field.label }}</th>
-                {% endfor %}
-                <th>Löschen</th>
-            </tr>
-            </thead>
-            <tbody id="id_formset">
-
-            {% for form in formset %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
                 <tr>
-                    {% for field in form.visible_fields %}
-                        <td>
-                            {% bootstrap_field field show_label=False wrapper_class="mb-2" %}
-                            {% if field.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {{ field.errors }}
-                                </div>
-                            {% endif %}
-                        </td>
+                    {% for field in formset.form.visible_fields %}
+                        <th>{{ field.label }}</th>
                     {% endfor %}
-                    <td>
-                        <button type="button" onclick="deleteRow(event)"
-                                {% if forloop.first %}style="display: none" {% endif %} class="btn btn-outline-danger">D
-                        </button>
+                    <th>Löschen</th>
+                </tr>
+                </thead>
+                <tbody id="id_formset">
+
+                {% for form in formset %}
+                    <tr>
+                        {% for field in form.visible_fields %}
+                            <td>
+                                {% bootstrap_field field show_label=False wrapper_class="mb-2" %}
+                                {% if field.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ field.errors }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                        <td>
+                            <button type="button" onclick="deleteRow(event)"
+                                    {% if forloop.first %}style="display: none" {% endif %}
+                                    class="btn btn-outline-danger">D
+                            </button>
+                        </td>
+                    </tr>
+                {% endfor %}
+                <tr id="add_row">
+                    <td colspan="100" class="text-end">
+                        <button type="button" id="add_form" class="btn btn-outline-primary">Benutzer Hinzufügen</button>
                     </td>
                 </tr>
-            {% endfor %}
-            <tr id="add_row">
-                <td colspan="100" class="text-end">
-                    <button type="button" id="add_form" class="btn btn-outline-primary">Benutzer Hinzufügen</button>
-                </td>
-            </tr>
-            </tbody>
-        </table>
-    </div>
+                </tbody>
+            </table>
+        </div>
 
         <script async>
             const formset = document.getElementById('id_formset');
@@ -61,8 +62,10 @@
                 event.currentTarget.parentElement.parentElement.remove();
             }
         </script>
-
-        {% bootstrap_button "Speichern" button_type="submit" button_class="btn-success" %}
+        <div class="mb-2">
+            {% bootstrap_button "Speichern" button_type="submit" button_class="btn-success" %}
+        </div>
+        <a href="{% url 'organization' %}" class="btn btn-secondary">Abbrechen</a>
     </form>
 
 {% endblock %}

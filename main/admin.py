@@ -22,6 +22,7 @@ class ConstructionInLine(NestedTabularInline):
 @admin.register(Organization)
 class OrganizationAdmin(NestedModelAdmin):
     inlines = [MembershipInline,MaterialInline,ConstructionInLine]
+    search_fields = ['name']
 
 
 @admin.register(Membership)

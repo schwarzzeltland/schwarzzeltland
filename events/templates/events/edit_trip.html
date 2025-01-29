@@ -70,7 +70,8 @@
                         <button type="button" id="add-row" class="btn btn-outline-primary">Zeile hinzufügen</button>
                     </div>
                     <div class="mb-2">
-                        <button type="submit" name="save" class="btn btn-success btn-green">Veranstaltung speichern</button>
+                        <button type="submit" name="save" class="btn btn-success btn-green">Veranstaltung speichern
+                        </button>
                     </div>
                     <div class="mb-2">
                         {% if trip.pk != None %}
@@ -80,13 +81,17 @@
                             <button type="submit" name="construction_summary" class="btn btn-outline-success btn-green">
                                 Konstruktions-Zusammenfassung
                             </button>
-                            <button type="submit" name="find_construction_combination" class="btn btn-outline-success btn-green">
+                            <button type="submit" name="find_construction_combination"
+                                    class="btn btn-outline-success btn-green">
                                 Optimale Konstruktions-Kombination finden
                             </button>
                         {% endif %}
                     </div>
                     <div class="mb-2">
-                        <a href="{% url 'trip' %}" class="btn btn-secondary">Abbrechen</a>
+                        <button type="button" class="btn btn-secondary" onclick="history.back()">Abbrechen</button>
+                        <noscript>
+                            <a href="{% url 'trip' %}" class="btn btn-secondary">Abbrechen</a>
+                        </noscript>
                     </div>
                 </div>
             </form>
@@ -239,11 +244,11 @@
 
             @media (max-width: 576px) {
                 .btn-green {
-                display: flex;
-                justify-content: center; /* Zentriert den Text */
-                width: 100%; /* Gleiche Breite bei mobilen Geräten */
-                max-width: 250px; /* Optional: maximale Breite für größere Geräte */
-                margin: 5px 0; /* Abstand zwischen den Buttons */
+                    display: flex;
+                    justify-content: center; /* Zentriert den Text */
+                    width: 100%; /* Gleiche Breite bei mobilen Geräten */
+                    max-width: 250px; /* Optional: maximale Breite für größere Geräte */
+                    margin: 5px 0; /* Abstand zwischen den Buttons */
                 }
             }
         </style>

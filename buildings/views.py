@@ -22,11 +22,11 @@ def constructions(request):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
     search_query = request.GET.get('search', '')  # Hole die Suchanfrage
     # Filtere Konstruktionen basierend auf der Suchanfrage
-    constructions_query = Construction.objects.filter(owner=request.org)
+    constructions_query = Construction.objects.filter(owner=request.org).order_by('name')
     if search_query:
         constructions_query = constructions_query.filter(
             Q(name__icontains=search_query) | Q(owner__name__icontains=search_query)
-        )
+        ).order_by('name')
     if m.material_manager:
         form = ImportConstructionForm(organization=request.org)
         if request.method == 'POST':
@@ -322,12 +322,12 @@ def material(request):
             Q(material__name__icontains=search_query) |
             Q(storage_place__icontains=search_query),
             organization=request.org
-        )
+        ).order_by('material__name')
     else:
-        materials = StockMaterial.objects.filter(organization=request.org)
+        materials = StockMaterial.objects.filter(organization=request.org).order_by('material__name')
     # Filterung nach Materialtyp
     if selected_material_type:
-        materials = materials.filter(material__type=selected_material_type)
+        materials = materials.filter(material__type=selected_material_type).order_by('material__name')
     # Alle Materialtypen abrufen (für Dropdown-Menü)
     TYPES = (
         (0, "Dachplane"),

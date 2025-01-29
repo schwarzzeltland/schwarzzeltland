@@ -7,6 +7,7 @@ from buildings.models import Material, Construction, ConstructionMaterial
 @admin.register(Material)
 class MaterialAdmin(admin.ModelAdmin):
     save_as = True
+    search_fields = ['name']
     pass
 
 
@@ -18,3 +19,4 @@ class ConstructionMaterialInline(NestedTabularInline):
 @admin.register(Construction)
 class ConstructionAdmin(admin.ModelAdmin):
     inlines = [ConstructionMaterialInline]
+    search_fields = ['name']

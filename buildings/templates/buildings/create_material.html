@@ -3,15 +3,22 @@
 
 
 {% block content %}
- <form method="post" class="form" enctype="multipart/form-data">
+    <form method="post" class="form" enctype="multipart/form-data">
         {% csrf_token %}
         {% bootstrap_form form %}
         {% buttons %}
-            <button type="submit" class="btn btn-success">
-                <span data-feather="alert-triangle"></span>
-                Material speichern
-            </button>
-            <a href="{% url 'material' %}" class="btn btn-secondary">Abbrechen</a>
+            <div class="mb-2">
+                <button type="submit" class="btn btn-success">
+                    <span data-feather="alert-triangle"></span>
+                    Material speichern
+                </button>
+            </div>
+            <div class="mb-2">
+                <button type="button" class="btn btn-secondary" onclick="history.back()">Abbrechen</button>
+                <noscript>
+                    <a href="{% url 'material' %}" class="btn btn-secondary">Abbrechen</a>
+                </noscript>
+            </div>
         {% endbuttons %}
     </form>
 {% endblock %}

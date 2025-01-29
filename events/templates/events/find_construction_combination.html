@@ -12,7 +12,8 @@
             <div class="card mb-4 shadow-sm">
                 <div class="card-body">
                     <h4 class="card-title">Gruppe {{ group_data.group_name }}</h4>
-                    <p class="card-text"><strong>Benötigte Schlafplätze: {{ group_data.required_sleep_place_count }}</strong></p>
+                    <p class="card-text"><strong>Benötigte
+                        Schlafplätze: {{ group_data.required_sleep_place_count }}</strong></p>
                     <p class="card-text"><strong>Konstruktionen:</strong></p>
                     <ul class="list-group mb-3">
                         {% if group_data.constructs %}
@@ -36,8 +37,10 @@
 
             <form action="{% url 'save_constructions_for_trip' trip.pk %}" method="post">
                 {% csrf_token %}
+                <div class="mb-2">
+                    <button type="submit" class="btn btn-success">Vorgeschlagene Konstruktionen speichern</button>
+                </div>
                 <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary">Zurück zur Berarbeitung</a>
-                <button type="submit" class="btn btn-success">Vorgeschlagene Konstruktionen speichern</button>
             </form>
         </div>
     </div>

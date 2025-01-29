@@ -11,9 +11,11 @@ class TripConstructionInline(NestedTabularInline):
 @admin.register(Trip)
 class TripAdmin(admin.ModelAdmin):
     model = Trip
+    search_fields = ['name']
     inlines = [TripConstructionInline]
     extra = 1
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
     model = Location
+    search_fields = ['name']

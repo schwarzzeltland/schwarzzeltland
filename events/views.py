@@ -28,9 +28,9 @@ def trip(request):
     if search_query:
         trips_query = trips_query.filter(
             Q(name__icontains=search_query) | Q(owner__name__icontains=search_query)
-        )
+        ).order_by('name')
     if selected_trip_type:
-        trips_query = trips_query.filter(type=selected_trip_type)
+        trips_query = trips_query.filter(type=selected_trip_type).order_by('name')
     TYPES = (
         (0, "Lager"),
         (1, "Fahrt"),
@@ -261,9 +261,9 @@ def location(request):
     if search_query:
         locations_query = locations_query.filter(
             Q(name__icontains=search_query) | Q(owner__name__icontains=search_query)
-        )
+        ).order_by('name')
     if selected_location_type:
-        locations_query = locations_query.filter(type=selected_location_type)
+        locations_query = locations_query.filter(type=selected_location_type).order_by('name')
     if m.event_manager:
         form = ImportLocationForm(organization=request.org)
         if request.method == 'POST':

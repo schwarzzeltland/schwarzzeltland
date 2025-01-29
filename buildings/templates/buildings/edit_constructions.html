@@ -37,17 +37,22 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="mb-3">
+                <div class="mb-4">
                     <button type="button" id="add-row" class="btn btn-outline-primary">Zeile hinzufügen</button>
                 </div>
-                <div class="mb-3">
+                <div class="mb-2">
                     <button type="submit" name="save" class="btn btn-success">Konstruktion speichern</button>
                     {% if construction.pk != None %}
                         <button type="submit" name="check_material" class="btn btn-outline-success">
                             Materialverfügbarkeit im Lager prüfen
                         </button>
                     {% endif %}
-                    <a href="{% url 'constructions' %}" class="btn btn-secondary">Abbrechen</a>
+                </div>
+                <div class="mb-2">
+                    <button type="button" class="btn btn-secondary" onclick="history.back()">Abbrechen</button>
+                    <noscript>
+                        <a href="{% url 'constructions' %}" class="btn btn-secondary">Abbrechen</a>
+                    </noscript>
                 </div>
             </form>
         </div>

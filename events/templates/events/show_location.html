@@ -35,7 +35,10 @@
                 </table>
 
                 <div class="mb-3" id="map" style="height: 400px; width: 100%;"></div>
-                <a href="{% url 'location' %}" class="btn btn-secondary">Zurück</a>
+                <button type="button" class="btn btn-secondary" onclick="history.back()">Zurück</button>
+                <noscript>
+                    <a href="{% url 'location' %}" class="btn btn-secondary">Zurück</a>
+                </noscript>
             </form>
         </div>
     </div>

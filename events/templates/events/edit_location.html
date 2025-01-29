@@ -74,11 +74,16 @@
         </script>
 
         {% buttons %}
-            <button type="submit" class="btn btn-success">
-                <span data-feather="alert-triangle"></span>
-                Ort speichern
-            </button>
-            <a href="{% url 'location' %}" class="btn btn-secondary">Abbrechen</a>
+            <div class="mb-2">
+                <button type="submit" class="btn btn-success">
+                    <span data-feather="alert-triangle"></span>
+                    Ort speichern
+                </button>
+            </div>
+            <button type="button" class="btn btn-secondary" onclick="history.back()">Abbrechen</button>
+            <noscript>
+                <a href="{% url 'location' %}" class="btn btn-secondary">Abbrechen</a>
+            </noscript>
         {% endbuttons %}
     </form>
 {% endblock %}
