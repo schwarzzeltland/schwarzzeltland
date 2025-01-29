@@ -23,13 +23,14 @@ def constructions(request):
     # Suchlogik
     search_query = request.GET.get('search', '')
     # 2. Wenn keine GET-Filter vorhanden sind, die Filter aus der Session holen
-    previous_url = request.session.get('previous_url')
+    if request.session.get('previous_url'):
+        previous_url = request.session.get('previous_url')
 
-    if 'construction/edit/' in previous_url:
-        if not search_query:
-            search_query = request.session.get('search', '')
-        if 'search' in request.session:
-            del request.session['search']
+        if 'construction/edit/' in previous_url:
+            if not search_query:
+                search_query = request.session.get('search', '')
+            if 'search' in request.session:
+                del request.session['search']
 
     request.session['search'] = search_query
     request.session['previous_url'] = request.build_absolute_uri()
@@ -329,17 +330,18 @@ def material(request):
     search_query = request.GET.get('search', '')
     selected_material_type = request.GET.get('material_type', '')  # Materialtyp
     # 2. Wenn keine GET-Filter vorhanden sind, die Filter aus der Session holen
-    previous_url = request.session.get('previous_url')
-    if 'material/edit/' in previous_url:
-        if not search_query:
-            search_query = request.session.get('search', '')
-        if 'search' in request.session:
-            del request.session['search']
+    if request.session.get('previous_url'):
+        previous_url = request.session.get('previous_url')
+        if 'material/edit/' in previous_url:
+            if not search_query:
+                search_query = request.session.get('search', '')
+            if 'search' in request.session:
+                del request.session['search']
 
-        if not selected_material_type:
-            selected_material_type = request.session.get('material_type', '')
-        if 'material_type' in request.session:
-            del request.session['material_type']
+            if not selected_material_type:
+                selected_material_type = request.session.get('material_type', '')
+            if 'material_type' in request.session:
+                del request.session['material_type']
 
     request.session['search'] = search_query
     request.session['material_type'] = selected_material_type

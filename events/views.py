@@ -24,17 +24,18 @@ def trip(request):
     search_query = request.GET.get('search', '')
     selected_trip_type = request.GET.get('trip_type', '')  # Materialtyp
     # 2. Wenn keine GET-Filter vorhanden sind, die Filter aus der Session holen
-    previous_url = request.session.get('previous_url')
-    if 'trip/edit/' in previous_url:
-        if not search_query:
-            search_query = request.session.get('search', '')
-        if 'search' in request.session:
-            del request.session['search']
+    if request.session.get('previous_url'):
+        previous_url = request.session.get('previous_url')
+        if 'trip/edit/' in previous_url:
+            if not search_query:
+                search_query = request.session.get('search', '')
+            if 'search' in request.session:
+                del request.session['search']
 
-        if not selected_trip_type:
-            selected_trip_type = request.session.get('trip_type', '')
-        if 'trip_type' in request.session:
-            del request.session['trip_type']
+            if not selected_trip_type:
+                selected_trip_type = request.session.get('trip_type', '')
+            if 'trip_type' in request.session:
+                del request.session['trip_type']
 
     request.session['search'] = search_query
     request.session['trip_type'] = selected_trip_type
@@ -74,8 +75,8 @@ def show_trip(request, pk=None):
         'title': 'Veranstaltung anzeigen',
         'trip': trip,
         'tripconstructions': tripconstruction,
-        'tripgroups':tripgroups,
-        'total_tn_count':total_tn_count,
+        'tripgroups': tripgroups,
+        'total_tn_count': total_tn_count,
     })
 
 
@@ -274,17 +275,18 @@ def location(request):
     search_query = request.GET.get('search', '')
     selected_location_type = request.GET.get('location_type', '')  # Materialtyp
     # 2. Wenn keine GET-Filter vorhanden sind, die Filter aus der Session holen
-    previous_url = request.session.get('previous_url')
-    if 'location/edit/' in previous_url:
-        if not search_query:
-            search_query = request.session.get('search', '')
-        if 'search' in request.session:
-            del request.session['search']
+    if request.session.get('previous_url'):
+        previous_url = request.session.get('previous_url')
+        if 'location/edit/' in previous_url:
+            if not search_query:
+                search_query = request.session.get('search', '')
+            if 'search' in request.session:
+                del request.session['search']
 
-        if not selected_location_type:
-            selected_location_type = request.session.get('location_type', '')
-        if 'location_type' in request.session:
-            del request.session['location_type']
+            if not selected_location_type:
+                selected_location_type = request.session.get('location_type', '')
+            if 'location_type' in request.session:
+                del request.session['location_type']
 
     request.session['search'] = search_query
     request.session['location_type'] = selected_location_type
@@ -456,7 +458,7 @@ def find_optimal_construction_combination(teilnehmergruppen, konstruktionen, req
     max_sleep_place_count = max(c.sleep_place_count for c in konstruktionen)
 
     # DP-Array initialisieren: dp[x] speichert das minimale Gewicht für genau x Schlafplätze (oder mehr)
-    dp = [Decimal('Infinity')] * (max_sleep_places + max_sleep_place_count+1)  # Ein hoher Wert für "Unendlich"
+    dp = [Decimal('Infinity')] * (max_sleep_places + max_sleep_place_count + 1)  # Ein hoher Wert für "Unendlich"
     dp[0] = Decimal(0)  # 0 Schlafplätze brauchen 0 Gewicht
 
     # Rückverfolgung für die Kombinationen der Konstruktionen
