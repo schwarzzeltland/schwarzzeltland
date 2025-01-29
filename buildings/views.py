@@ -20,7 +20,19 @@ from main.decorators import material_manager_required
 @login_required
 def constructions(request):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
-    search_query = request.GET.get('search', '')  # Hole die Suchanfrage
+    # Suchlogik
+    search_query = request.GET.get('search', '')
+    # 2. Wenn keine GET-Filter vorhanden sind, die Filter aus der Session holen
+    previous_url = request.session.get('previous_url')
+
+    if 'construction/edit/' in previous_url:
+        if not search_query:
+            search_query = request.session.get('search', '')
+        if 'search' in request.session:
+            del request.session['search']
+
+    request.session['search'] = search_query
+    request.session['previous_url'] = request.build_absolute_uri()
     # Filtere Konstruktionen basierend auf der Suchanfrage
     constructions_query = Construction.objects.filter(owner=request.org).order_by('name')
     if search_query:
@@ -86,6 +98,7 @@ def show_construction(request, pk=None):
 @login_required
 @material_manager_required
 def edit_construction(request, pk=None):
+    request.session['previous_url'] = request.build_absolute_uri()
     # Bestehende Konstruktion abrufen, falls PK übergeben wurde
     if pk:
         construction = get_object_or_404(Construction, pk=pk, owner=request.org)
@@ -315,7 +328,22 @@ def material(request):
     # Suchlogik
     search_query = request.GET.get('search', '')
     selected_material_type = request.GET.get('material_type', '')  # Materialtyp
-    print(selected_material_type)
+    # 2. Wenn keine GET-Filter vorhanden sind, die Filter aus der Session holen
+    previous_url = request.session.get('previous_url')
+    if 'material/edit/' in previous_url:
+        if not search_query:
+            search_query = request.session.get('search', '')
+        if 'search' in request.session:
+            del request.session['search']
+
+        if not selected_material_type:
+            selected_material_type = request.session.get('material_type', '')
+        if 'material_type' in request.session:
+            del request.session['material_type']
+
+    request.session['search'] = search_query
+    request.session['material_type'] = selected_material_type
+    request.session['previous_url'] = request.build_absolute_uri()
     # Filtere nach Name oder Lagerort, wenn eine Suchanfrage vorliegt
     if search_query:
         materials = StockMaterial.objects.filter(
@@ -416,6 +444,7 @@ def create_material(request):
 @login_required
 @material_manager_required
 def edit_material(request, pk=None):
+    request.session['previous_url'] = request.build_absolute_uri()
     mat = get_object_or_404(StockMaterial, pk=pk, organization=request.org)
     if request.method == 'POST':
         form = StockMaterialForm(request.POST, instance=mat)

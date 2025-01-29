@@ -20,11 +20,27 @@ from main.models import Membership
 @login_required
 def trip(request):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
+    # Suchlogik
+    search_query = request.GET.get('search', '')
+    selected_trip_type = request.GET.get('trip_type', '')  # Materialtyp
+    # 2. Wenn keine GET-Filter vorhanden sind, die Filter aus der Session holen
+    previous_url = request.session.get('previous_url')
+    if 'trip/edit/' in previous_url:
+        if not search_query:
+            search_query = request.session.get('search', '')
+        if 'search' in request.session:
+            del request.session['search']
 
-    search_query = request.GET.get('search', '')  # Hole die Suchanfrage
+        if not selected_trip_type:
+            selected_trip_type = request.session.get('trip_type', '')
+        if 'trip_type' in request.session:
+            del request.session['trip_type']
+
+    request.session['search'] = search_query
+    request.session['trip_type'] = selected_trip_type
+    request.session['previous_url'] = request.build_absolute_uri()
     # Filtere Konstruktionen basierend auf der Suchanfrage
     trips_query = Trip.objects.filter(owner=request.org)
-    selected_trip_type = request.GET.get('trip_type', '')
     if search_query:
         trips_query = trips_query.filter(
             Q(name__icontains=search_query) | Q(owner__name__icontains=search_query)
@@ -184,6 +200,7 @@ def check_trip_material(request, pk=None):
 @login_required
 @event_manager_required
 def edit_trip(request, pk=None):
+    request.session['previous_url'] = request.build_absolute_uri()
     if pk:
         trip_d = get_object_or_404(Trip, pk=pk, owner=request.org)
     else:
@@ -253,11 +270,26 @@ def edit_trip(request, pk=None):
 @login_required
 def location(request):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
+    # Suchlogik
+    search_query = request.GET.get('search', '')
+    selected_location_type = request.GET.get('location_type', '')  # Materialtyp
+    # 2. Wenn keine GET-Filter vorhanden sind, die Filter aus der Session holen
+    previous_url = request.session.get('previous_url')
+    if 'location/edit/' in previous_url:
+        if not search_query:
+            search_query = request.session.get('search', '')
+        if 'search' in request.session:
+            del request.session['search']
 
-    search_query = request.GET.get('search', '')  # Hole die Suchanfrage
-    # Filtere Konstruktionen basierend auf der Suchanfrage
+        if not selected_location_type:
+            selected_location_type = request.session.get('location_type', '')
+        if 'location_type' in request.session:
+            del request.session['location_type']
+
+    request.session['search'] = search_query
+    request.session['location_type'] = selected_location_type
+    request.session['previous_url'] = request.build_absolute_uri()
     locations_query = Location.objects.filter(owner=request.org)
-    selected_location_type = request.GET.get('location_type', '')
     if search_query:
         locations_query = locations_query.filter(
             Q(name__icontains=search_query) | Q(owner__name__icontains=search_query)
@@ -336,6 +368,7 @@ def show_location(request, pk=None):
 @login_required
 @event_manager_required
 def edit_location(request, pk=None):
+    request.session['previous_url'] = request.build_absolute_uri()
     if pk:
         location_d = get_object_or_404(Location, pk=pk, owner=request.org)
         print(location_d)
