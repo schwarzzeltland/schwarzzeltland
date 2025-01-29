@@ -43,12 +43,12 @@
     <script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const latitude = parseFloat("{{ location.latitude|floatformat:6 }}");
-            const longitude = parseFloat("{{ location.longitude|floatformat:6 }}");
+            const latitude = parseFloat("{{ location.latitude|safe }}");
+            const longitude = parseFloat("{{ location.longitude|safe }}");
 
             const map = new google.maps.Map(document.getElementById('map'), {
                 center: {lat: latitude, lng: longitude},
-                zoom: 12, // Zoom-Level
+                zoom: 14, // Zoom-Level
             });
 
             // Marker hinzufügen
@@ -60,9 +60,9 @@
         });
     </script>
     <style>
-    #map {
-        height: 400px; /* Höhe der Karte */
-        width: 100%;   /* Karte nimmt die gesamte Breite ein */
-    }
-</style>
+        #map {
+            height: 400px; /* Höhe der Karte */
+            width: 100%; /* Karte nimmt die gesamte Breite ein */
+        }
+    </style>
 {% endblock %}
