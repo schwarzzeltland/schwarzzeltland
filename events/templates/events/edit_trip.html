@@ -88,10 +88,7 @@
                         {% endif %}
                     </div>
                     <div class="mb-2">
-                        <button type="button" class="btn btn-secondary" onclick="history.back()">Abbrechen</button>
-                        <noscript>
-                            <a href="{% url 'trip' %}" class="btn btn-secondary">Abbrechen</a>
-                        </noscript>
+                        <a href="{% url 'trip' %}" class="btn btn-secondary">Abbrechen</a>
                     </div>
                 </div>
             </form>
@@ -115,7 +112,9 @@
                             </optgroup>
                             <optgroup label="Öffentliche Konstruktionen anderer Organisationen">
                                 {% for construction in constructions.external %}
-                                    <option value="{{ construction.id }}">{{ construction.name }} ({{ construction.owner.name }})</option>
+                                    <option value="{{ construction.id }}">{{ construction.name }}
+                                        ({{ construction.owner.name }})
+                                    </option>
                                 {% endfor %}
                             </optgroup>
                         </select>
