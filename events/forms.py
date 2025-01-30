@@ -15,7 +15,7 @@ class TripForm(ModelForm):
         super(TripForm, self).__init__(*args, **kwargs)
         self.instance.organization = organization
         # Eigene Orte
-        org_locations = Location.objects.filter(Q(owner=organization))
+        org_locations = Location.objects.filter(Q(owner=organization)).order_by('name')
         # Setze das Queryset für das `ModelChoiceField`
         self.fields['location'].queryset = org_locations
         self.fields['location'].empty_label = "---------"
@@ -47,17 +47,26 @@ class TripConstructionForm(ModelForm):
         organization = kwargs.pop('organization', None)
         super(TripConstructionForm, self).__init__(*args, **kwargs)
         self.instance.organization = organization
-        # Materialien gruppieren
+        # Konstruktionen der eigenen Organisation
         org_constructions = Construction.objects.filter(owner=organization).order_by('name')
+        # Externe Konstruktionen, entweder öffentlich oder ohne zugewiesenen Eigentümer
         external_constructions = Construction.objects.filter(
-            Q(owner__isnull=True) | Q(public=True) & ~Q(owner=organization)
-        ).order_by('name')
+            Q(public=True) & ~Q(owner=organization) & Q(owner__isnull=False)).order_by('name')
+        public_constructions = Construction.objects.filter(Q(owner__isnull=True)).order_by('name')
+        # Kombiniere beide Gruppen von Konstruktionen und setze sie als Queryset für das Feld
+        combined_queryset = org_constructions | public_constructions | external_constructions
 
+        # Setze das Queryset für das `ModelChoiceField`
+        self.fields['construction'].queryset = combined_queryset
+        self.fields['construction'].empty_label = "---------"
         # Erstelle Optiongroups
         choices = [
             ('', '---------'),
-            ("Eigene Konstruktionen", [(con.id, con.name) for con in org_constructions]),
-            ("Öffentliche Konstruktionen", [(con.id, con.name) for con in external_constructions]),
+            ("Eigene Konstruktionen", [(c.id, c.name) for c in org_constructions]),
+            ("Öffentliche Konstruktionen", [(c.id, c.name) for c in public_constructions]),
+            ("Öffentliche Konstruktionen anderer Organisationen",
+             [(c.id, f"{c.name} ({c.owner.name})")  # Füge den Organisationsnamen hinzu
+              for c in external_constructions]),
         ]
         self.fields['construction'].choices = choices
 
@@ -93,17 +102,22 @@ class ImportLocationForm(Form):
         organization = kwargs.pop('organization', None)
         super(ImportLocationForm, self).__init__(*args, **kwargs)
         self.organization = organization
-        # Externe Orte, entweder öffentlich oder ohne zugewiesenen Eigentümer
-        external_locations = Location.objects.filter(
-            Q(owner__isnull=True) | Q(public=True) & ~Q(owner=organization)
-        )
+        org_location = Location.objects.filter(owner=organization).order_by('name')
+        external_location = Location.objects.filter(Q(public=True) & ~Q(owner=organization) & Q(owner__isnull=False)).order_by('name')
+        public_location = Location.objects.filter(Q(owner__isnull=True)).order_by('name')
+        combined_queryset = org_location | public_location | external_location
+
         # Setze das Queryset für das `ModelChoiceField`
-        self.fields['location'].queryset = external_locations
+        self.fields['location'].queryset = combined_queryset
         self.fields['location'].empty_label = "---------"
         # Erstelle Optiongroups
         choices = [
             ('', '---------'),
-            ("Öffentliche Orte", [(c.id, c.name) for c in external_locations]),
+            ("Eigene Orte", [(c.id, c.name) for c in org_location]),
+            ("Öffentliche Orte", [(c.id, c.name) for c in public_location]),
+            ("Öffentliche Orte anderer Organisationen",
+             [(c.id, f"{c.name} ({c.owner.name})")  # Füge den Organisationsnamen hinzu
+              for c in external_location]),
         ]
         self.fields['location'].choices = choices
 

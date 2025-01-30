@@ -17,17 +17,26 @@ class AddMaterialStockForm(ModelForm):
         organization = kwargs.pop('organization', None)
         super(AddMaterialStockForm, self).__init__(*args, **kwargs)
         self.instance.organization = organization
-        # Materialien gruppieren
-        org_materials = Material.objects.filter(owner=organization).order_by('name')
-        external_materials = Material.objects.filter(
-            Q(owner__isnull=True) | Q(public=True) & ~Q(owner=organization)
-        ).order_by('name')
 
+        # Konstruktionen der eigenen Organisation
+        org_material = Material.objects.filter(owner=organization).order_by('name')
+
+        # Externe Konstruktionen, entweder öffentlich oder ohne zugewiesenen Eigentümer
+        external_material = Material.objects.filter(Q(public=True) & ~Q(owner=organization) & Q(owner__isnull=False)).order_by('name')
+        public_material = Material.objects.filter(Q(owner__isnull=True)).order_by('name')
+        # Kombiniere beide Gruppen von Konstruktionen und setze sie als Queryset für das Feld
+        combined_queryset = org_material | public_material | external_material
+
+        # Setze das Queryset für das `ModelChoiceField`
+        self.fields['material'].queryset = combined_queryset
+        self.fields['material'].empty_label = "---------"
         # Erstelle Optiongroups
         choices = [
             ('', '---------'),
-            ("Eigene Materialien", [(mat.id, mat.name) for mat in org_materials]),
-            ("Öffentliche Materialien", [(mat.id, mat.name) for mat in external_materials]),
+            ("Eigenes Material", [(c.id, c.name) for c in org_material]),
+            ("Öffentliches Material", [(c.id, c.name) for c in public_material]),
+            ("Öffentliches Material anderer Organisationen", [ (c.id, f"{c.name} ({c.owner.name})")  # Füge den Organisationsnamen hinzu
+            for c in external_material]),
         ]
         self.fields['material'].choices = choices
 
@@ -86,36 +95,31 @@ class ImportConstructionForm(Form):
         self.organization = organization
 
         # Konstruktionen der eigenen Organisation
-        org_constructions = Construction.objects.filter(owner=organization)
+        org_constructions = Construction.objects.filter(owner=organization).order_by('name')
 
         # Externe Konstruktionen, entweder öffentlich oder ohne zugewiesenen Eigentümer
-        external_constructions = Construction.objects.filter(
-            Q(owner__isnull=True) | Q(public=True) & ~Q(owner=organization)
-        )
-
+        external_constructions = Construction.objects.filter(Q(public=True) & ~Q(owner=organization) & Q(owner__isnull=False)).order_by('name')
+        public_constructions = Construction.objects.filter(Q(owner__isnull=True)).order_by('name')
         # Kombiniere beide Gruppen von Konstruktionen und setze sie als Queryset für das Feld
-        combined_queryset = org_constructions | external_constructions
+        combined_queryset = org_constructions | public_constructions | external_constructions
 
         # Setze das Queryset für das `ModelChoiceField`
         self.fields['construction'].queryset = combined_queryset
         self.fields['construction'].empty_label = "---------"
-        # Materialien gruppieren
-        org_constructions = Construction.objects.filter(owner=organization)
-        external_constructions = Construction.objects.filter(
-            Q(owner__isnull=True) | Q(public=True) & ~Q(owner=organization)
-        )
         # Erstelle Optiongroups
         choices = [
             ('', '---------'),
             ("Eigene Konstruktionen", [(c.id, c.name) for c in org_constructions]),
-            ("Öffentliche Konstruktionen", [(c.id, c.name) for c in external_constructions]),
+            ("Öffentliche Konstruktionen", [(c.id, c.name) for c in public_constructions]),
+            ("Öffentliche Konstruktionen anderer Organisationen", [ (c.id, f"{c.name} ({c.owner.name})")  # Füge den Organisationsnamen hinzu
+            for c in external_constructions]),
         ]
         self.fields['construction'].choices = choices
 
 
 class ConstructionMaterialForm(ModelForm):
-    count = IntegerField(required=True,validators=[MinValueValidator(0)],label='Anzahl')
-    storage_place = CharField(required=False,label='Lagerort')
+    count = IntegerField(required=True, validators=[MinValueValidator(0)], label='Anzahl')
+    storage_place = CharField(required=False, label='Lagerort')
     add_to_stock = forms.BooleanField(
         required=False,
         label="In Lager übernehmen",
@@ -126,27 +130,37 @@ class ConstructionMaterialForm(ModelForm):
         organization = kwargs.pop('organization', None)
         super(ConstructionMaterialForm, self).__init__(*args, **kwargs)
         self.instance.organization = organization
-        # Materialien gruppieren
-        org_materials = Material.objects.filter(owner=organization).order_by('name')
-        external_materials = Material.objects.filter(
-            Q(owner__isnull=True) | Q(public=True) & ~Q(owner=organization)
-        ).order_by('name')
 
+        # Konstruktionen der eigenen Organisation
+        org_material = Material.objects.filter(owner=organization).order_by('name')
+
+        # Externe Konstruktionen, entweder öffentlich oder ohne zugewiesenen Eigentümer
+        external_material = Material.objects.filter(Q(public=True) & ~Q(owner=organization) & Q(owner__isnull=False)).order_by('name')
+        public_material = Material.objects.filter(Q(owner__isnull=True)).order_by('name')
+        # Kombiniere beide Gruppen von Konstruktionen und setze sie als Queryset für das Feld
+        combined_queryset = org_material | public_material | external_material
+
+        # Setze das Queryset für das `ModelChoiceField`
+        self.fields['material'].queryset = combined_queryset
+        self.fields['material'].empty_label = "---------"
         # Erstelle Optiongroups
         choices = [
             ('', '---------'),
-            ("Eigene Materialien", [(mat.id, mat.name) for mat in org_materials]),
-            ("Öffentliche Materialien", [(mat.id, mat.name) for mat in external_materials]),
+            ("Eigenes Material", [(c.id, c.name) for c in org_material]),
+            ("Öffentliches Material", [(c.id, c.name) for c in public_material]),
+            ("Öffentliches Material anderer Organisationen", [ (c.id, f"{c.name} ({c.owner.name})")  # Füge den Organisationsnamen hinzu
+            for c in external_material]),
         ]
         self.fields['material'].choices = choices
 
     class Meta:
         model = ConstructionMaterial
         fields = '__all__'
-        exclude = ['construction','packed']
+        exclude = ['construction', 'packed']
 
 
 ConstructionMaterialFormSet = inlineformset_factory(
-    Construction, ConstructionMaterial, form=ConstructionMaterialForm, fields=("material", "count", "storage_place","add_to_stock"),
+    Construction, ConstructionMaterial, form=ConstructionMaterialForm,
+    fields=("material", "count", "storage_place", "add_to_stock"),
     extra=1, can_delete=True
 )

@@ -65,14 +65,19 @@
                     <div class="mb-3">
                         <select name="constructionmaterial_set-__prefix__-material" class="form-select select2">
                             <option value="" selected>---------</option>
-                            <optgroup label="Eigene Materialien">
+                            <optgroup label="Eigenes Material">
                                 {% for material in materials.organization %}
                                     <option value="{{ material.id }}">{{ material.name }}</option>
                                 {% endfor %}
                             </optgroup>
-                            <optgroup label="Fremde Materialien">
-                                {% for material in materials.external %}
+                            <optgroup label="Öffentliches Material">
+                                {% for material in materials.public %}
                                     <option value="{{ material.id }}">{{ material.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Öffentliches Material anderer Organisationen">
+                                {% for material in materials.external %}
+                                    <option value="{{ material.id }}">{{ material.name }} ({{ material.owner.name }})</option>
                                 {% endfor %}
                             </optgroup>
                         </select>

@@ -250,11 +250,13 @@ def edit_trip(request, pk=None):
         tripgroup_formset = TripGroupFormSet(instance=trip_d, form_kwargs={'organization': request.org})
         total_tn_count = sum(group.count for group in TripGroup.objects.filter(trip=trip_d))
     org_constructions = Construction.objects.filter(owner=request.org).order_by('name')
+    # Externe Konstruktionen, entweder öffentlich oder ohne zugewiesenen Eigentümer
     external_constructions = Construction.objects.filter(
-        Q(owner__isnull=True) | Q(public=True) & ~Q(owner=request.org)
-    ).order_by('name')
+        Q(public=True) & ~Q(owner=request.org) & Q(owner__isnull=False)).order_by('name')
+    public_constructions = Construction.objects.filter(Q(owner__isnull=True)).order_by('name')
     constructions = {
         "organization": org_constructions,
+        "public": public_constructions,
         "external": external_constructions,
     }
     return render(request, 'events/edit_trip.html', {

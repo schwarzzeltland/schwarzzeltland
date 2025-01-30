@@ -232,11 +232,11 @@ def edit_construction(request, pk=None):
         construction_form = ConstructionForm(instance=construction)
         material_formset = ConstructionMaterialFormSet(instance=construction, form_kwargs={'organization': request.org})
     org_materials = Material.objects.filter(owner=request.org).order_by('name')
-    external_materials = Material.objects.filter(
-        Q(owner__isnull=True) | Q(public=True) & ~Q(owner=request.org)
-    ).order_by('name')
+    external_materials = Material.objects.filter(Q(public=True) & ~Q(owner=request.org) & Q(owner__isnull=False)).order_by('name')
+    public_materials = Material.objects.filter(Q(owner__isnull=True)).order_by('name')
     materials = {
         "organization": org_materials,
+        "public":public_materials,
         "external": external_materials,
     }
 

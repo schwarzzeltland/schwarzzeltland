@@ -109,8 +109,13 @@
                                 {% endfor %}
                             </optgroup>
                             <optgroup label="Öffentliche Konstruktionen">
-                                {% for construction in constructions.external %}
+                                {% for construction in constructions.public %}
                                     <option value="{{ construction.id }}">{{ construction.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Öffentliche Konstruktionen anderer Organisationen">
+                                {% for construction in constructions.external %}
+                                    <option value="{{ construction.id }}">{{ construction.name }} ({{ construction.owner.name }})</option>
                                 {% endfor %}
                             </optgroup>
                         </select>
