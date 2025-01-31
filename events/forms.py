@@ -102,10 +102,9 @@ class ImportLocationForm(Form):
         organization = kwargs.pop('organization', None)
         super(ImportLocationForm, self).__init__(*args, **kwargs)
         self.organization = organization
-        org_location = Location.objects.filter(owner=organization).order_by('name')
         external_location = Location.objects.filter(Q(public=True) & ~Q(owner=organization) & Q(owner__isnull=False)).order_by('name')
         public_location = Location.objects.filter(Q(owner__isnull=True)).order_by('name')
-        combined_queryset = org_location | public_location | external_location
+        combined_queryset = public_location | external_location
 
         # Setze das Queryset für das `ModelChoiceField`
         self.fields['location'].queryset = combined_queryset
@@ -113,7 +112,6 @@ class ImportLocationForm(Form):
         # Erstelle Optiongroups
         choices = [
             ('', '---------'),
-            ("Eigene Orte", [(c.id, c.name) for c in org_location]),
             ("Öffentliche Orte", [(c.id, c.name) for c in public_location]),
             ("Öffentliche Orte anderer Organisationen",
              [(c.id, f"{c.name} ({c.owner.name})")  # Füge den Organisationsnamen hinzu
