@@ -455,7 +455,7 @@ def calculate_total_weight_for_group(group_combination):
 
 def find_optimal_construction_combination(teilnehmergruppen, konstruktionen, request):
     # Maximal mögliche Schlafplätze (Summe aller Gruppengrößen)
-    max_sleep_places = sum(teilnehmergruppen)
+    max_sleep_places = max(teilnehmergruppen)
     min_sleep_place_count = min(c.sleep_place_count for c in konstruktionen)
     max_sleep_place_count = max(c.sleep_place_count for c in konstruktionen)
 
