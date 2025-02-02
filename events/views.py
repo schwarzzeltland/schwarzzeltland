@@ -243,6 +243,9 @@ def edit_trip(request, pk=None):
             elif 'construction_summary' in request.POST:
                 return redirect('construction_summary', trip_d.pk)
             elif 'find_construction_combination' in request.POST:
+                min_sleeping_places = request.POST.get("min_sleeping_places")
+                if min_sleeping_places:
+                    request.session["min_sleeping_places"] = min_sleeping_places
                 return redirect('find_construction_combination', trip_d.pk)
     else:
         trip_form = TripForm(instance=trip_d, organization=request.org)
@@ -453,10 +456,10 @@ def calculate_total_weight_for_group(group_combination):
     return total_weight
 
 
-def find_optimal_construction_combination(teilnehmergruppen, konstruktionen, request):
+def find_optimal_construction_combination(teilnehmergruppen, konstruktionen, request,
+                                          min_sleep_place_count_construction):
     # Maximal mögliche Schlafplätze (Summe aller Gruppengrößen)
     max_sleep_places = max(teilnehmergruppen)
-    min_sleep_place_count = min(c.sleep_place_count for c in konstruktionen)
     max_sleep_place_count = max(c.sleep_place_count for c in konstruktionen)
 
     # DP-Array initialisieren: dp[x] speichert das minimale Gewicht für genau x Schlafplätze (oder mehr)
@@ -468,7 +471,7 @@ def find_optimal_construction_combination(teilnehmergruppen, konstruktionen, req
 
     # Iteration durch alle Konstruktionen und alle möglichen Schlafplatzzahlen
     for konstruktion in konstruktionen:
-        if konstruktion.sleep_place_count == 0:
+        if konstruktion.sleep_place_count < min_sleep_place_count_construction:
             continue
 
         materials = ConstructionMaterial.objects.filter(construction=konstruktion)
@@ -538,8 +541,13 @@ def find_construction_combination(request, pk=None):
         messages.warning(request, "Du hast keine Konstruktionen.")
         return redirect('edit_trip', pk=pk)
 
+    min_sleeping_places_c = request.session.get("min_sleeping_places")  # Wert aus Session holen
+    if min_sleeping_places_c:
+        min_sleeping_places_c = int(min_sleeping_places_c)
+    else:
+        min_sleeping_places_c = 1
     optimal_combination, min_total_weight = find_optimal_construction_combination(teilnehmergruppen, konstruktionen,
-                                                                                  request)
+                                                                                  request, min_sleeping_places_c)
 
     group_construction_data = []
     for group, group_combination in zip(trip_groups, optimal_combination):
@@ -557,7 +565,6 @@ def find_construction_combination(request, pk=None):
             })
 
         group_construction_data.append(group_data)
-
     return render(request, 'events/find_construction_combination.html', {
         'title': 'Optimale Konstruktions-Kombination finden',
         'trip': trip,
@@ -584,9 +591,13 @@ def save_constructions_for_trip(request, pk=None):
         messages.warning(request, "Es sind keine Konstruktionen vorhanden.")
         return redirect('edit_trip', pk=pk)
 
+    min_sleeping_places_c = request.session.get("min_sleeping_places")  # Wert aus Session holen
+    if min_sleeping_places_c:
+        min_sleeping_places_c = int(min_sleeping_places_c)
+
     # Finde die optimale Kombination der Konstruktionen und das minimalste Gesamtgewicht
     optimal_combination, min_total_weight = find_optimal_construction_combination(
-        teilnehmergruppen, konstruktionen, request
+        teilnehmergruppen, konstruktionen, request, min_sleeping_places_c
     )
     # Alte TripConstruction-Einträge für diesen Trip löschen
     TripConstruction.objects.filter(trip=trip).delete()

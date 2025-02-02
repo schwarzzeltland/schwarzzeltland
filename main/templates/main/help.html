@@ -2,14 +2,14 @@
 
 {% block content %}
 {#    <h1>Was ist Schwarzzeltland?</h1>#}
-    <h2>Schwarzzeltland ist eine kostenlose Webseite auf der ihr eure eigenen Zeltmaterialien oder auch die eures
+    <h2>Schwarzzeltland ist eine kostenlose Webseite, auf der ihr die Zeltmaterialien und Veranstaltungen eures
         Pfadfinderstammes verwalten könnt.</h2>
     <p></p>
     <h2>Was heißt das im Detail?</h2>
     <p> Ihr könnt eure Zeltkonstruktionen, mit den jeweils benötigten Materialien speichern und wenn ihr möchtet mit
         anderen Nutzern teilen, um eure einzigartigen Bauwerke anderen Pfadfindern (oder auch Nicht-Pfadfinder) zu
         präsentieren.</p>
-    <p>Außerdem habt ihr die Möglichkeit die Materiallager, Konstruktionen und Events eurer Organisationen zu
+    <p>Außerdem habt ihr die Möglichkeit die Materiallager, Konstruktionen, Orte und Veranstaltungen eurer Organisationen zu
         verwalten.</p>
     <h4>Hierfür könnt ihr euch einen kostenlosen Account erstellen.</h4>
     <p></p>
@@ -18,17 +18,24 @@
         z.B. "Maxs Organisation" </p>
     <p>Ihr könnt beliebig viele Organisationen erstellen und andere Nutzer zu diesen einladen und deren Berechtigungen
         verwalten.</p>
-    <p>Es gibt folgende Berechtigungen:</p>
-    <p>- Admin: Der Admin ist der Verwalter der Organisation, dieser kann Nutzer einladen und Berechtigungen
-        verwalten.</p>
-    <p>- Materialwart: Der Materialwart kann die Materialbestände der Organisation bearbeiten und Konstruktionen
-        hinzufügen oder verändern.</p>
-    <p>- Mitglied: Mitglieder der Organisation können sich nur das Material und die Konstruktionen der Organisation
-        anschauen, aber nichts verändern.</p>
+    <p>Es gibt folgende Berechtigungen:
+    <ul>
+        <li>Admin: Der Admin ist der Verwalter der Organisation, dieser kann Nutzer einladen und Berechtigungen
+        verwalten.</li>
+        <li>Materialwart: Der Materialwart kann die Materialbestände der Organisation bearbeiten und Konstruktionen
+        hinzufügen oder verändern.</li>
+        <li>Eventmanager: Der Eventmanager kann die Veranstaltungen und Orte der Organisation bearbeiten und neue Veranstaltungen und Orten hinzufügen.</li>
+        <li>Mitglied: Mitglieder der Organisation können sich nur das Material, die Konstruktionen, die Orte und Veranstaltungen der Organisation
+        anschauen, aber nichts verändern. Bei den Konstruktionen haben Sie noch die Möglichkeit den Lagerbestand der für die Konstruktion benötigten Materialien abzufragen. Außerdem können Sie das auch bei den Veranstaltungen für alle Konstruktionen dieser machen und sehen welche Materialien bereits eingeapckt wurden.</li>
+    </ul>
     <h2>Was sind Konstruktionen</h2>
     <p>Konstruktionen sind eure Zelte, also zum Beispiel eine Kothe, die aus 4 Kothenblättern, Heringen, Seilen etc.
         besteht. </p>
-    <h2>Was sind Events</h2>
-    <p>Events sind die Veranstaltungen eurer Organisationen, also zum Beispiel das Pfingtslager, der Wandertag oder eine
+    <h2>Was sind Veranstaltungen</h2>
+    <p>Veranstaltungen sind die Aktionen eurer Organisationen, also zum Beispiel das Pfingstlager, der Wandertag oder eine
         Übernachtung, für die ihr Konstruktionen (Zelte) benötigt.</p>
+    <p>Ihr könnt in euren Veranstaltungen einzelne Untergruppen definieren, um zum Beispiel die Altersstruktur oder Sippen-Struktur für die Veranstaltung zu erfassen.</p>
+    <h4>Die Optimale Konstruktions-Kombination für eine Veranstaltung</h4>
+    <p>Vorausgesetzt ihr habt eure Materialien, die ihr für eure Konstruktionen verwendet, alle mit einem Gewicht versehen und Gruppen in eurer Veranstaltung definiert, kann euch diese Funktion eine optimale Kombination von Konstruktionen unter Berücksichtung eurer Gruppenstruktur und dem geringstem Material-Gesamt-Gewicht vorschlagen.</p>
+    <p>Diese Funktion steht nur Event-Managern zur Verfügung und ist bei der Bearbeitung von Veranstaltungen zu finden.</p>
 {% endblock %}
