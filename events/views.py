@@ -4,6 +4,7 @@ from collections import defaultdict
 from _decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q, Sum
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404, redirect
@@ -211,10 +212,14 @@ def check_trip_material(request, pk=None):
         messages.success(request, "Alle Materialien sind ausreichend vorhanden.")
 
     # Gesamtgewicht berechnen (falls Materialien eine Gewichtseigenschaft haben)
-    total_weight_available = sum(
-        (m.count * m.material.weight) if hasattr(m.material, 'weight') else 0
-        for m in trip_materials
-    )
+    total_weight_available = 0
+    for mate in available_materials:
+        try:
+            material_obj = Material.objects.get(name=mate['material'])  # Material-Objekt abrufen
+            weight_per_unit = material_obj.weight if material_obj.weight else 0  # Gewicht pro Einheit
+            total_weight_available += mate['required_quantity'] * weight_per_unit
+        except ObjectDoesNotExist:
+            pass  # Falls Material nicht gefunden wird, ignorieren
 
     # Seite rendern
     return render(request, 'events/check_trip_material.html', {

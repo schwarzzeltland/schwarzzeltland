@@ -78,7 +78,7 @@
         {% else %}
             <p>Alle Materialien sind ausreichend vorhanden.</p>
         {% endif %}
-        <h4>Gesamtgewicht der Materialien: {{ total_weigth_av_m }} kg</h4>
+        <h4>Gesamtgewicht der verfügbaren Materialien: {{ total_weight_available }} kg</h4>
         {% csrf_token %}
 
         {% if is_event_manager %}
