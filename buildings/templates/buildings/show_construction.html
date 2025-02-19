@@ -49,24 +49,26 @@
                 </table>
 
                 <h4>Material:</h4>
-                <table class="table">
-                    <thead>
-                    <tr>
-                        <th>Materialname</th>
-                        <th>Anzahl</th>
-                        <th>Lagerplatz</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {% for cm in construction_material %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
                         <tr>
-                            <td>{{ cm.material.name }}</td>
-                            <td>{{ cm.count }}</td>
-                            <td>{{ cm.storage_place }}</td>
+                            <th>Materialname</th>
+                            <th>Anzahl</th>
+                            <th>Lagerplatz</th>
                         </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                        {% for cm in construction_material %}
+                            <tr>
+                                <td>{{ cm.material.name }}</td>
+                                <td>{{ cm.count }}</td>
+                                <td>{{ cm.storage_place }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 <div class="mb-3">
                     <a href="{% url 'check_material' construction.pk %}" class="btn btn-outline-success">Materialverfügbarkeit
                         im Lager prüfen</a>

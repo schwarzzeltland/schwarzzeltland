@@ -10,9 +10,9 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
 from unicodedata import decimal
 
-from buildings.models import Construction, StockMaterial, ConstructionMaterial
-from events.forms import TripForm, TripConstructionFormSet, LocationForm, ImportLocationForm, TripGroupFormSet
-from events.models import Trip, TripConstruction, Location, PackedMaterial, TripGroup
+from buildings.models import Construction, StockMaterial, ConstructionMaterial, Material
+from events.forms import TripForm, TripConstructionFormSet, LocationForm, ImportLocationForm, TripGroupFormSet, TripMaterialFormSet
+from events.models import Trip, TripConstruction, Location, PackedMaterial, TripGroup, TripMaterial
 from main.decorators import organization_admin_required, event_manager_required
 from main.models import Membership
 
@@ -69,12 +69,14 @@ def show_trip(request, pk=None):
     trip = get_object_or_404(Trip, pk=pk, owner=request.org)
     tripconstruction = TripConstruction.objects.filter(trip=trip)
     tripgroups = TripGroup.objects.filter(trip=trip)
+    tripmaterials = TripMaterial.objects.filter(trip=trip)
     trip.type = trip.get_type_display()
     total_tn_count = sum(group.count for group in TripGroup.objects.filter(trip=trip))
     return render(request, 'events/show_trip.html', {
         'title': 'Veranstaltung anzeigen',
         'trip': trip,
         'tripconstructions': tripconstruction,
+        'tripmaterials': tripmaterials,
         'tripgroups': tripgroups,
         'total_tn_count': total_tn_count,
     })
@@ -109,6 +111,7 @@ def check_trip_material(request, pk=None):
             # Materialien zur zentralen Liste hinzufügen
             materials.extend(construction_materials)
 
+    materials.extend(TripMaterial.objects.filter(trip=trip))
     # Sammlung von Materialien nach Namen gruppieren
     material_names = defaultdict(list)
 
@@ -211,7 +214,9 @@ def edit_trip(request, pk=None):
         tripconstruction_formset = TripConstructionFormSet(request.POST, instance=trip_d,
                                                            form_kwargs={'organization': request.org})
         tripgroup_formset = TripGroupFormSet(request.POST, instance=trip_d, form_kwargs={'organization': request.org})
-        if trip_form.is_valid() & tripconstruction_formset.is_valid() & tripgroup_formset.is_valid():
+        tripmaterial_formset = TripMaterialFormSet(request.POST, instance=trip_d, form_kwargs={'organization': request.org})
+
+        if trip_form.is_valid() & tripconstruction_formset.is_valid() & tripgroup_formset.is_valid() & tripmaterial_formset.is_valid():
             trip_d = trip_form.save(commit=False)
             trip_d.owner = request.org
             trip_d.save()
@@ -231,7 +236,13 @@ def edit_trip(request, pk=None):
                 gr.save()
                 total_tn_count += gr.count
             tripgroup_formset.save_m2m()
-
+            other_materials = tripmaterial_formset.save(commit=False)
+            for obj in tripmaterial_formset.deleted_objects:  # Gelöschte Objekte entfernen
+                obj.delete()
+            for mat in other_materials:
+                mat.trip = trip_d
+                mat.save()
+            tripmaterial_formset.save_m2m()
             # Unterscheidung der Weiterleitungen basierend auf dem Button
             if 'save' in request.POST:
                 # Wenn der Speichern-Button gedrückt wurde, weiter zu Trips
@@ -251,7 +262,8 @@ def edit_trip(request, pk=None):
         trip_form = TripForm(instance=trip_d, organization=request.org)
         tripconstruction_formset = TripConstructionFormSet(instance=trip_d, form_kwargs={'organization': request.org})
         tripgroup_formset = TripGroupFormSet(instance=trip_d, form_kwargs={'organization': request.org})
-        total_tn_count = sum(group.count for group in TripGroup.objects.filter(trip=trip_d))
+        tripmaterial_formset = TripMaterialFormSet(instance=trip_d, form_kwargs={'organization': request.org})
+    total_tn_count = sum(group.count for group in TripGroup.objects.filter(trip=trip_d))
     org_constructions = Construction.objects.filter(owner=request.org).order_by('name')
     # Externe Konstruktionen, entweder öffentlich oder ohne zugewiesenen Eigentümer
     external_constructions = Construction.objects.filter(
@@ -262,13 +274,24 @@ def edit_trip(request, pk=None):
         "public": public_constructions,
         "external": external_constructions,
     }
+    org_materials = Material.objects.filter(owner=request.org).order_by('name')
+    external_materials = Material.objects.filter(
+        Q(public=True) & ~Q(owner=request.org) & Q(owner__isnull=False)).order_by('name')
+    public_materials = Material.objects.filter(Q(owner__isnull=True)).order_by('name')
+    materials = {
+        "organization": org_materials,
+        "public": public_materials,
+        "external": external_materials,
+    }
     return render(request, 'events/edit_trip.html', {
         'title': 'Veranstaltung bearbeiten',
         'trip_form': trip_form,
         'trip': trip_d,
         'construction_formset': tripconstruction_formset,
         'group_formset': tripgroup_formset,
+        'material_formset': tripmaterial_formset,
         'constructions': constructions,
+        'materials': materials,
         'total_tn_count': total_tn_count,
     })
 

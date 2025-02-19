@@ -2,7 +2,7 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import CharField, BooleanField
 
-from buildings.models import Construction
+from buildings.models import Construction, Material
 from main.models import Organization
 
 
@@ -76,4 +76,10 @@ class TripGroup(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE)
     count = models.IntegerField(default=0,verbose_name="Anzahl",validators=[MinValueValidator(0)])
     name = CharField(max_length=1024, default="", blank=True,verbose_name="Gruppenname")
+
+class TripMaterial(models.Model):
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE)
+    material = models.ForeignKey(Material, on_delete=models.CASCADE)
+    count = models.IntegerField(default=0,verbose_name="Anzahl",validators=[MinValueValidator(0)])
+    description = CharField(max_length=1024, default="", blank=True,verbose_name="Beschreibung")
 

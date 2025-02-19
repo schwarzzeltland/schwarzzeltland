@@ -9,7 +9,7 @@
             <form method="post" enctype='multipart/form-data'>
                 {% csrf_token %}
                 {% bootstrap_form trip_form %}
-                <p>Unterteile deine Teilmnehmer in Gruppen, z.B. nach Alter oder nach Sippen.</p>
+                <h4>Unterteile deine Teilmnehmer in Gruppen, z.B. nach Alter oder nach Sippen.</h4>
                 <p>Gesamt TN-Anzahl: {{ total_tn_count }}</p>
                 <div class="table-responsive">
                     <table>
@@ -38,6 +38,8 @@
                 <div class="mb-3">
                     <button type="button" id="add-row-group" class="btn btn-outline-primary">Zeile hinzufügen</button>
                 </div>
+
+                <h4>Konstruktionen:</h4>
                 <div class="table-responsive">
                     <table>
                         <thead>
@@ -64,41 +66,77 @@
                         </tbody>
                     </table>
                 </div>
+
                 <div class="mb-3">
 
                     <div class="mb-4">
                         <button type="button" id="add-row" class="btn btn-outline-primary">Zeile hinzufügen</button>
                     </div>
-                    <div class="mb-2">
-                        <button type="submit" name="save" class="btn btn-success btn-green">Veranstaltung speichern
+
+                </div>
+                <h4>Sonstiges Material:</h4>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Material</th>
+                            <th>Anzahl</th>
+                            <th>Beschreibung</th>
+                            <th>Löschen</th>
+                        </tr>
+                        </thead>
+                        <tbody id="form-container-material">
+                        {{ material_formset.management_form }}
+                        {% for form in material_formset %}
+                            {% for hidden in form.hidden_fields %}
+                                {{ hidden }}
+                            {% endfor %}
+                            <tr>
+                                <td>{% bootstrap_field form.material show_label=False %} </td>
+                                <td>{% bootstrap_field form.count show_label=False %}</td>
+                                <td>{% bootstrap_field form.description show_label=False %}</td>
+                                <td>{% bootstrap_field form.DELETE show_label=False %}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mb-3">
+                    <div class="mb-4">
+                        <button type="button" id="add-row-material" class="btn btn-outline-primary">Zeile hinzufügen
                         </button>
                     </div>
-                    {% if trip.pk != None %}
-                        <div class="mb-2">
-                            <button type="submit" name="check_material" class="btn btn-outline-success btn-green">
-                                Materialverfügbarkeit im Lager prüfen
-                            </button>
-                            <button type="submit" name="construction_summary" class="btn btn-outline-success btn-green">
-                                Konstruktions-Zusammenfassung
-                            </button>
+                </div>
+                <div class="mb-2">
+                    <button type="submit" name="save" class="btn btn-success btn-green">Veranstaltung speichern
+                    </button>
+                </div>
+                {% if trip.pk != None %}
+                    <div class="mb-2">
+                        <button type="submit" name="check_material" class="btn btn-outline-success btn-green">
+                            Materialverfügbarkeit im Lager prüfen
+                        </button>
+                        <button type="submit" name="construction_summary" class="btn btn-outline-success btn-green">
+                            Konstruktions-Zusammenfassung
+                        </button>
 
-                        </div>
-                        <div class="table-responsive">
+                    </div>
+                    <div class="table-responsive">
                         <div class="mb-2 p-2 border rounded d-inline-flex align-items-center ">
                             <button type="submit" name="find_construction_combination"
                                     class="btn btn-outline-success btn-green mb-0 me-2">
                                 Optimale Konstruktions-Kombination finden
                             </button>
-                            <p class="mb-0 me-2">  Konstruktionen mit weniger als</p>
+                            <p class="mb-0 me-2"> Konstruktionen mit weniger als</p>
                             <input type="number" name="min_sleeping_places" class="form-control me-2 "
                                    value="1" min="1" required style="width: 70px;">
                             <p class="mb-0 me-2">Schlafplätzen ignorieren!</p>
-                        </div></div>
-                    {% endif %}
-                </div>
-                <div class="mb-2">
-                    <a href="{% url 'trip' %}" class="btn btn-secondary">Abbrechen</a>
-                </div>
+                        </div>
+                    </div>
+                {% endif %}
+        </div>
+        <div class="mb-2">
+            <a href="{% url 'trip' %}" class="btn btn-secondary">Abbrechen</a>
         </div>
         </form>
     </div>
@@ -173,6 +211,46 @@
         </tr>
 
     </script>
+    <script type="text/template" id="empty-form-template-material">
+        <tr>
+            <td>
+                <div class="mb-3">
+                   <select name="tripmaterial_set-__prefix__-material" class="form-select select2">
+                            <option value="" selected>---------</option>
+                            <optgroup label="Eigenes Material">
+                                {% for material in materials.organization %}
+                                    <option value="{{ material.id }}">{{ material.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Öffentliches Material">
+                                {% for material in materials.public %}
+                                    <option value="{{ material.id }}">{{ material.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Öffentliches Material anderer Organisationen">
+                                {% for material in materials.external %}
+                                    <option value="{{ material.id }}">{{ material.name }} ({{ material.owner.name }})
+                                    </option>
+                                {% endfor %}
+                            </optgroup>
+                        </select>
+                </div>
+            </td>
+            <td>
+                <div class="mb-3">
+                    <input type="number" name="tripmaterial_set-__prefix__-count" class="form-control"
+                           id="id_{{ formset_prefix_material }}-__prefix__-count">
+                </div>
+            </td>
+            <td>
+                <div class="mb-3">
+                    <input type="checkbox" name="tripmaterial_set-__prefix__-DELETE"
+                           id="id_{{ formset_prefix_material }}-__prefix__-DELETE">
+                </div>
+            </td>
+        </tr>
+
+    </script>
     <!-- Include Select2 Library -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -203,6 +281,19 @@
                 formContainer_group.insertAdjacentHTML('beforeend', newRow_group);
                 totalFormsInput_group.value = parseInt(formIndex_group) + 1; // Anzahl erhöhen
             });
+
+            const addRowButton_material = document.getElementById('add-row-material');
+            const formContainer_material = document.getElementById('form-container-material');
+            const totalFormsInput_material = document.querySelector(`#id_tripmaterial_set-TOTAL_FORMS`);
+            const template_material = document.getElementById('empty-form-template-material').innerHTML;
+            addRowButton_material.addEventListener('click', function () {
+                const formIndex_material = totalFormsInput_material.value; // Aktuelle Anzahl der Formulare
+                const newRow_material = template_material.replace(/__prefix__/g, formIndex_material);
+                formContainer_material.insertAdjacentHTML('beforeend', newRow_material);
+                totalFormsInput_material.value = parseInt(formIndex_material) + 1; // Anzahl erhöhen
+                // Wendet Select2 auf das neue Dropdown-Menü an
+                initializeSelect2()
+            });
         });
 
         function initializeSelect2() {
@@ -215,6 +306,14 @@
                 });
             });
             $('select[name^="tripconstruction_set"]').each(function () {
+                const $select = $(this);
+                $select.select2({
+                    placeholder: "---------",
+                    allowClear: true,
+                    width: '250px'
+                });
+            });
+            $('select[name^="tripmaterial_set"]').each(function () {
                 const $select = $(this);
                 $select.select2({
                     placeholder: "---------",
@@ -264,5 +363,6 @@
                 margin: 5px 0; /* Abstand zwischen den Buttons */
             }
         }
+
     </style>
 {% endblock %}

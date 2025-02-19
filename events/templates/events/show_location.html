@@ -8,32 +8,33 @@
             <form method="post" enctype='multipart/form-data'>
                 {% csrf_token %}
                 <h4>Ortdaten:</h4>
-                <table class="table">
-                    <tbody>
-                    <tr>
-                        <td><strong>Name:</strong></td>
-                        <td>{{ location.name }}</td>
-                    </tr>
+                <div class="table-responsive">
+                    <table class="table">
+                        <tbody>
+                        <tr>
+                            <td><strong>Name:</strong></td>
+                            <td>{{ location.name }}</td>
+                        </tr>
 
-                    <tr>
-                        <td><strong>Beschreibung:</strong></td>
-                        <td>{{ location.description }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Typ:</strong></td>
-                        <td>{{ location.type }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Latitude:</strong></td>
-                        <td>{{ location.latitude }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Longitude:</strong></td>
-                        <td>{{ location.longitude }}</td>
-                    </tr>
-                    </tbody>
-                </table>
-
+                        <tr>
+                            <td><strong>Beschreibung:</strong></td>
+                            <td>{{ location.description }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Typ:</strong></td>
+                            <td>{{ location.type }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Latitude:</strong></td>
+                            <td>{{ location.latitude }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Longitude:</strong></td>
+                            <td>{{ location.longitude }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
                 <div class="mb-3" id="map" style="height: 400px; width: 100%;"></div>
                 <button type="button" class="btn btn-secondary" onclick="history.back()">Zurück</button>
                 <noscript>

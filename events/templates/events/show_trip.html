@@ -79,6 +79,29 @@
                     {% endfor %}
                     </tbody>
                 </table>
+                <h4>Sonstiges Material:</h4>
+                <div class="table-responsive">
+                    <table class="table">
+                        <tbody>
+                        {% for tc in tripmaterials %}
+                            <tr>
+                                <td>
+                                    <strong>Name:</strong>
+                                    {{ tc.material.name }}
+                                </td>
+                                <td>
+                                    <strong>Anzahl:</strong>
+                                    {{ tc.count }}
+                                </td>
+                                <td>
+                                    <strong>Beschreibung:</strong>
+                                    {{ tc.description }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 <a href="{% url 'check_trip_material' trip.pk %}" class="btn btn-outline-success">Materialverfügbarkeit
                     im Lager prüfen</a>
                 <a href="{% url 'construction_summary' trip.pk %}" class="btn btn-outline-success">Konstruktions-Zusammenfassung</a>
