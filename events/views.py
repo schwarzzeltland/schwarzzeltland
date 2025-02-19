@@ -215,7 +215,7 @@ def check_trip_material(request, pk=None):
     total_weight_available = 0
     for mate in available_materials:
         try:
-            material_obj = Material.objects.get(name=mate['material'])  # Material-Objekt abrufen
+            material_obj = Material.objects.filter(name=mate['material'], owner=request.org).first()  # Material-Objekt abrufen
             weight_per_unit = material_obj.weight if material_obj.weight else 0  # Gewicht pro Einheit
             total_weight_available += mate['required_quantity'] * weight_per_unit
         except ObjectDoesNotExist:
