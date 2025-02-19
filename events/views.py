@@ -4,7 +4,7 @@ from collections import defaultdict
 from _decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
@@ -95,109 +95,135 @@ def delete_trip(request, pk=None):
 
 @login_required
 def check_trip_material(request, pk=None):
-    m: Membership = request.user.membership_set.filter(organization=request.org).first()
+    """ Prüft, ob Materialien für einen Trip verfügbar sind, unter Berücksichtigung paralleler Nutzung durch andere Trips. """
 
-    # Überprüfen Trip
+    # Mitgliedschaft abrufen
+    m = request.user.membership_set.filter(organization=request.org).first()
+
+    # Trip abrufen
     trip = get_object_or_404(Trip, pk=pk, owner=request.org)
 
+    # Alle Konstruktionen des Trips abrufen
     constructions = TripConstruction.objects.filter(trip=trip)
-    materials = []  # Liste für alle Materialien
 
+    # Material-Berechnung initialisieren
+    material_summary = defaultdict(int)
+
+    # Materialien aus Konstruktionen sammeln und summieren
     for tc in constructions:
-        for i in range(tc.count):
-            # Materialien für die aktuelle Konstruktion abrufen
-            construction_materials = ConstructionMaterial.objects.filter(construction=tc.construction)
+        construction_materials = ConstructionMaterial.objects.filter(construction=tc.construction)
+        for cm in construction_materials:
+            material_summary[cm.material.name] += cm.count * tc.count
 
-            # Materialien zur zentralen Liste hinzufügen
-            materials.extend(construction_materials)
+    # Manuell hinzugefügtes Material sammeln
+    trip_materials = TripMaterial.objects.filter(trip=trip)
+    for tm in trip_materials:
+        material_summary[tm.material.name] += tm.count
 
-    materials.extend(TripMaterial.objects.filter(trip=trip))
-    # Sammlung von Materialien nach Namen gruppieren
-    material_names = defaultdict(list)
-
-    # Gruppiere Materialien nach Namen
-    for material in materials:
-        material_names[material.material.name].append(material)
-
+    # Liste für verfügbare & fehlende Materialien
     available_materials = []
     missing_materials = []
-    missing = False  # Trackt, ob Materialien fehlen
+    missing = False
 
-    # Überprüfung der Materialverfügbarkeit
-    for material_name, materials_group in material_names.items():
-        # Berechne die Gesamtmenge der verfügbaren Materialien (basierend auf dem Namen)
+    # Prüfung der Materialverfügbarkeit unter Berücksichtigung paralleler Nutzung
+    for material_name, total_required_quantity in material_summary.items():
+        # Gesamtbestand des Materials abrufen
         stock_materials = StockMaterial.objects.filter(
-            material__name=material_name,
-            organization=request.org
+            material__name=material_name, organization=request.org
         )
-
-        # Berechne die Gesamtmenge der verfügbaren Materialien
         available_quantity = sum(m.count for m in stock_materials)
 
-        # Sammle Informationen über Lagerorte und Mengen
-        storage_info = [{'storage_place': m.storage_place, 'available_quantity': m.count} for m in stock_materials]
+        # Trips abrufen, die das gleiche Material nutzen und **vor oder parallel** zum aktuellen Trip liegen
+        conflicting_trips = Trip.objects.filter(
+            start_date__lt=trip.end_date,  # Startet vor dem Ende des aktuellen Trips
+            end_date__gt=trip.start_date,  # Endet nach dem Start des aktuellen Trips (also überlappt)
+        ).exclude(pk=trip.pk)
 
-        # Berechne die gesamte benötigte Menge für dieses Material
-        total_required_quantity = sum(material.count for material in materials_group)
+        # Material aus `TripMaterial` dieser Trips summieren
+        used_materials_trip = conflicting_trips.filter(
+            tripmaterial__material__name=material_name
+        ).annotate(
+            total_used=Sum('tripmaterial__count')
+        )
+
+        used_in_trip_materials = sum(t.total_used or 0 for t in used_materials_trip)
+
+        # Material aus `TripConstruction` dieser Trips summieren
+        used_materials_construction = conflicting_trips.filter(
+            tripconstruction__construction__constructionmaterial__material__name=material_name
+        ).annotate(
+            total_used=Sum('tripconstruction__construction__constructionmaterial__count')
+        )
+
+        used_in_construction_materials = sum(t.total_used or 0 for t in used_materials_construction)
+
+        # Gesamtverbrauch aus beiden Quellen berechnen
+        used_in_other_trips = used_in_trip_materials + used_in_construction_materials
+
+        # Effektiv verfügbare Menge berechnen
+        effective_available_quantity = max(available_quantity - used_in_other_trips, 0)
+
+        # Lagerinfo abrufen
+        storage_info = [
+            {'storage_place': m.storage_place, 'available_quantity': m.count}
+            for m in stock_materials
+        ]
 
         # Verfügbarkeit prüfen
-        if available_quantity >= total_required_quantity:
+        if effective_available_quantity >= total_required_quantity:
             available_materials.append({
-                'material': material_name,  # Materialname für dieses Material
+                'material': material_name,
                 'required_quantity': total_required_quantity,
-                'available_quantity': available_quantity,
+                'available_quantity': effective_available_quantity,
                 'storage_info': storage_info
             })
         else:
             missing_materials.append({
-                'material': material_name,  # Materialname für dieses Material
+                'material': material_name,
                 'required_quantity': total_required_quantity,
-                'available_quantity': available_quantity,
-                'missing_quantity': total_required_quantity - available_quantity,
+                'available_quantity': effective_available_quantity,
+                'missing_quantity': total_required_quantity - effective_available_quantity,
                 'storage_info': storage_info
             })
             missing = True
 
-    # Informationen zu eingepackten Materialien abrufen
+    # Prüfen, welche Materialien bereits eingepackt wurden
     packed_materials = PackedMaterial.objects.filter(trip=trip).values_list('material_name', flat=True)
 
     # Markiere Materialien als "eingepackt"
     for material in available_materials + missing_materials:
         material['packed'] = material['material'] in packed_materials
-    # Wenn das Formular abgeschickt wurde, Checkbox-Werte verarbeiten
+
+    # Falls das Formular abgeschickt wurde, aktualisiere die eingepackten Materialien
     if request.method == 'POST':
         packed_materials = request.POST.getlist('packed_materials')
-
-        # Vorhandene Einträge löschen, um nur die aktuellen zu speichern
         PackedMaterial.objects.filter(trip=trip).delete()
-
-        # Neue Daten speichern
         for material_name in packed_materials:
             PackedMaterial.objects.create(trip=trip, material_name=material_name, packed=True)
-        messages.success(request, f"Die eingepackten Materialien wurden gespeichert!")
-        print(request.POST.getlist('packed_materials'))
+
+        messages.success(request, "Die eingepackten Materialien wurden gespeichert!")
         return redirect('check_trip_material', pk=pk)
 
-    # Wenn Materialien fehlen, zeige eine Warnung und die Liste der fehlenden Materialien an
+    # Falls Materialien fehlen, zeige eine Warnung
     if missing:
-        messages.warning(request,
-                         'Einige Materialien sind nicht ausreichend vorhanden.')
+        messages.warning(request, "Einige Materialien sind nicht ausreichend vorhanden.")
     else:
-        # Alle Materialien sind verfügbar, also keine Fehlermeldung anzeigen
-        messages.success(request, 'Alle Materialien sind ausreichend vorhanden.')
-    total_weigth_av_m = 0
-    for material in materials:
-        # Angenommen, jedes Material hat ein Attribut `weight`, das das Gewicht pro Einheit beschreibt.
-        if material.material.weight:
-            total_weigth_av_m += material.count * material.material.weight
-    # Weiterleitung zum Verfügbarkeitsfenster (immer, auch wenn keine Materialien fehlen)
+        messages.success(request, "Alle Materialien sind ausreichend vorhanden.")
+
+    # Gesamtgewicht berechnen (falls Materialien eine Gewichtseigenschaft haben)
+    total_weight_available = sum(
+        (m.count * m.material.weight) if hasattr(m.material, 'weight') else 0
+        for m in trip_materials
+    )
+
+    # Seite rendern
     return render(request, 'events/check_trip_material.html', {
         'title': 'Materialübersicht',
         'trip': trip,
         'available_materials': available_materials,
         'missing_materials': missing_materials,
         'is_event_manager': m.event_manager,
-        'total_weigth_av_m': total_weigth_av_m,
+        'total_weight_available': total_weight_available,
     })
 
 
