@@ -232,11 +232,12 @@ def edit_construction(request, pk=None):
         construction_form = ConstructionForm(instance=construction)
         material_formset = ConstructionMaterialFormSet(instance=construction, form_kwargs={'organization': request.org})
     org_materials = Material.objects.filter(owner=request.org).order_by('name')
-    external_materials = Material.objects.filter(Q(public=True) & ~Q(owner=request.org) & Q(owner__isnull=False)).order_by('name')
+    external_materials = Material.objects.filter(
+        Q(public=True) & ~Q(owner=request.org) & Q(owner__isnull=False)).order_by('name')
     public_materials = Material.objects.filter(Q(owner__isnull=True)).order_by('name')
     materials = {
         "organization": org_materials,
-        "public":public_materials,
+        "public": public_materials,
         "external": external_materials,
     }
 
@@ -452,9 +453,20 @@ def edit_material(request, pk=None):
         form = StockMaterialForm(request.POST, instance=mat)
         mat_form = PlainMaterialForm(request.POST, request.FILES, instance=mat.material)
         if form.is_valid() and mat_form.is_valid():
-            form.save()
-            mat_form.save()
-            messages.success(request, f'Material {mat.material.name} gespeichert')
+            if 'save' in request.POST:
+                form.save()
+                mat_form.save()
+                messages.success(request, f'Material {mat.material.name} gespeichert')
+                return HttpResponseRedirect(reverse_lazy('material'))
+            elif 'save-as-new' in request.POST:
+                form.instance.owner = request.org
+                mat_form.instance.pk = None
+                material = mat_form.save()
+                StockMaterial.objects.create(material=material, organization=request.org,
+                                             count=form.cleaned_data['count'],
+                                             storage_place=form.cleaned_data['storage_place'])
+                mat.delete()
+                messages.success(request, f'Material {mat.material.name} als neues Material gespeichert')
             return HttpResponseRedirect(reverse_lazy('material'))
     else:
         form = StockMaterialForm(instance=mat)

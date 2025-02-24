@@ -3,10 +3,9 @@
 
 {% block content %}
     <div class="container mt-3">
-        <h3>Trip: {{ trip.name }}</h3>
+        <h3>Veranstaltung: {{ trip.name }}</h3>
 
-        <h4>Optimale Konstruktionen pro Gruppe basierend auf den Teilnehmergruppen und dem geringsten
-            Gesamtgewicht</h4>
+        <h4>Konstruktionen pro Gruppe:</h4>
 
         {% for group_data in group_construction_data %}
             <div class="card mb-4 shadow-sm">

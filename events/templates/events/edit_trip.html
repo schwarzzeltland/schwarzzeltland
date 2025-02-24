@@ -125,8 +125,22 @@
                         <div class="mb-2 p-2 border rounded d-inline-flex align-items-center ">
                             <button type="submit" name="find_construction_combination"
                                     class="btn btn-outline-success btn-green mb-0 me-2">
-                                Optimale Konstruktions-Kombination finden
+                                Optimale Konstruktions-Kombination finden (ohne Materialverfügbarkeitsprüfung)
                             </button>
+                            <p class="mb-0 me-2"> Konstruktionen mit weniger als</p>
+                            <input type="number" name="min_sleeping_places" class="form-control me-2 "
+                                   value="1" min="1" required style="width: 70px;">
+                            <p class="mb-0 me-2">Schlafplätzen ignorieren!</p>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <div class="mb-2 p-2 border rounded d-inline-flex align-items-center ">
+
+                            <button type="submit" name="find_construction_combination_w_check_material"
+                                    class="btn btn-outline-success btn-green mb-0 me-2">
+                                Optimale Konstruktions-Kombination finden    (mit Materialverfügbarkeitsprüfung)
+                            </button>
+
                             <p class="mb-0 me-2"> Konstruktionen mit weniger als</p>
                             <input type="number" name="min_sleeping_places" class="form-control me-2 "
                                    value="1" min="1" required style="width: 70px;">
