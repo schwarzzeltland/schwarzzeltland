@@ -77,7 +77,7 @@ class StockMaterialForm(ModelForm):
         total_condition = condition_healthy + condition_medium_healthy + condition_broke
 
         if count is not None and total_condition != count:
-            error_msg = "Die Summe der Zustände darf nicht größer als die Gesamtanzahl sein."
+            error_msg = "Die Summe der Zustände muss der Gesamtanzahl entsprechen."
             self.add_error("condition_healthy", error_msg)
             self.add_error("condition_medium_healthy", error_msg)
             self.add_error("condition_broke", error_msg)
