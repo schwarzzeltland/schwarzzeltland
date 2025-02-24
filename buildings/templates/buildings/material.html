@@ -4,25 +4,35 @@
 
 {% block content %}
     <form method="get" action="" class="mb-3">
-        <div class="input-group">
-            <!-- Suchleiste -->
-            <input type="text" class="form-control" name="search" value="{{ search_query }}"
-                   placeholder="Suchen nach Name oder Lagerort">
+    <div class="input-group">
+        <!-- Suchleiste -->
+        <input type="text" class="form-control" name="search" value="{{ search_query }}"
+               placeholder="Suchen nach Name oder Lagerort">
 
-            <!-- Dropdown für Materialtyp -->
-            <select class="form-select" id="material_type" name="material_type">
-                <option value="">Alle Materialtypen</option>
-                {% for value, label in material_types %}
-                    <option value="{{ value }}"
-                            {% if value|stringformat:"s" == selected_material_type %}selected{% endif %}>
-                        {{ label }}
-                    </option>
-                {% endfor %}
-            </select>
-            <!-- Suchen-Button -->
-            <button class="btn btn-outline-secondary" type="submit">Suchen</button>
-        </div>
-    </form>
+        <!-- Dropdown für Materialtyp -->
+        <select class="form-select" id="material_type" name="material_type">
+            <option value="">Alle Materialtypen</option>
+            {% for value, label in material_types %}
+                <option value="{{ value }}"
+                        {% if value|stringformat:"s" == selected_material_type %}selected{% endif %}>
+                    {{ label }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <!-- Dropdown für Materialzustand -->
+         <!-- Dropdown für Materialzustand -->
+        <select class="form-select" id="material_condition" name="material_condition">
+            <option value="">Alle Materialzustände</option>
+            <option value="healthy" {% if selected_material_condition == "healthy" %}selected{% endif %}>In Ordnung</option>
+            <option value="medium" {% if selected_material_condition == "medium" %}selected{% endif %}>Wartungsbedürftig</option>
+            <option value="broke" {% if selected_material_condition == "broke" %}selected{% endif %}>Defekt</option>
+        </select>
+
+        <!-- Suchen-Button -->
+        <button class="btn btn-outline-secondary" type="submit">Suchen</button>
+    </div>
+</form>
     <div class="table-responsive">
         <table class="table">
             <thead>

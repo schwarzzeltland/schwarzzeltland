@@ -330,6 +330,7 @@ def material(request):
     # Suchlogik
     search_query = request.GET.get('search', '')
     selected_material_type = request.GET.get('material_type', '')  # Materialtyp
+    selected_material_condition = request.GET.get('material_condition', '')
     # 2. Wenn keine GET-Filter vorhanden sind, die Filter aus der Session holen
     if request.session.get('previous_url'):
         previous_url = request.session.get('previous_url')
@@ -344,8 +345,13 @@ def material(request):
             if 'material_type' in request.session:
                 del request.session['material_type']
 
+            if not selected_material_condition:
+                selected_material_condition = request.session.get('material_condition', '')
+            if 'material_condition' in request.session:
+                del request.session['material_condition']
     request.session['search'] = search_query
     request.session['material_type'] = selected_material_type
+    request.session['material_condition'] = selected_material_condition
     request.session['previous_url'] = request.build_absolute_uri()
     # Filtere nach Name oder Lagerort, wenn eine Suchanfrage vorliegt
     if search_query:
@@ -369,10 +375,19 @@ def material(request):
         (5, "Küchenmaterial"),
         (6, "Verbrauchsmaterial"),
     )
+    if selected_material_condition:
+        print(selected_material_condition)
+        if selected_material_condition=="healthy":
+            materials = materials.filter(condition_healthy__gt=0)
+        elif selected_material_condition=="medium":
+            materials = materials.filter(condition_medium_healthy__gt=0)
+        elif selected_material_condition == "broke":
+            materials = materials.filter(condition_broke__gt=0)
     if m.material_manager:
         form = AddMaterialStockForm(organization=request.org)
         if request.method == 'POST':
             form = AddMaterialStockForm(request.POST, organization=request.org)
+            print(form.errors)
             if form.is_valid():
                 # Originalmaterial aus dem Formular holen
                 original_material = form.cleaned_data['material']
@@ -403,8 +418,10 @@ def material(request):
                     material=cloned_material,
                     organization=request.org,
                     count=form.cleaned_data['count'],
-                    storage_place=form.cleaned_data['storage_place']
-                )
+                    storage_place=form.cleaned_data['storage_place'],
+                    condition_healthy=form.cleaned_data['count'],
+                    condition_medium_healthy=0,
+                    condition_broke=0)
 
                 messages.success(request,
                                  f'Material "{original_material.name}" wurde kopiert und einsortiert. Änderungen an einer der Kopien werden auf alle Kopien angewandt!')
@@ -420,6 +437,7 @@ def material(request):
         'organization': request.org,
         'search_query': search_query,
         'selected_material_type': selected_material_type,
+        'selected_material_condition': selected_material_condition,
         'material_types': TYPES,
     })
 
@@ -460,11 +478,21 @@ def edit_material(request, pk=None):
                 return HttpResponseRedirect(reverse_lazy('material'))
             elif 'save-as-new' in request.POST:
                 form.instance.owner = request.org
+                print(mat_form.instance.pk)
                 mat_form.instance.pk = None
                 material = mat_form.save()
+                print(material.pk)
                 StockMaterial.objects.create(material=material, organization=request.org,
                                              count=form.cleaned_data['count'],
-                                             storage_place=form.cleaned_data['storage_place'])
+                                             storage_place=form.cleaned_data['storage_place'],
+                                             condition_healthy=form.cleaned_data['condition_healthy'],
+                                             condition_medium_healthy=form.cleaned_data['condition_medium_healthy'],
+                                             condition_broke=form.cleaned_data['condition_broke'],
+                                             material_condition_description=form.cleaned_data[
+                                                 'material_condition_description'])
+                stm = StockMaterial.objects.last()
+                print(stm)
+                print(mat.pk)
                 mat.delete()
                 messages.success(request, f'Material {mat.material.name} als neues Material gespeichert')
             return HttpResponseRedirect(reverse_lazy('material'))

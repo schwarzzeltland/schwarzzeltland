@@ -1,6 +1,7 @@
 from typing import Type
 
 from django import forms
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db.models import Q
 from urllib3.filepost import iter_field_objects
@@ -43,7 +44,7 @@ class AddMaterialStockForm(ModelForm):
     class Meta:
         model = StockMaterial
         fields = '__all__'
-        exclude = ['organization']
+        exclude = ['organization',"condition_healthy","condition_medium_healthy","condition_broke","material_condition_description"]
 
 
 class MaterialForm(ModelForm):
@@ -64,8 +65,24 @@ class MaterialForm(ModelForm):
 class StockMaterialForm(ModelForm):
     class Meta:
         model = StockMaterial
-        fields = ["count", 'storage_place']
+        fields = ["count", "storage_place","condition_healthy","condition_medium_healthy","condition_broke","material_condition_description"]
 
+    def clean(self):
+        cleaned_data = super().clean()
+        count = cleaned_data.get("count")
+        condition_healthy = cleaned_data.get("condition_healthy") or 0
+        condition_medium_healthy = cleaned_data.get("condition_medium_healthy") or 0
+        condition_broke = cleaned_data.get("condition_broke") or 0
+
+        total_condition = condition_healthy + condition_medium_healthy + condition_broke
+
+        if count is not None and total_condition != count:
+            error_msg = "Die Summe der Zustände darf nicht größer als die Gesamtanzahl sein."
+            self.add_error("condition_healthy", error_msg)
+            self.add_error("condition_medium_healthy", error_msg)
+            self.add_error("condition_broke", error_msg)
+
+        return cleaned_data
 
 class PlainMaterialForm(ModelForm):
     class Meta:

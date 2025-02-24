@@ -43,6 +43,10 @@ class StockMaterial(models.Model):
     material = models.ForeignKey(Material, on_delete=models.CASCADE)
     count = models.IntegerField(verbose_name="Anzahl",validators=[MinValueValidator(0)])
     storage_place = CharField(max_length=1024, default="", blank=True,verbose_name="Lagerort")
+    condition_healthy=models.IntegerField(verbose_name="Davon in Ordnung",validators=[MinValueValidator(0)], default=0)
+    condition_medium_healthy=models.IntegerField(verbose_name="Davon wartungsbedürftig",validators=[MinValueValidator(0)], default=0)
+    condition_broke=models.IntegerField(verbose_name="Davon defekt",validators=[MinValueValidator(0)], default=0)
+    material_condition_description=CharField(max_length=1024, default="",blank=True,verbose_name="Zustands-Beschreibung")
 
 
 class Construction(models.Model):
