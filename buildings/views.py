@@ -166,59 +166,13 @@ def edit_construction(request, pk=None):
                                 material=cloned_material,
                                 organization=request.org,
                                 storage_place=material.storage_place,
-                                count=material.count
-                            )
+                                count=material.count,
+                                condition_healthy=material.count,
+                                condition_medium_healthy=0,
+                                condition_broke=0)
+
 
                 material_formset.save_m2m()
-
-                # Materialzuordnungen für diese Konstruktion
-                materials = ConstructionMaterial.objects.filter(construction=construction)
-
-                # Sammlung von Materialien nach Namen gruppieren
-                material_names = defaultdict(list)
-
-                # Gruppiere Materialien nach Namen
-                for material in materials:
-                    material_names[material.material.name].append(material)
-
-                available_materials = []
-                missing_materials = []
-                missing = False  # Trackt, ob Materialien fehlen
-
-                # Überprüfung der Materialverfügbarkeit
-                for material_name, materials_group in material_names.items():
-                    # Berechne die Gesamtmenge der verfügbaren Materialien (basierend auf dem Namen)
-                    stock_materials = StockMaterial.objects.filter(
-                        material__name=material_name,
-                        organization=request.org
-                    )
-
-                    # Berechne die Gesamtmenge der verfügbaren Materialien
-                    available_quantity = sum(m.count for m in stock_materials)
-
-                    # Sammle Informationen über Lagerorte und Mengen
-                    storage_info = [{'storage_place': m.storage_place, 'available_quantity': m.count} for m in
-                                    stock_materials]
-
-                    # Berechne die gesamte benötigte Menge für dieses Material
-                    total_required_quantity = sum(material.count for material in materials_group)
-
-                    # Verfügbarkeit prüfen
-                    if available_quantity >= total_required_quantity:
-                        available_materials.append({
-                            'material': material_name,  # Materialname für dieses Material
-                            'required_quantity': total_required_quantity,
-                            'available_quantity': available_quantity,
-                            'storage_info': storage_info
-                        })
-                    else:
-                        missing_materials.append({
-                            'material': material_name,  # Materialname für dieses Material
-                            'required_quantity': total_required_quantity,
-                            'available_quantity': available_quantity,
-                            'missing_quantity': total_required_quantity - available_quantity,
-                            'storage_info': storage_info
-                        })
 
                 # Unterscheidung der Weiterleitungen basierend auf dem Button
                 if 'save' in request.POST:
@@ -280,7 +234,7 @@ def check_material(request, pk=None):
         )
 
         # Berechne die Gesamtmenge der verfügbaren Materialien
-        available_quantity = sum(m.count for m in stock_materials)
+        available_quantity = sum(m.count for m in stock_materials) - sum(m.condition_broke for m in stock_materials)
 
         # Sammle Informationen über Lagerorte und Mengen
         storage_info = [{'storage_place': m.storage_place, 'available_quantity': m.count} for m in stock_materials]
@@ -377,9 +331,9 @@ def material(request):
     )
     if selected_material_condition:
         print(selected_material_condition)
-        if selected_material_condition=="healthy":
+        if selected_material_condition == "healthy":
             materials = materials.filter(condition_healthy__gt=0)
-        elif selected_material_condition=="medium":
+        elif selected_material_condition == "medium":
             materials = materials.filter(condition_medium_healthy__gt=0)
         elif selected_material_condition == "broke":
             materials = materials.filter(condition_broke__gt=0)
@@ -453,7 +407,10 @@ def create_material(request):
             material = form.save()
             StockMaterial.objects.create(material=material, organization=request.org,
                                          count=form.cleaned_data['count'],
-                                         storage_place=form.cleaned_data['storage_place'])
+                                         storage_place=form.cleaned_data['storage_place'],
+                                         condition_healthy=form.cleaned_data['count'],
+                                         condition_medium_healthy=0,
+                                         condition_broke=0)
             messages.success(request, 'Material einsortiert')
         return HttpResponseRedirect(reverse_lazy('material'))
     return render(request, 'buildings/create_material.html', {

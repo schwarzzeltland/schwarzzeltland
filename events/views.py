@@ -134,7 +134,8 @@ def check_trip_material(request, pk=None):
         stock_materials = StockMaterial.objects.filter(
             material__name=material_name, organization=request.org
         )
-        available_quantity = sum(m.count for m in stock_materials)
+        # Berechne die Gesamtmenge der verfügbaren Materialien
+        available_quantity = sum(m.count for m in stock_materials) - sum(m.condition_broke for m in stock_materials)
 
         # Trips abrufen, die das gleiche Material nutzen und **vor oder parallel** zum aktuellen Trip liegen
         conflicting_trips = Trip.objects.filter(
@@ -771,7 +772,7 @@ def calculate_material_usage(combination):
 
 def check_material_availability(total_material_counts, request, trip):
     material_lager = {
-        mat.material.name: mat.count
+        mat.material.name: mat.count- mat.condition_broke
         for mat in StockMaterial.objects.filter(organization=request.org)
     }
 
