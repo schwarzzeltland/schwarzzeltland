@@ -771,10 +771,9 @@ def calculate_material_usage(combination):
 
 
 def check_material_availability(total_material_counts, request, trip):
-    material_lager = {
-        mat.material.name: mat.count- mat.condition_broke
-        for mat in StockMaterial.objects.filter(organization=request.org)
-    }
+    material_lager = defaultdict(int)
+    for mat in StockMaterial.objects.filter(organization=request.org):
+        material_lager[mat.material.name] += mat.count - mat.condition_broke
 
     conflicting_trips = Trip.objects.filter(
         start_date__lt=trip.end_date,
