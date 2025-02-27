@@ -138,7 +138,7 @@
 
                             <button type="submit" name="find_construction_combination_w_check_material"
                                     class="btn btn-outline-success btn-green mb-0 me-2">
-                                Optimale Konstruktions-Kombination finden    (mit Materialverfügbarkeitsprüfung)
+                                Optimale Konstruktions-Kombination finden (mit Materialverfügbarkeitsprüfung)
                             </button>
 
                             <p class="mb-0 me-2"> Konstruktionen mit weniger als</p>
@@ -229,31 +229,37 @@
         <tr>
             <td>
                 <div class="mb-3">
-                   <select name="tripmaterial_set-__prefix__-material" class="form-select select2">
-                            <option value="" selected>---------</option>
-                            <optgroup label="Eigenes Material">
-                                {% for material in materials.organization %}
-                                    <option value="{{ material.id }}">{{ material.name }}</option>
-                                {% endfor %}
-                            </optgroup>
-                            <optgroup label="Öffentliches Material">
-                                {% for material in materials.public %}
-                                    <option value="{{ material.id }}">{{ material.name }}</option>
-                                {% endfor %}
-                            </optgroup>
-                            <optgroup label="Öffentliches Material anderer Organisationen">
-                                {% for material in materials.external %}
-                                    <option value="{{ material.id }}">{{ material.name }} ({{ material.owner.name }})
-                                    </option>
-                                {% endfor %}
-                            </optgroup>
-                        </select>
+                    <select name="tripmaterial_set-__prefix__-material" class="form-select select2">
+                        <option value="" selected>---------</option>
+                        <optgroup label="Eigenes Material">
+                            {% for material in materials.organization %}
+                                <option value="{{ material.id }}">{{ material.name }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="Öffentliches Material">
+                            {% for material in materials.public %}
+                                <option value="{{ material.id }}">{{ material.name }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="Öffentliches Material anderer Organisationen">
+                            {% for material in materials.external %}
+                                <option value="{{ material.id }}">{{ material.name }} ({{ material.owner.name }})
+                                </option>
+                            {% endfor %}
+                        </optgroup>
+                    </select>
                 </div>
             </td>
             <td>
                 <div class="mb-3">
                     <input type="number" name="tripmaterial_set-__prefix__-count" class="form-control"
                            id="id_{{ formset_prefix_material }}-__prefix__-count">
+                </div>
+            </td>
+            <td>
+                <div class="mb-3">
+                    <input type="text" name="tripmaterial_set-__prefix__-description" class="form-control"
+                           id="id_{{ formset_prefix_material }}-__prefix__-description">
                 </div>
             </td>
             <td>

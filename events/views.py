@@ -363,7 +363,7 @@ def location(request):
     request.session['search'] = search_query
     request.session['location_type'] = selected_location_type
     request.session['previous_url'] = request.build_absolute_uri()
-    locations_query = Location.objects.filter(owner=request.org)
+    locations_query = Location.objects.filter(owner=request.org).order_by('name')
     if search_query:
         locations_query = locations_query.filter(
             Q(name__icontains=search_query) | Q(owner__name__icontains=search_query)

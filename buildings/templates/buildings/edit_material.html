@@ -9,11 +9,11 @@
         {% bootstrap_form form %}
         {% buttons %}
             <div class="mb-2">
-                <button type="submit" name="save" class="btn btn-success">
+                <button type="submit" name="save" class="btn btn-success btn-save">
                     <span data-feather="alert-triangle"></span>
                     Material speichern
                 </button>
-                <button type="submit" name="save-as-new" class="btn btn-primary">
+                <button type="submit" name="save-as-new" class="btn btn-primary btn-save">
                     <span data-feather="alert-triangle"></span>
                     Als neues Material speichern
                 </button>
@@ -23,4 +23,15 @@
             </div>
         {% endbuttons %}
     </form>
+    <style>@media (max-width: 576px) {
+        .btn-save {
+            display: flex;
+            justify-content: center; /* Zentriert den Text */
+            width: 100%; /* Gleiche Breite bei mobilen Geräten */
+            max-width: 250px; /* Optional: maximale Breite für größere Geräte */
+            margin: 5px 0; /* Abstand zwischen den Buttons */
+        }
+    }
+
+    </style>
 {% endblock %}
