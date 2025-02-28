@@ -7,9 +7,10 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q, Sum
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
+from django.views.decorators.http import require_POST
 from unicodedata import decimal
 
 from buildings.models import Construction, StockMaterial, ConstructionMaterial, Material
@@ -191,22 +192,15 @@ def check_trip_material(request, pk=None):
             })
             missing = True
 
-    # Prüfen, welche Materialien bereits eingepackt wurden
-    packed_materials = PackedMaterial.objects.filter(trip=trip).values_list('material_name', flat=True)
+    # ✅ Fix: Alle "PackedMaterial"-Einträge mit "packed"-Status abrufen
+    packed_materials = {
+        entry["material_name"]: entry["packed"]
+        for entry in PackedMaterial.objects.filter(trip=trip).values("material_name", "packed")
+    }
 
-    # Markiere Materialien als "eingepackt"
+    # ✅ Fix: Setze den `packed`-Status basierend auf der Datenbank
     for material in available_materials + missing_materials:
-        material['packed'] = material['material'] in packed_materials
-
-    # Falls das Formular abgeschickt wurde, aktualisiere die eingepackten Materialien
-    if request.method == 'POST':
-        packed_materials = request.POST.getlist('packed_materials')
-        PackedMaterial.objects.filter(trip=trip).delete()
-        for material_name in packed_materials:
-            PackedMaterial.objects.create(trip=trip, material_name=material_name, packed=True)
-
-        messages.success(request, "Die eingepackten Materialien wurden gespeichert!")
-        return redirect('check_trip_material', pk=pk)
+        material['packed'] = packed_materials.get(material['material'], False)
 
     # Falls Materialien fehlen, zeige eine Warnung
     if missing:
@@ -850,3 +844,20 @@ def find_construction_combination_w_check_material(request, pk=None):
         'group_construction_data': group_construction_data,
         'min_total_weight': min_total_weight,
     })
+
+@require_POST
+@event_manager_required
+def change_packed_material(request, material_name):
+    """ Speichert den `packed`-Status eines Materials für den aktuellen Trip. """
+    trip = get_object_or_404(Trip, pk=request.POST.get("trip_id"))
+    packed_value = request.POST.get("packed")
+    packed = packed_value.lower() == "true"
+
+    packed_material, created = PackedMaterial.objects.get_or_create(
+        trip=trip, material_name=material_name
+    )
+    packed_material.packed = packed
+    packed_material.save()
+    print(packed_material.packed)
+
+    return JsonResponse({"status": "success", "packed": packed})

@@ -29,11 +29,13 @@
                             {% endfor %}
                         </td>
                         <td>
-                            <input
-                                    type="checkbox"
-                                    name="packed_materials"
-                                    value="{{ material.material }}"
-                                    {% if material.packed %}checked{% endif %}>
+                            <input class="form-check-input" type="checkbox"
+                                   hx-trigger="change"
+                                   hx-post="{% url 'change_packed_material' material.material %}"
+                                   hx-vals='js:{"trip_id": "{{ trip.pk }}", "packed": event.target.checked}'
+                                   hx-swap="none"
+                                    {% if material.packed %} checked {% endif %}
+                                    {% if not is_event_manager %} disabled {% endif %} />
                         </td>
                     </tr>
                 {% endfor %}
@@ -82,9 +84,6 @@
         {% csrf_token %}
 
         {% if is_event_manager %}
-            <div class="mb-2">
-                <button type="submit" class="btn btn-outline-success">Eingepackte Materialien speichern</button>
-            </div>
             <div class="mb-2">
                 <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary">Zurück zur Bearbeitung</a>
             </div>
