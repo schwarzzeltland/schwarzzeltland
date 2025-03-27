@@ -725,7 +725,8 @@ def find_optimal_construction_combination_w_check_material(teilnehmergruppen, ko
 
     result = []
     total_material_usage = defaultdict(int)
-
+    # Bearbeite die Gruppen von der größten zur kleinsten
+    teilnehmergruppen.sort(reverse=True)
     for group_size in teilnehmergruppen:
         valid_combinations = []
 
