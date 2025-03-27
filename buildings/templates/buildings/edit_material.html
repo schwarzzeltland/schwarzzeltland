@@ -34,4 +34,43 @@
     }
 
     </style>
+
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            function updateHealthy() {
+                let total = parseInt($("#id_condition_healthy").data("original")) || 0;
+                let mediumHealthy = parseInt($("#id_condition_medium_healthy").val()) || 0;
+                let broke = parseInt($("#id_condition_broke").val()) || 0;
+                // Negative Werte verhindern
+                if (mediumHealthy < 0) {
+                    mediumHealthy = 0;
+                    $("#id_condition_medium_healthy").val(0);
+                }
+                if (broke < 0) {
+                    broke = 0;
+                    $("#id_condition_broke").val(0);
+                }
+                let newHealthy = total - mediumHealthy - broke;
+                let updatedHealthyValue = Math.max(newHealthy, 0); // Kein negativer Wert erlaubt
+
+                // Zeige den aktualisierten Wert im Feld an (readonly)
+                $("#id_condition_healthy").val(updatedHealthyValue);
+                // Speichere den Wert im versteckten Feld für das Formular
+                $("#id_condition_healthy_hidden").val(updatedHealthyValue);
+            }
+
+            // Speichert den ursprünglichen Wert von condition_healthy
+            $("#id_condition_healthy").data("original", $("#id_condition_healthy").val());
+
+            // Event-Listener für Änderungen
+            $("#id_condition_medium_healthy, #id_condition_broke").on("input", function () {
+                updateHealthy();
+            });
+
+            // Initiale Berechnung beim Laden der Seite
+            updateHealthy();
+        });
+    </script>
 {% endblock %}

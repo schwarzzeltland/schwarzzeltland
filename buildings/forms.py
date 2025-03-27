@@ -67,22 +67,9 @@ class StockMaterialForm(ModelForm):
         model = StockMaterial
         fields = ["count", "storage_place","condition_healthy","condition_medium_healthy","condition_broke","material_condition_description"]
 
-    def clean(self):
-        cleaned_data = super().clean()
-        count = cleaned_data.get("count")
-        condition_healthy = cleaned_data.get("condition_healthy") or 0
-        condition_medium_healthy = cleaned_data.get("condition_medium_healthy") or 0
-        condition_broke = cleaned_data.get("condition_broke") or 0
-
-        total_condition = condition_healthy + condition_medium_healthy + condition_broke
-
-        if count is not None and total_condition != count:
-            error_msg = "Die Summe der Zustände muss der Gesamtanzahl entsprechen."
-            self.add_error("condition_healthy", error_msg)
-            self.add_error("condition_medium_healthy", error_msg)
-            self.add_error("condition_broke", error_msg)
-
-        return cleaned_data
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['condition_healthy'].widget.attrs['readonly'] = True  # Nutzer kann es nicht direkt ändern
 
 class PlainMaterialForm(ModelForm):
     class Meta:
