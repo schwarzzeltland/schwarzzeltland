@@ -284,12 +284,12 @@ def edit_trip(request, pk=None):
             elif 'construction_summary' in request.POST:
                 return redirect('construction_summary', trip_d.pk)
             elif 'find_construction_combination' in request.POST:
-                min_sleeping_places = request.POST.get("min_sleeping_places")
+                min_sleeping_places = request.POST.get("min_sleeping_places_o_mp")
                 if min_sleeping_places:
                     request.session["min_sleeping_places"] = min_sleeping_places
                 return redirect('find_construction_combination', trip_d.pk)
             elif 'find_construction_combination_w_check_material' in request.POST:
-                min_sleeping_places = request.POST.get("min_sleeping_places")
+                min_sleeping_places = request.POST.get("min_sleeping_places_m_mp")
                 max_weight_increase_percent = request.POST.get("max_weight_increase_percent")
                 if min_sleeping_places:
                     request.session["min_sleeping_places"] = min_sleeping_places
