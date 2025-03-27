@@ -1,6 +1,7 @@
 from collections import defaultdict
 from functools import wraps
 from pickle import LIST
+import re
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -47,11 +48,25 @@ def constructions(request):
             if form.is_valid():
                 c: Construction = form.cleaned_data["construction"]
 
-                # Berechnung des neuen Namens basierend auf dem ersten Teil
-                first_part = c.name.split(' ', 1)[0]
-                existing_names = Construction.objects.filter(owner=request.org, name__startswith=first_part)
-                count = existing_names.count()
-                new_name = f"{first_part} {count + 1}" if count > 0 else f"{first_part} 1"
+                base_name = c.name.strip()  # Leerzeichen am Anfang/Ende entfernen
+                # Prüft, ob der Name eine Zahl am Ende hat und entfernt diese
+                match = re.search(r'\s*(\d+)\s*$', base_name)
+                if match:
+                    base_name = base_name[:match.start()].strip()  # Alles vor der Zahl behalten
+                # Alle existierenden Namen mit diesem Basisnamen abrufen
+                existing_names = Construction.objects.filter(
+                    owner=request.org,
+                    name__regex=rf'^{re.escape(base_name)}\s*\d*$'
+                ).values_list("name", flat=True)
+                # Höchste vorhandene Nummer extrahieren
+                numbers = []
+                for name in existing_names:
+                    match = re.search(r'(\d+)\s*$', name)
+                    if match:
+                        numbers.append(int(match.group(1)))
+                new_number = max(numbers, default=0) + 1  # Höchste gefundene Zahl + 1
+                # Neuen Namen generieren
+                new_name = f"{base_name} {new_number}"
 
                 # Neue Konstruktion erstellen
                 new_construction = Construction.objects.create(

@@ -35,7 +35,7 @@ class AddMaterialStockForm(ModelForm):
         choices = [
             ('', '---------'),
             ("Eigenes Material", [(c.id, c.name) for c in org_material]),
-            ("Öffentliches Material", [(c.id, c.name) for c in public_material]),
+            ("Grundmaterial", [(c.id, c.name) for c in public_material]),
             ("Öffentliches Material anderer Organisationen", [ (c.id, f"{c.name} ({c.owner.name})")  # Füge den Organisationsnamen hinzu
             for c in external_material]),
         ]
@@ -127,7 +127,7 @@ class ImportConstructionForm(Form):
         choices = [
             ('', '---------'),
             ("Eigene Konstruktionen", [(c.id, c.name) for c in org_constructions]),
-            ("Öffentliche Konstruktionen", [(c.id, c.name) for c in public_constructions]),
+            ("Grundkonstruktionen", [(c.id, c.name) for c in public_constructions]),
             ("Öffentliche Konstruktionen anderer Organisationen", [ (c.id, f"{c.name} ({c.owner.name})")  # Füge den Organisationsnamen hinzu
             for c in external_constructions]),
         ]
@@ -164,7 +164,7 @@ class ConstructionMaterialForm(ModelForm):
         choices = [
             ('', '---------'),
             ("Eigenes Material", [(c.id, c.name) for c in org_material]),
-            ("Öffentliches Material", [(c.id, c.name) for c in public_material]),
+            ("Grundmaterial", [(c.id, c.name) for c in public_material]),
             ("Öffentliches Material anderer Organisationen", [ (c.id, f"{c.name} ({c.owner.name})")  # Füge den Organisationsnamen hinzu
             for c in external_material]),
         ]

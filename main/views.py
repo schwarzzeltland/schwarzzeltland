@@ -26,9 +26,12 @@ from main.models import Organization, Membership
 
 # Create your views here.
 def home_view(request):
+    constructions = Construction.objects.filter(Q(owner__isnull=True) | Q(public=True))
+
+
     return render(request, 'main/index.html', {
         'title': 'Home',
-        'constructions': Construction.objects.filter(Q(owner__isnull=True) | Q(public=True)),
+        'constructions': constructions,
     })
 
 

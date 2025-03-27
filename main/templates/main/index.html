@@ -11,7 +11,10 @@
                         {% thumbnail 'x450' item.image -- alt=item.name class="card-img-top object-fit-contain" loading="lazy" %}
                     {% endif %}
                     <div class="card-body">
-                        <h5 class="card-title">{{ item.name }}</h5>
+                        <h5 class="card-title">{{ item.name }}
+                            {% if item.owner %}
+                                ({{ item.owner.name }})
+                            {% endif %}</h5>
                         <p class="card-text">{{ item.description }}</p>
                     </div>
                 </div>

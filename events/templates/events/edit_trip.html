@@ -110,6 +110,11 @@
                 <div class="mb-2">
                     <button type="submit" name="save" class="btn btn-success btn-green">Veranstaltung speichern
                     </button>
+                    {% if trip %}
+                        <button type="submit" name="save_as_new" class="btn btn-primary btn-green">als neue
+                            Veranstaltung speichern
+                        </button>
+                    {% endif %}
                 </div>
                 {% if trip.pk != None %}
                     <div class="mb-2">
@@ -166,7 +171,7 @@
                                 <option value="{{ construction.id }}">{{ construction.name }}</option>
                             {% endfor %}
                         </optgroup>
-                        <optgroup label="Öffentliche Konstruktionen">
+                        <optgroup label="Grundkonstruktionen">
                             {% for construction in constructions.public %}
                                 <option value="{{ construction.id }}">{{ construction.name }}</option>
                             {% endfor %}
@@ -236,7 +241,7 @@
                                 <option value="{{ material.id }}">{{ material.name }}</option>
                             {% endfor %}
                         </optgroup>
-                        <optgroup label="Öffentliches Material">
+                        <optgroup label="Grundmaterial">
                             {% for material in materials.public %}
                                 <option value="{{ material.id }}">{{ material.name }}</option>
                             {% endfor %}

@@ -248,6 +248,8 @@ def edit_trip(request, pk=None):
 
         if trip_form.is_valid() & tripconstruction_formset.is_valid() & tripgroup_formset.is_valid() & tripmaterial_formset.is_valid():
             trip_d = trip_form.save(commit=False)
+            if 'save_as_new' in request.POST:
+                trip_d.pk = None
             trip_d.owner = request.org
             trip_d.save()
             constructions = tripconstruction_formset.save(commit=False)
@@ -274,7 +276,7 @@ def edit_trip(request, pk=None):
                 mat.save()
             tripmaterial_formset.save_m2m()
             # Unterscheidung der Weiterleitungen basierend auf dem Button
-            if 'save' in request.POST:
+            if 'save' in request.POST or 'save_as_new' in request.POST:
                 # Wenn der Speichern-Button gedrückt wurde, weiter zu Trips
                 messages.success(request, f'Veranstaltung {trip_d.name} gespeichert.')
                 return redirect('trip')  # Hier 'trip' zu deiner Trip-Liste oder Detail-Seite weiterleiten
@@ -820,7 +822,8 @@ def find_construction_combination_w_check_material(request, pk=None):
     optimal_combination, min_total_weight = find_optimal_construction_combination_w_check_material(teilnehmergruppen,
                                                                                                    konstruktionen,
                                                                                                    request,
-                                                                                                   min_sleeping_places_c, trip)
+                                                                                                   min_sleeping_places_c,
+                                                                                                   trip)
 
     group_construction_data = []
     for group, group_combination in zip(trip_groups, optimal_combination):
@@ -844,6 +847,7 @@ def find_construction_combination_w_check_material(request, pk=None):
         'group_construction_data': group_construction_data,
         'min_total_weight': min_total_weight,
     })
+
 
 @require_POST
 @event_manager_required
