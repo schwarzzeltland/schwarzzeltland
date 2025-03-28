@@ -76,8 +76,7 @@ def constructions(request):
                     description=c.description,
                     sleep_place_count=c.sleep_place_count,
                     covered_area=c.covered_area,
-                    required_space=c.required_space,
-                    image=c.image
+                    required_space=c.required_space
                 )
 
                 # Materialien der Vorlage kopieren
