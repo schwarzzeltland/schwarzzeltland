@@ -17,7 +17,7 @@
                         <tr>
                             <th>Gruppe</th>
                             <th>TN-Anzahl</th>
-                            <th>Löschen</th>
+                            <th></th>
                         </tr>
                         </thead>
                         <tbody id="form-container-group">
@@ -29,7 +29,13 @@
                             <tr>
                                 <td>{% bootstrap_field form.name show_label=False %} </td>
                                 <td>{% bootstrap_field form.count show_label=False %}</td>
-                                <td>{% bootstrap_field form.DELETE show_label=False %}</td>
+                                <td>
+                                    <input type="checkbox" name="{{ form.prefix }}-DELETE" id="{{ form.prefix }}-DELETE"
+                                           class="delete-checkbox d-none">
+                                    <div class="mb-3">
+                                        <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
+                                    </div>
+                                </td>
                             </tr>
                         {% endfor %}
                         </tbody>
@@ -47,7 +53,7 @@
                             <th>Konstruktion</th>
                             <th>Anzahl</th>
                             <th>Beschreibung</th>
-                            <th>Löschen</th>
+                            <th></th>
                         </tr>
                         </thead>
                         <tbody id="form-container">
@@ -56,11 +62,16 @@
                             {% for hidden in form.hidden_fields %}
                                 {{ hidden }}
                             {% endfor %}
-                            <tr>
-                                <td>{% bootstrap_field form.construction show_label=False %} </td>
-                                <td>{% bootstrap_field form.count show_label=False %}</td>
-                                <td>{% bootstrap_field form.description show_label=False %}</td>
-                                <td>{% bootstrap_field form.DELETE show_label=False %}</td>
+                            <td>{% bootstrap_field form.construction show_label=False %} </td>
+                            <td>{% bootstrap_field form.count show_label=False %}</td>
+                            <td>{% bootstrap_field form.description show_label=False %}</td>
+                            <td>
+                                <input type="checkbox" name="{{ form.prefix }}-DELETE" id="{{ form.prefix }}-DELETE"
+                                       class="delete-checkbox d-none">
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
+                                </div>
+                            </td>
                             </tr>
                         {% endfor %}
                         </tbody>
@@ -82,7 +93,7 @@
                             <th>Material</th>
                             <th>Anzahl</th>
                             <th>Beschreibung</th>
-                            <th>Löschen</th>
+                            <th></th>
                         </tr>
                         </thead>
                         <tbody id="form-container-material">
@@ -95,7 +106,13 @@
                                 <td>{% bootstrap_field form.material show_label=False %} </td>
                                 <td>{% bootstrap_field form.count show_label=False %}</td>
                                 <td>{% bootstrap_field form.description show_label=False %}</td>
-                                <td>{% bootstrap_field form.DELETE show_label=False %}</td>
+                                <td>
+                                    <input type="checkbox" name="{{ form.prefix }}-DELETE" id="{{ form.prefix }}-DELETE"
+                                           class="delete-checkbox d-none">
+                                    <div class="mb-3">
+                                        <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
+                                    </div>
+                                </td>
                             </tr>
                         {% endfor %}
                         </tbody>
@@ -200,8 +217,7 @@
             </td>
             <td>
                 <div class="mb-3">
-                    <input type="checkbox" name="tripconstruction_set-__prefix__-DELETE"
-                           id="id_{{ formset_prefix }}-__prefix__-DELETE">
+                    <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
                 </div>
             </td>
         </tr>
@@ -223,8 +239,7 @@
             </td>
             <td>
                 <div class="mb-3">
-                    <input type="checkbox" name="tripgroup_set-__prefix__-DELETE"
-                           id="id_{{ formset_prefix_group }}-__prefix__-DELETE">
+                    <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
                 </div>
             </td>
         </tr>
@@ -269,8 +284,7 @@
             </td>
             <td>
                 <div class="mb-3">
-                    <input type="checkbox" name="tripmaterial_set-__prefix__-DELETE"
-                           id="id_{{ formset_prefix_material }}-__prefix__-DELETE">
+                    <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
                 </div>
             </td>
         </tr>
@@ -318,7 +332,38 @@
                 totalFormsInput_material.value = parseInt(formIndex_material) + 1; // Anzahl erhöhen
                 // Wendet Select2 auf das neue Dropdown-Menü an
                 initializeSelect2()
+
             });
+            // Event-Listener für Konstruktionen
+            formContainer.addEventListener('click', function (event) {
+                handleRowRemoval(event, formContainer, totalFormsInput);
+            });
+
+// Event-Listener für Gruppen
+            formContainer_group.addEventListener('click', function (event) {
+                handleRowRemoval(event, formContainer_group, totalFormsInput_group);
+            });
+
+// Event-Listener für Materialien
+            formContainer_material.addEventListener('click', function (event) {
+                handleRowRemoval(event, formContainer_material, totalFormsInput_material);
+            });
+
+// Generische Funktion zum Entfernen von Zeilen
+            function handleRowRemoval(event, container, totalFormsInput) {
+                if (event.target.classList.contains('remove-row')) {
+                    const row = event.target.closest('tr');
+                    const deleteCheckbox = row.querySelector('.delete-checkbox');
+
+                    if (deleteCheckbox) {
+                        deleteCheckbox.checked = true; // Markiere für Löschung
+                        row.style.display = 'none'; // Visuell ausblenden
+                    } else {
+                        row.remove(); // Entferne neue Zeilen komplett
+                        totalFormsInput.value = container.querySelectorAll('tr').length;
+                    }
+                }
+            }
         });
 
         function initializeSelect2() {
@@ -346,6 +391,7 @@
                     width: '250px'
                 });
             });
+
         }
     </script>
     <style>

@@ -17,7 +17,7 @@
                             <th>Anzahl</th>
                             <th>Lagerort</th>
                             <th>Zum Lager hinzufügen</th>
-                            <th>Löschen</th>
+                            <th></th>
                         </tr>
                         </thead>
                         <tbody id="form-container">
@@ -30,8 +30,18 @@
                                 <td>{% bootstrap_field form.material show_label=False %} </td>
                                 <td>{% bootstrap_field form.count show_label=False %}</td>
                                 <td>{% bootstrap_field form.storage_place show_label=False %}</td>
-                                <td>{% bootstrap_field form.add_to_stock show_label=False %}</td>
-                                <td>{% bootstrap_field form.DELETE show_label=False %}</td>
+                                <td>
+                                    <div class="form-check d-flex justify-content-center">
+                                        {% bootstrap_field form.add_to_stock show_label=False %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <input type="checkbox" name="{{ form.prefix }}-DELETE" id="{{ form.prefix }}-DELETE"
+                                           class="delete-checkbox d-none">
+                                    <div class="mb-3">
+                                        <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
+                                    </div>
+                                </td>
                             </tr>
                         {% endfor %}
                         </tbody>
@@ -89,15 +99,19 @@
                 </td>
                 <td>
                     <div class="mb-3">
-                        <input type="text" name="constructionmaterial_set-__prefix__-storage_place"
-                               class="form-control"
+                        <input type="text" name="constructionmaterial_set-__prefix__-storage_place" class="form-control"
                                id="id_{{ formset_prefix }}-__prefix__-storage_place">
                     </div>
                 </td>
                 <td>
+                    <div class="mb-3 form-check d-flex justify-content-center">
+                        <input type="checkbox" name="constructionmaterial_set-__prefix__-add_to_stock"
+                               class="form-check-input">
+                    </div>
+                </td>
+                <td>
                     <div class="mb-3">
-                        <input type="checkbox" name="constructionmaterial_set-__prefix__-DELETE"
-                               id="id_{{ formset_prefix }}-__prefix__-DELETE">
+                        <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
                     </div>
                 </td>
             </tr>
@@ -116,28 +130,46 @@
                 const formContainer = document.getElementById('form-container');
                 const totalFormsInput = document.querySelector(`#id_constructionmaterial_set-TOTAL_FORMS`);
                 const template = document.getElementById('empty-form-template').innerHTML;
-                initializeSelect2()
+
+                initializeSelect2();
+
+                // Zeile hinzufügen
                 addRowButton.addEventListener('click', function () {
-                    const formIndex = totalFormsInput.value; // Aktuelle Anzahl der Formulare
+                    const formIndex = totalFormsInput.value;
                     const newRow = template.replace(/__prefix__/g, formIndex);
                     formContainer.insertAdjacentHTML('beforeend', newRow);
-                    totalFormsInput.value = parseInt(formIndex) + 1; // Anzahl erhöhen
-                    // Wendet Select2 auf das neue Dropdown-Menü an
-                    initializeSelect2()
+                    totalFormsInput.value = parseInt(formIndex) + 1;
+                    initializeSelect2();
+                });
+
+                // Entfernen-Button für bestehende und dynamische Zeilen
+                formContainer.addEventListener('click', function (event) {
+                    if (event.target.classList.contains('remove-row')) {
+                        const row = event.target.closest('tr');
+                        const deleteCheckbox = row.querySelector('.delete-checkbox');
+
+                        if (deleteCheckbox) {
+                            deleteCheckbox.checked = true; // Markiere für Löschung
+                            row.style.display = 'none'; // Visuell ausblenden
+                        } else {
+                            row.remove(); // Entferne neue Zeilen komplett
+                            totalFormsInput.value = formContainer.querySelectorAll('tr').length;
+                        }
+                    }
                 });
             });
 
+            // Select2-Initialisierung
             function initializeSelect2() {
                 $('.form-select').each(function () {
-                    const $select = $(this);
-                    // Wendet Select2 auf das Dropdown an, das auch die Klasse org-material berücksichtigt
-                    $select.select2({
+                    $(this).select2({
                         placeholder: "---------",
                         allowClear: true,
                         width: '100%'
                     });
                 });
             }
+
         </script>
         <style>
             .select2-container--default .select2-selection--single {
