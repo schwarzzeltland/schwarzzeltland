@@ -12,9 +12,6 @@
     <meta content="" name="description">
     <meta content="" name="keywords">
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Raleway:300,300i,400,400i,500,500i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i"
-          rel="stylesheet">
 
     <link href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.css' %}" rel="stylesheet">
@@ -79,7 +76,9 @@
                                     </form>
                                 {% endif %}
                             {% endfor %}
-                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
                             <li><a class="dropdown-item" href="{% url 'create_organization' %}">Neue Organisation</a>
                             </li>
                         </ul>
@@ -226,8 +225,10 @@
 
     <div class="container">
         <div class="copyright">
-            &copy; Copyright <strong><span>Gp</span></strong>. All Rights Reserved
+            &copy; Copyright <strong><span>Schwarzzeltland</span></strong>. All Rights Reserved<br>
+            Designed by <a href="https://bootstrapmade.com/">BootstrapMade</a>
         </div>
+
     </div>
 </footer><!-- End Footer -->
 
