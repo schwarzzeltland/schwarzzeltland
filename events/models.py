@@ -52,7 +52,7 @@ class Trip(models.Model):
     description = CharField(max_length=1024, default="", blank=True, verbose_name="Beschreibung")
     start_date = models.DateTimeField("Startdatum")
     end_date = models.DateTimeField("Enddatum")
-    location = models.ForeignKey(Location, on_delete=models.CASCADE, null=True, blank=True)
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, null=True, blank=True,verbose_name="Ort")
 
     def __str__(self):
         return self.name
