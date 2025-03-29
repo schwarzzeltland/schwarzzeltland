@@ -725,9 +725,14 @@ def find_optimal_construction_combination_w_check_material(teilnehmergruppen, ko
 
     result = []
     total_material_usage = defaultdict(int)
-    # Bearbeite die Gruppen von der größten zur kleinsten
+    # Ursprüngliche Reihenfolge speichern
+    original_order = list(enumerate(teilnehmergruppen))
+    # Sortiere absteigend nach Gruppengröße
     teilnehmergruppen.sort(reverse=True)
-    for group_size in teilnehmergruppen:
+    result = []
+    total_material_usage = defaultdict(int)
+
+    for idx, group_size in original_order:
         valid_combinations = []
 
         for sleep_places in range(group_size, max_sleep_places + max_sleep_place_count + 1):
@@ -746,16 +751,19 @@ def find_optimal_construction_combination_w_check_material(teilnehmergruppen, ko
         if not valid_combinations:
             messages.warning(request,
                              f"Größe {group_size} kann mit den verfügbaren Konstruktionen nicht abgedeckt werden!")
-            result.append([])
+            result.append((idx, []))
         else:
             best_combination = min(valid_combinations, key=lambda x: x[0])[1]
             for material, count in calculate_material_usage(best_combination).items():
                 total_material_usage[material] += count
-            result.append(best_combination)
+            result.append((idx, best_combination))
+
+    # Wiederherstellung der ursprünglichen Reihenfolge
+    result.sort(key=lambda x: x[0])
+    result = [combination for _, combination in result]
 
     group_weights = [calculate_total_weight_for_group(group_combination) for group_combination in result]
     min_total_weight = sum(group_weights) if group_weights else 0
-
     return result, min_total_weight
 
 
