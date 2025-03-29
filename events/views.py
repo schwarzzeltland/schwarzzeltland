@@ -1,5 +1,6 @@
 import os
 from collections import defaultdict
+from copy import deepcopy
 from itertools import combinations
 
 from _decimal import Decimal
@@ -247,34 +248,63 @@ def edit_trip(request, pk=None):
                                                    form_kwargs={'organization': request.org})
 
         if trip_form.is_valid() & tripconstruction_formset.is_valid() & tripgroup_formset.is_valid() & tripmaterial_formset.is_valid():
+
             trip_d = trip_form.save(commit=False)
+            save_a_n = False
             if 'save_as_new' in request.POST:
+                save_a_n = True
+                og_trip = deepcopy(trip_d)
                 trip_d.pk = None
             trip_d.owner = request.org
             trip_d.save()
-            constructions = tripconstruction_formset.save(commit=False)
-            for obj in tripconstruction_formset.deleted_objects:  # Gelöschte Objekte entfernen
-                obj.delete()
-            for con in constructions:
-                con.trip = trip_d
-                con.save()
-            tripconstruction_formset.save_m2m()
-            total_tn_count = 0
-            groups = tripgroup_formset.save(commit=False)
-            for obj in tripgroup_formset.deleted_objects:  # Gelöschte Objekte entfernen
-                obj.delete()
-            for gr in groups:
-                gr.trip = trip_d
-                gr.save()
-                total_tn_count += gr.count
-            tripgroup_formset.save_m2m()
-            other_materials = tripmaterial_formset.save(commit=False)
-            for obj in tripmaterial_formset.deleted_objects:  # Gelöschte Objekte entfernen
-                obj.delete()
-            for mat in other_materials:
-                mat.trip = trip_d
-                mat.save()
-            tripmaterial_formset.save_m2m()
+            #  Wenn "Speichern als neu" => Alle Formset-Objekte kopieren
+            if save_a_n:
+                # 1. Konstruktionen duplizieren
+                original_constructions = og_trip.tripconstruction_set.all()
+                for con in original_constructions:
+                    con.pk = None  # Neue Instanz erzwingen
+                    con.trip = trip_d
+                    con.save()
+
+                # 2. Gruppen duplizieren
+                original_groups = og_trip.tripgroup_set.all()
+                for gr in original_groups:
+                    gr.pk = None
+                    gr.trip = trip_d
+                    gr.save()
+
+                # 3. Materialien duplizieren
+                original_materials = og_trip.tripmaterial_set.all()
+                for mat in original_materials:
+                    mat.pk = None
+                    mat.trip = trip_d
+                    mat.save()
+            else:
+                # 🚀 Normales Speichern wenn NICHT "Speichern als neu"
+                constructions = tripconstruction_formset.save(commit=False)
+                for obj in tripconstruction_formset.deleted_objects:
+                    obj.delete()
+                for con in constructions:
+                    con.trip = trip_d
+                    con.save()
+                tripconstruction_formset.save_m2m()
+
+                groups = tripgroup_formset.save(commit=False)
+                for obj in tripgroup_formset.deleted_objects:
+                    obj.delete()
+                for gr in groups:
+                    gr.trip = trip_d
+                    gr.save()
+                tripgroup_formset.save_m2m()
+
+                other_materials = tripmaterial_formset.save(commit=False)
+                for obj in tripmaterial_formset.deleted_objects:
+                    obj.delete()
+                for mat in other_materials:
+                    mat.trip = trip_d
+                    mat.save()
+                tripmaterial_formset.save_m2m()
+
             # Unterscheidung der Weiterleitungen basierend auf dem Button
             if 'save' in request.POST or 'save_as_new' in request.POST:
                 # Wenn der Speichern-Button gedrückt wurde, weiter zu Trips
