@@ -462,10 +462,7 @@ def edit_material(request, pk=None):
                                              material_condition_description=form.cleaned_data[
                                                  'material_condition_description'])
                 stm = StockMaterial.objects.last()
-                print(stm)
-                print(mat.pk)
-                mat.delete()
-                messages.success(request, f'Material {mat.material.name} als neues Material gespeichert')
+                messages.success(request, f'Material {stm.material.name} als neues Material gespeichert')
             return HttpResponseRedirect(reverse_lazy('material'))
     else:
         form = StockMaterialForm(instance=mat)
