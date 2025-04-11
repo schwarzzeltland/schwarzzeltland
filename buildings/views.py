@@ -27,7 +27,7 @@ def constructions(request):
     if request.session.get('previous_url'):
         previous_url = request.session.get('previous_url')
 
-        if 'construction/edit/' in previous_url:
+        if 'construction/edit/' in previous_url or 'construction/show' in previous_url or 'construction/delete' in previous_url:
             if not search_query:
                 search_query = request.session.get('search', '')
             if 'search' in request.session:
@@ -101,6 +101,7 @@ def constructions(request):
 
 @login_required
 def show_construction(request, pk=None):
+    request.session['previous_url'] = request.build_absolute_uri()
     construction = get_object_or_404(Construction, pk=pk, owner=request.org)
     construction_material = ConstructionMaterial.objects.filter(construction=construction)
     return render(request, 'buildings/show_construction.html', {
@@ -302,7 +303,7 @@ def material(request):
     # 2. Wenn keine GET-Filter vorhanden sind, die Filter aus der Session holen
     if request.session.get('previous_url'):
         previous_url = request.session.get('previous_url')
-        if 'material/edit/' in previous_url:
+        if 'material/edit/' in previous_url or 'material/show/' in previous_url or 'material/delete/' in previous_url:
             if not search_query:
                 search_query = request.session.get('search', '')
             if 'search' in request.session:
@@ -477,6 +478,7 @@ def edit_material(request, pk=None):
 @login_required
 @material_manager_required
 def delete_construction(request, pk=None):
+    request.session['previous_url'] = request.build_absolute_uri()
     construction = get_object_or_404(Construction, pk=pk, owner=request.org)
     if request.method == 'POST':
         construction.delete()
@@ -489,6 +491,7 @@ def delete_construction(request, pk=None):
 @login_required
 @material_manager_required
 def delete_material(request, pk=None):
+    request.session['previous_url'] = request.build_absolute_uri()
     mat = get_object_or_404(StockMaterial, pk=pk, organization=request.org)
     if request.method == 'POST':
         deleted_st_mat = mat.material
@@ -507,6 +510,7 @@ def delete_material(request, pk=None):
 
 @login_required
 def show_material(request, pk=None):
+    request.session['previous_url'] = request.build_absolute_uri()
     material = get_object_or_404(StockMaterial, pk=pk, organization=request.org)
     material.material.type = material.material.get_type_display()
     return render(request, 'buildings/show_material.html', {

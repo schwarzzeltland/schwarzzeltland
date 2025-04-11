@@ -31,7 +31,7 @@ def trip(request):
     # 2. Wenn keine GET-Filter vorhanden sind, die Filter aus der Session holen
     if request.session.get('previous_url'):
         previous_url = request.session.get('previous_url')
-        if 'trip/edit/' in previous_url:
+        if 'trip/edit/' in previous_url or 'trip/show/' in previous_url or 'trip/delete/' in previous_url:
             if not search_query:
                 search_query = request.session.get('search', '')
             if 'search' in request.session:
@@ -71,6 +71,7 @@ def trip(request):
 
 @login_required
 def show_trip(request, pk=None):
+    request.session['previous_url'] = request.build_absolute_uri()
     trip = get_object_or_404(Trip, pk=pk, owner=request.org)
     tripconstruction = TripConstruction.objects.filter(trip=trip)
     tripgroups = TripGroup.objects.filter(trip=trip)
@@ -90,6 +91,7 @@ def show_trip(request, pk=None):
 @login_required
 @event_manager_required
 def delete_trip(request, pk=None):
+    request.session['previous_url'] = request.build_absolute_uri()
     trip_d = get_object_or_404(Trip, pk=pk, owner=request.org)
     if request.method == 'POST':
         trip_d.delete()
@@ -375,7 +377,7 @@ def location(request):
     # 2. Wenn keine GET-Filter vorhanden sind, die Filter aus der Session holen
     if request.session.get('previous_url'):
         previous_url = request.session.get('previous_url')
-        if 'location/edit/' in previous_url:
+        if 'location/edit/' in previous_url or 'location/show/' in previous_url or 'location/delete/' in previous_url:
             if not search_query:
                 search_query = request.session.get('search', '')
             if 'search' in request.session:
@@ -445,6 +447,7 @@ def location(request):
 @login_required
 @event_manager_required
 def delete_location(request, pk=None):
+    request.session['previous_url'] = request.build_absolute_uri()
     location_d = get_object_or_404(Location, pk=pk, owner=request.org)
     if request.method == 'POST':
         location_d.delete()
@@ -455,6 +458,7 @@ def delete_location(request, pk=None):
 
 @login_required
 def show_location(request, pk=None):
+    request.session['previous_url'] = request.build_absolute_uri()
     location = get_object_or_404(Location, pk=pk, owner=request.org)
     location.type = location.get_type_display()
     google_maps_api_key = os.environ.get('GOOGLE_MAPS_API_KEY')

@@ -35,7 +35,13 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="mb-3" id="map" style="height: 400px; width: 100%;"></div>
+                <div id="map-placeholder"
+                     style="height: 400px; background: #eee; display: flex; align-items: center; justify-content: center;">
+                    <button id="show-map" type="button" class="btn btn-primary">Karte anzeigen</button>
+                </div>
+
+                <div id="map" style="height: 400px; width: 100%; display: none; margin-top: 20px;"></div>
+
                 <button type="button" class="btn btn-secondary" onclick="history.back()">Zurück</button>
                 <noscript>
                     <a href="{% url 'location' %}" class="btn btn-secondary">Zurück</a>
@@ -44,25 +50,36 @@
         </div>
     </div>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('show-map').addEventListener('click', function () {
+            const script = document.createElement('script');
+            script.src = "https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&callback=initMap";
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        });
+
+        function initMap() {
             const latitude = parseFloat("{{ location.latitude|safe }}");
             const longitude = parseFloat("{{ location.longitude|safe }}");
 
             const map = new google.maps.Map(document.getElementById('map'), {
                 center: {lat: latitude, lng: longitude},
-                zoom: 14, // Zoom-Level
+                zoom: 14,
             });
 
-            // Marker hinzufügen
             const marker = new google.maps.Marker({
                 position: {lat: latitude, lng: longitude},
                 map: map,
-                title: "{{ location.name }}", // Optional: Name des Ortes
+                title: "{{ location.name }}",
             });
-        });
+
+            // Karte zeigen, Placeholder ausblenden
+            document.getElementById('map').style.display = 'block';
+            document.getElementById('map-placeholder').style.display = 'none';
+        }
     </script>
+
     <style>
         #map {
             height: 400px; /* Höhe der Karte */
