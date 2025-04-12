@@ -144,7 +144,7 @@ def check_trip_material(request, pk=None):
         # Berechne die Gesamtmenge der verfügbaren Materialien
         available_quantity = sum(m.count for m in stock_materials) - sum(m.condition_broke for m in stock_materials)
 
-        trip_materials_type_6 = trip_materials.filter(material__type=6)
+        trip_materials_type_6 = trip_materials.filter(material__type=6, material__name=material_name)
         for tm in trip_materials_type_6:
             available_quantity += tm.reduced_from_stock  # Nur zur Berechnung der verfügbaren Menge hinzufügen
 
