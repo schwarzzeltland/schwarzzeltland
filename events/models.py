@@ -39,12 +39,14 @@ class Trip(models.Model):
     TYPE_DRIVE = 1
     TYPE_HAIK = 2
     TYPE_DAYTRIP = 3
+    TYPE_RENTAL = 4
 
     TYPES = (
         (TYPE_CAMP, "Lager"),
         (TYPE_DRIVE, "Fahrt"),
         (TYPE_HAIK, "Haik"),
-        (TYPE_DAYTRIP, "Tagesaktion")
+        (TYPE_DAYTRIP, "Tagesaktion"),
+        (TYPE_RENTAL, "Material-Verleih")
     )
     name = CharField(max_length=255)
     owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)

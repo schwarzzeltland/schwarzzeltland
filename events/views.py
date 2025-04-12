@@ -60,6 +60,7 @@ def trip(request):
         (1, "Fahrt"),
         (2, "Haik"),
         (3, "Tagesaktion"),
+        (4, "Material-Verleih"),
     )
     return render(request, 'events/trip.html', {
         'title': 'Veranstaltungen',
