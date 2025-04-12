@@ -4,6 +4,7 @@ from collections import defaultdict
 from copy import deepcopy
 from itertools import combinations
 
+from django.utils.timezone import now
 from _decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -26,6 +27,11 @@ from main.models import Membership, Organization
 
 @login_required
 def trip(request):
+    temp_stock = StockMaterial.objects.filter(temporary=True,
+                                              valid_until__lt=now().date())  # ausgeliehens material löschen, wenn es abgelaufen ist
+    for tm in temp_stock:
+        tm.material.delete()
+        tm.delete()
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
     # Suchlogik
     search_query = request.GET.get('search', '')
@@ -319,7 +325,7 @@ def edit_trip(request, pk=None):
                     m = request.user.membership_set.filter(organization=request.org).first()
 
                     # Trip abrufen
-                    trip = get_object_or_404(Trip, pk=pk, owner=request.org)
+                    trip = trip_d
 
                     # Alle Konstruktionen des Trips abrufen
                     constructions = TripConstruction.objects.filter(trip=trip)
@@ -417,7 +423,7 @@ def edit_trip(request, pk=None):
                     else:
                         for mat in TripMaterial.objects.filter(trip=trip_d):
                             new_mat = Material.objects.create(
-                                name=f"{mat.material.name} Geliehen von {request.org.name} bis {trip_d.end_date}",
+                                name=f"{mat.material.name} Geliehen von {request.org.name} von {trip_d.start_date} bis {trip_d.end_date}",
                                 description=mat.material.description,
                                 owner=org,
                                 public=False,
@@ -463,7 +469,7 @@ def edit_trip(request, pk=None):
                     org = Organization.objects.filter(name=trip_d.description).first()
                     if trip_d.type == 4 and org:
                         mat_rent = Material.objects.filter(
-                                name=f"{obj.material.name} Geliehen von {request.org.name} bis {trip_d.end_date}",
+                                name=f"{obj.material.name} Geliehen von {request.org.name} von {trip_d.start_date} bis {trip_d.end_date}",
                                 description=obj.material.description,
                                 owner=org,
                                 public=False,
@@ -481,8 +487,8 @@ def edit_trip(request, pk=None):
                             temporary=True,
                             valid_until=trip_d.end_date,
                         ).first()
-                        mat_rent.delete()
                         stock_mat.delete()
+                        mat_rent.delete()
                     obj.delete()
                 for mat in other_materials:
                     mat.trip = trip_d
@@ -516,7 +522,7 @@ def edit_trip(request, pk=None):
                     m = request.user.membership_set.filter(organization=request.org).first()
 
                     # Trip abrufen
-                    trip = get_object_or_404(Trip, pk=pk, owner=request.org)
+                    trip = trip_d
 
                     # Alle Konstruktionen des Trips abrufen
                     constructions = TripConstruction.objects.filter(trip=trip)
@@ -614,7 +620,7 @@ def edit_trip(request, pk=None):
                     else:
                         for mat in TripMaterial.objects.filter(trip=trip_d):
                             new_mat, created_mat = Material.objects.get_or_create(
-                                name=f"{mat.material.name} Geliehen von {request.org.name} bis {trip_d.end_date}",
+                                name=f"{mat.material.name} Geliehen von {request.org.name} von {trip_d.start_date} bis {trip_d.end_date}",
                                 description=mat.material.description,
                                 owner=org,
                                 public=False,

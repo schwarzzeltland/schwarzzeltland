@@ -22,6 +22,11 @@ from main.decorators import material_manager_required
 
 @login_required
 def constructions(request):
+    temp_stock = StockMaterial.objects.filter(temporary=True,
+                                              valid_until__lt=now().date())  # ausgeliehens material löschen, wenn es abgelaufen ist
+    for tm in temp_stock:
+        tm.material.delete()
+        tm.delete()
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
     # Suchlogik
     search_query = request.GET.get('search', '')
