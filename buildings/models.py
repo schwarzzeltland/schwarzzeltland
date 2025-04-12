@@ -47,6 +47,8 @@ class StockMaterial(models.Model):
     condition_medium_healthy=models.IntegerField(verbose_name="Davon wartungsbedürftig",validators=[MinValueValidator(0)], default=0)
     condition_broke=models.IntegerField(verbose_name="Davon defekt",validators=[MinValueValidator(0)], default=0)
     material_condition_description=CharField(max_length=1024, default="",blank=True,verbose_name="Zustands-Beschreibung")
+    temporary = models.BooleanField(default=False)  # für verliehenes Material
+    valid_until = models.DateField(null=True, blank=True)
 
 
 class Construction(models.Model):

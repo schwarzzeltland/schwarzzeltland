@@ -3,6 +3,8 @@ from functools import wraps
 from pickle import LIST
 import re
 
+from django.utils import timezone
+from django.utils.timezone import now
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -295,6 +297,10 @@ def check_material(request, pk=None):
 
 @login_required
 def material(request):
+    temp_stock=StockMaterial.objects.filter(temporary=True, valid_until__lt=now().date()) #ausgeliehens material löschen, wenn es abgelaufen ist
+    for tm in temp_stock:
+        tm.material.delete()
+        tm.delete()
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
     # Suchlogik
     search_query = request.GET.get('search', '')

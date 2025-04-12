@@ -51,7 +51,7 @@ class Trip(models.Model):
     name = CharField(max_length=255)
     owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
     type = models.IntegerField(choices=TYPES, null=True, blank=True, verbose_name="Typ")
-    description = CharField(max_length=1024, default="", blank=True, verbose_name="Beschreibung")
+    description = CharField(max_length=1024, default="", blank=True, verbose_name="Beschreibung / Beim Material-Verleih Empfänger Organisation (Groß- / Kleinschreibung beachten!)")
     start_date = models.DateTimeField("Startdatum")
     end_date = models.DateTimeField("Enddatum")
     location = models.ForeignKey(Location, on_delete=models.CASCADE, null=True, blank=True,verbose_name="Ort")

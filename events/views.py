@@ -21,7 +21,7 @@ from events.forms import TripForm, TripConstructionFormSet, LocationForm, Import
     TripMaterialFormSet
 from events.models import Trip, TripConstruction, Location, PackedMaterial, TripGroup, TripMaterial
 from main.decorators import organization_admin_required, event_manager_required
-from main.models import Membership
+from main.models import Membership, Organization
 
 
 @login_required
@@ -298,7 +298,7 @@ def edit_trip(request, pk=None):
                             mat.reduced_from_stock = mat.count
                             mat.previous_count = mat.count
                         else:
-                            remaining=av_stock
+                            remaining = av_stock
                             mat.reduced_from_stock += av_stock
                             mat.previous_count = mat.count
                             messages.warning(request,
@@ -311,6 +311,132 @@ def edit_trip(request, pk=None):
                                 stock.save()
 
                     mat.save()
+                org = Organization.objects.filter(name=trip_d.description).first()
+                if trip_d.type == 4 and org:
+                    """ Prüft, ob Materialien für einen Trip verfügbar sind, unter Berücksichtigung paralleler Nutzung durch andere Trips. """
+
+                    # Mitgliedschaft abrufen
+                    m = request.user.membership_set.filter(organization=request.org).first()
+
+                    # Trip abrufen
+                    trip = get_object_or_404(Trip, pk=pk, owner=request.org)
+
+                    # Alle Konstruktionen des Trips abrufen
+                    constructions = TripConstruction.objects.filter(trip=trip)
+
+                    # Material-Berechnung initialisieren
+                    material_summary = defaultdict(int)
+
+                    # Materialien aus Konstruktionen sammeln und summieren
+                    for tc in constructions:
+                        construction_materials = ConstructionMaterial.objects.filter(construction=tc.construction)
+                        for cm in construction_materials:
+                            material_summary[cm.material.name] += cm.count * tc.count
+
+                    # Manuell hinzugefügtes Material sammeln
+                    trip_materials = TripMaterial.objects.filter(trip=trip)
+                    for tm in trip_materials:
+                        material_summary[tm.material.name] += tm.count
+
+                    # Liste für verfügbare & fehlende Materialien
+                    available_materials = []
+                    missing_materials = []
+                    missing = False
+
+                    # Prüfung der Materialverfügbarkeit unter Berücksichtigung paralleler Nutzung
+                    for material_name, total_required_quantity in material_summary.items():
+                        # Gesamtbestand des Materials abrufen
+                        stock_materials = StockMaterial.objects.filter(
+                            material__name=material_name, organization=request.org
+                        )
+                        # Berechne die Gesamtmenge der verfügbaren Materialien
+                        available_quantity = sum(m.count for m in stock_materials) - sum(
+                            m.condition_broke for m in stock_materials)
+
+                        trip_materials_type_6 = trip_materials.filter(material__type=6, material__name=material_name)
+                        for tm in trip_materials_type_6:
+                            available_quantity += tm.reduced_from_stock  # Nur zur Berechnung der verfügbaren Menge hinzufügen
+
+                        # Trips abrufen, die das gleiche Material nutzen und **vor oder parallel** zum aktuellen Trip liegen
+                        conflicting_trips = Trip.objects.filter(
+                            start_date__lt=trip.end_date,  # Startet vor dem Ende des aktuellen Trips
+                            end_date__gt=trip.start_date,  # Endet nach dem Start des aktuellen Trips (also überlappt)
+                        ).exclude(pk=trip.pk)
+
+                        # Material aus `TripMaterial` dieser Trips summieren
+                        used_materials_trip = conflicting_trips.filter(
+                            tripmaterial__material__name=material_name
+                        ).annotate(
+                            total_used=Sum('tripmaterial__count')
+                        )
+
+                        used_in_trip_materials = sum(t.total_used or 0 for t in used_materials_trip)
+
+                        # Material aus `TripConstruction` dieser Trips summieren
+                        used_materials_construction = conflicting_trips.filter(
+                            tripconstruction__construction__constructionmaterial__material__name=material_name
+                        ).annotate(
+                            total_used=Sum('tripconstruction__construction__constructionmaterial__count')
+                        )
+
+                        used_in_construction_materials = sum(t.total_used or 0 for t in used_materials_construction)
+
+                        # Gesamtverbrauch aus beiden Quellen berechnen
+                        used_in_other_trips = used_in_trip_materials + used_in_construction_materials
+
+                        # Effektiv verfügbare Menge berechnen
+                        effective_available_quantity = max(available_quantity - used_in_other_trips, 0)
+
+                        # Lagerinfo abrufen
+                        storage_info = [
+                            {'storage_place': m.storage_place, 'available_quantity': m.count}
+                            for m in stock_materials
+                        ]
+
+                        # Verfügbarkeit prüfen
+                        if effective_available_quantity >= total_required_quantity:
+                            available_materials.append({
+                                'material': material_name,
+                                'required_quantity': total_required_quantity,
+                                'available_quantity': effective_available_quantity,
+                                'storage_info': storage_info
+                            })
+                        else:
+                            missing_materials.append({
+                                'material': material_name,
+                                'required_quantity': total_required_quantity,
+                                'available_quantity': effective_available_quantity,
+                                'missing_quantity': total_required_quantity - effective_available_quantity,
+                                'storage_info': storage_info
+                            })
+                            missing = True
+                    if missing:
+                        messages.warning(request,
+                                         f"Es ist nicht genug Material zum Verleihen im Lager vorhanden.")
+                        return redirect('edit_trip', trip_d.pk)
+                    else:
+                        for mat in TripMaterial.objects.filter(trip=trip_d):
+                            new_mat = Material.objects.create(
+                                name=f"{mat.material.name} Geliehen von {request.org.name} bis {trip_d.end_date}",
+                                description=mat.material.description,
+                                owner=org,
+                                public=False,
+                                image=mat.material.image,
+                                weight=mat.material.weight,
+                                type=mat.material.type,
+                                length_min=mat.material.length_min,
+                                length_max=mat.material.length_max,
+                                width=mat.material.width
+                            )
+                            StockMaterial.objects.create(
+                                material=new_mat,
+                                organization=org,
+                                storage_place='Geliehen',
+                                temporary=True,
+                                valid_until=trip_d.end_date,
+                                count=mat.count,
+                                condition_healthy=mat.count,
+                            )
             else:
                 # 🚀 Normales Speichern wenn NICHT "Speichern als neu"
                 constructions = tripconstruction_formset.save(commit=False)
@@ -334,6 +460,29 @@ def edit_trip(request, pk=None):
                     mat_stock = StockMaterial.objects.filter(material__name=obj.material.name).first()
                     mat_stock.count += obj.reduced_from_stock
                     mat_stock.save()
+                    org = Organization.objects.filter(name=trip_d.description).first()
+                    if trip_d.type == 4 and org:
+                        mat_rent = Material.objects.filter(
+                                name=f"{obj.material.name} Geliehen von {request.org.name} bis {trip_d.end_date}",
+                                description=obj.material.description,
+                                owner=org,
+                                public=False,
+                                image=obj.material.image,
+                                weight=obj.material.weight,
+                                type=obj.material.type,
+                                length_min=obj.material.length_min,
+                                length_max=obj.material.length_max,
+                                width=obj.material.width
+                            ).first()
+                        stock_mat= StockMaterial.objects.filter(
+                            material=mat_rent,
+                            organization=org,
+                            storage_place='Geliehen',
+                            temporary=True,
+                            valid_until=trip_d.end_date,
+                        ).first()
+                        mat_rent.delete()
+                        stock_mat.delete()
                     obj.delete()
                 for mat in other_materials:
                     mat.trip = trip_d
@@ -346,7 +495,7 @@ def edit_trip(request, pk=None):
                             mat.reduced_from_stock = mat.count
                             mat.previous_count = mat.count
                         else:
-                            remaining=av_stock
+                            remaining = av_stock
                             mat.reduced_from_stock += av_stock
                             mat.previous_count = mat.count
                             messages.warning(request,
@@ -359,7 +508,138 @@ def edit_trip(request, pk=None):
                                 stock.save()
                     mat.save()
                 tripmaterial_formset.save_m2m()
+                org = Organization.objects.filter(name=trip_d.description).first()
+                if trip_d.type == 4 and org:
+                    """ Prüft, ob Materialien für einen Trip verfügbar sind, unter Berücksichtigung paralleler Nutzung durch andere Trips. """
 
+                    # Mitgliedschaft abrufen
+                    m = request.user.membership_set.filter(organization=request.org).first()
+
+                    # Trip abrufen
+                    trip = get_object_or_404(Trip, pk=pk, owner=request.org)
+
+                    # Alle Konstruktionen des Trips abrufen
+                    constructions = TripConstruction.objects.filter(trip=trip)
+
+                    # Material-Berechnung initialisieren
+                    material_summary = defaultdict(int)
+
+                    # Materialien aus Konstruktionen sammeln und summieren
+                    for tc in constructions:
+                        construction_materials = ConstructionMaterial.objects.filter(construction=tc.construction)
+                        for cm in construction_materials:
+                            material_summary[cm.material.name] += cm.count * tc.count
+
+                    # Manuell hinzugefügtes Material sammeln
+                    trip_materials = TripMaterial.objects.filter(trip=trip)
+                    for tm in trip_materials:
+                        material_summary[tm.material.name] += tm.count
+
+                    # Liste für verfügbare & fehlende Materialien
+                    available_materials = []
+                    missing_materials = []
+                    missing = False
+
+                    # Prüfung der Materialverfügbarkeit unter Berücksichtigung paralleler Nutzung
+                    for material_name, total_required_quantity in material_summary.items():
+                        # Gesamtbestand des Materials abrufen
+                        stock_materials = StockMaterial.objects.filter(
+                            material__name=material_name, organization=request.org
+                        )
+                        # Berechne die Gesamtmenge der verfügbaren Materialien
+                        available_quantity = sum(m.count for m in stock_materials) - sum(
+                            m.condition_broke for m in stock_materials)
+
+                        trip_materials_type_6 = trip_materials.filter(material__type=6, material__name=material_name)
+                        for tm in trip_materials_type_6:
+                            available_quantity += tm.reduced_from_stock  # Nur zur Berechnung der verfügbaren Menge hinzufügen
+
+                        # Trips abrufen, die das gleiche Material nutzen und **vor oder parallel** zum aktuellen Trip liegen
+                        conflicting_trips = Trip.objects.filter(
+                            start_date__lt=trip.end_date,  # Startet vor dem Ende des aktuellen Trips
+                            end_date__gt=trip.start_date,  # Endet nach dem Start des aktuellen Trips (also überlappt)
+                        ).exclude(pk=trip.pk)
+
+                        # Material aus `TripMaterial` dieser Trips summieren
+                        used_materials_trip = conflicting_trips.filter(
+                            tripmaterial__material__name=material_name
+                        ).annotate(
+                            total_used=Sum('tripmaterial__count')
+                        )
+
+                        used_in_trip_materials = sum(t.total_used or 0 for t in used_materials_trip)
+
+                        # Material aus `TripConstruction` dieser Trips summieren
+                        used_materials_construction = conflicting_trips.filter(
+                            tripconstruction__construction__constructionmaterial__material__name=material_name
+                        ).annotate(
+                            total_used=Sum('tripconstruction__construction__constructionmaterial__count')
+                        )
+
+                        used_in_construction_materials = sum(t.total_used or 0 for t in used_materials_construction)
+
+                        # Gesamtverbrauch aus beiden Quellen berechnen
+                        used_in_other_trips = used_in_trip_materials + used_in_construction_materials
+
+                        # Effektiv verfügbare Menge berechnen
+                        effective_available_quantity = max(available_quantity - used_in_other_trips, 0)
+
+                        # Lagerinfo abrufen
+                        storage_info = [
+                            {'storage_place': m.storage_place, 'available_quantity': m.count}
+                            for m in stock_materials
+                        ]
+
+                        # Verfügbarkeit prüfen
+                        if effective_available_quantity >= total_required_quantity:
+                            available_materials.append({
+                                'material': material_name,
+                                'required_quantity': total_required_quantity,
+                                'available_quantity': effective_available_quantity,
+                                'storage_info': storage_info
+                            })
+                        else:
+                            missing_materials.append({
+                                'material': material_name,
+                                'required_quantity': total_required_quantity,
+                                'available_quantity': effective_available_quantity,
+                                'missing_quantity': total_required_quantity - effective_available_quantity,
+                                'storage_info': storage_info
+                            })
+                            missing = True
+                    if missing:
+                        messages.warning(request,
+                                         f"Es ist nicht genug Material zum Verleihen im Lager vorhanden.")
+                        return redirect('edit_trip', trip_d.pk)
+                    else:
+                        for mat in TripMaterial.objects.filter(trip=trip_d):
+                            new_mat, created_mat = Material.objects.get_or_create(
+                                name=f"{mat.material.name} Geliehen von {request.org.name} bis {trip_d.end_date}",
+                                description=mat.material.description,
+                                owner=org,
+                                public=False,
+                                image=mat.material.image,
+                                weight=mat.material.weight,
+                                type=mat.material.type,
+                                length_min=mat.material.length_min,
+                                length_max=mat.material.length_max,
+                                width=mat.material.width
+                            )
+                            stock_mat, created = StockMaterial.objects.get_or_create(
+                                material=new_mat,
+                                organization=org,
+                                storage_place='Geliehen',
+                                temporary=True,
+                                valid_until=trip_d.end_date,
+                                defaults={
+                                    "count": mat.count,
+                                    "condition_healthy": mat.count,
+                                }
+                            )
+                            if not created:
+                                stock_mat.count = mat.count
+                                stock_mat.condition_healthy = mat.count
+                                stock_mat.save()
             # Unterscheidung der Weiterleitungen basierend auf dem Button
             if 'save' in request.POST or 'save_as_new' in request.POST:
                 # Wenn der Speichern-Button gedrückt wurde, weiter zu Trips

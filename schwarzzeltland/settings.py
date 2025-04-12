@@ -114,11 +114,10 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "de-de"
 
-TIME_ZONE = "UTC"
-
-USE_I18N = True
-
+TIME_ZONE = 'Europe/Berlin'  # Stelle sicher, dass die richtige Zeitzone eingestellt ist
 USE_TZ = True
+
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
