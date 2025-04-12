@@ -24,7 +24,7 @@ class Material(models.Model):
         (TYPE_CONSUME, "Verbrauchsmaterial"),
     )
     name = CharField(max_length=255)
-    description = CharField(max_length=1024, default="", blank=True,verbose_name="Beschreibung")
+    description = CharField(max_length=2048, default="", blank=True,verbose_name="Beschreibung")
     image = models.ImageField(upload_to="materials/", blank=True, null=True,verbose_name="Bild")
     owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
     weight = DecimalField(max_digits=10, decimal_places=3, default=0,help_text="in kg", blank=True, null=True,verbose_name="Gewicht",validators=[MinValueValidator(0)])
