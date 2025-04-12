@@ -450,10 +450,8 @@ def edit_material(request, pk=None):
                 return HttpResponseRedirect(reverse_lazy('material'))
             elif 'save-as-new' in request.POST:
                 form.instance.owner = request.org
-                print(mat_form.instance.pk)
                 mat_form.instance.pk = None
                 material = mat_form.save()
-                print(material.pk)
                 StockMaterial.objects.create(material=material, organization=request.org,
                                              count=form.cleaned_data['count'],
                                              storage_place=form.cleaned_data['storage_place'],

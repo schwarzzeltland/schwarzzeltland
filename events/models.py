@@ -82,4 +82,6 @@ class TripMaterial(models.Model):
     material = models.ForeignKey(Material, on_delete=models.CASCADE)
     count = models.IntegerField(default=0,verbose_name="Anzahl",validators=[MinValueValidator(0)])
     description = CharField(max_length=1024, default="", blank=True,verbose_name="Beschreibung")
+    reduced_from_stock = models.IntegerField(validators=[MinValueValidator(0)],default=0)
+    previous_count = models.IntegerField(validators=[MinValueValidator(0)],default=0)
 

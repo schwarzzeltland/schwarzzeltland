@@ -1,3 +1,4 @@
+import json
 import os
 from collections import defaultdict
 from copy import deepcopy
@@ -11,6 +12,7 @@ from django.db.models import Q, Sum
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from unicodedata import decimal
 
@@ -140,6 +142,10 @@ def check_trip_material(request, pk=None):
         )
         # Berechne die Gesamtmenge der verfügbaren Materialien
         available_quantity = sum(m.count for m in stock_materials) - sum(m.condition_broke for m in stock_materials)
+
+        trip_materials_type_6 = trip_materials.filter(material__type=6)
+        for tm in trip_materials_type_6:
+            available_quantity += tm.reduced_from_stock  # Nur zur Berechnung der verfügbaren Menge hinzufügen
 
         # Trips abrufen, die das gleiche Material nutzen und **vor oder parallel** zum aktuellen Trip liegen
         conflicting_trips = Trip.objects.filter(
@@ -280,6 +286,29 @@ def edit_trip(request, pk=None):
                 for mat in original_materials:
                     mat.pk = None
                     mat.trip = trip_d
+                    mat.previous_count = 0
+                    mat.reduced_from_stock = 0
+                    if mat.material.type == 6:
+                        mat_stock = StockMaterial.objects.filter(material__name=mat.material.name)
+                        av_stock = sum(stock.count for stock in mat_stock)
+                        remaining = 0
+                        if av_stock >= mat.count - mat.previous_count:
+                            remaining = mat.count - mat.reduced_from_stock
+                            mat.reduced_from_stock = mat.count
+                            mat.previous_count = mat.count
+                        else:
+                            remaining=av_stock
+                            mat.reduced_from_stock += av_stock
+                            mat.previous_count = mat.count
+                            messages.warning(request,
+                                             f"Das Verbaruchsmaterial '{mat.material.name}' ist nicht ausreichend im Lager vorhanden. Es wurde nur die verfügbare Menge abgezogen.")
+                        # Abzug durchführen
+
+                        for stock in mat_stock:
+                            if stock.count >= remaining:
+                                stock.count -= remaining
+                                stock.save()
+
                     mat.save()
             else:
                 # 🚀 Normales Speichern wenn NICHT "Speichern als neu"
@@ -301,9 +330,32 @@ def edit_trip(request, pk=None):
 
                 other_materials = tripmaterial_formset.save(commit=False)
                 for obj in tripmaterial_formset.deleted_objects:
+                    mat_stock = StockMaterial.objects.filter(material__name=obj.material.name).first()
+                    mat_stock.count += obj.reduced_from_stock
+                    mat_stock.save()
                     obj.delete()
                 for mat in other_materials:
                     mat.trip = trip_d
+                    if mat.material.type == 6:
+                        mat_stock = StockMaterial.objects.filter(material__name=mat.material.name)
+                        av_stock = sum(stock.count for stock in mat_stock)
+                        remaining = 0
+                        if av_stock >= mat.count - mat.previous_count:
+                            remaining = mat.count - mat.reduced_from_stock
+                            mat.reduced_from_stock = mat.count
+                            mat.previous_count = mat.count
+                        else:
+                            remaining=av_stock
+                            mat.reduced_from_stock += av_stock
+                            mat.previous_count = mat.count
+                            messages.warning(request,
+                                             f"Das Verbaruchsmaterial '{mat.material.name}' ist nicht ausreichend im Lager vorhanden. Es wurde nur die verfügbare Menge abgezogen.")
+                        # Abzug durchführen
+
+                        for stock in mat_stock:
+                            if stock.count >= remaining:
+                                stock.count -= remaining
+                                stock.save()
                     mat.save()
                 tripmaterial_formset.save_m2m()
 

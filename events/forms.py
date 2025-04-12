@@ -172,7 +172,7 @@ class TripMaterialForm(ModelForm):
     class Meta:
         model = TripMaterial
         fields = '__all__'
-        exclude = ['owner']
+        exclude = ['owner','reduced_from_stock','previous_count']
 
 TripMaterialFormSet = inlineformset_factory(
         Trip, TripMaterial, form=TripMaterialForm,
