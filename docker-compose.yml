@@ -1,6 +1,7 @@
 services:
   web:
     image: ghcr.io/schwarzzeltland/schwarzzeltland/django-app:main
+    restart: unless-stopped
     build:
       context: .
     volumes:
@@ -27,6 +28,7 @@ services:
       - db
   db:
     image: postgres:15
+    restart: unless-stopped
     environment:
       POSTGRES_USER: django
       POSTGRES_PASSWORD: schwarzzeltland
@@ -35,6 +37,7 @@ services:
       - postgres_data:/var/lib/postgresql/data/
   nginx:
     image: ghcr.io/schwarzzeltland/schwarzzeltland/nginx:main
+    restart: unless-stopped
     build: ./nginx
     volumes:
       - static_volume:/app/staticfiles
