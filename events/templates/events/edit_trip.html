@@ -8,27 +8,79 @@
         <div class="container mt-5">
             <form method="post" enctype='multipart/form-data'>
                 {% csrf_token %}
-                {% bootstrap_form trip_form %}
+                {# Rendere alle Felder außer 'description' automatisch #}
+                {% bootstrap_field trip_form.name %}
+                {% bootstrap_field trip_form.description %}
+                {% bootstrap_field trip_form.type %}
+                {# Beschreibung mit Wrapper #}
+                <div id="recipient-wrapper" style="display: none;">
+                    {% bootstrap_field trip_form.recipient %}
+                    {% bootstrap_field trip_form.recipientcode %}
+                </div>
+                {% bootstrap_form trip_form exclude='name,recipient,recipientcode,description, type,location' %}
+                <div id="rental-wrapper1" style="display: none;">
+                    {% bootstrap_field trip_form.location %}
+                </div>
                 <h4>Unterteile deine Teilmnehmer in Gruppen, z.B. nach Alter oder nach Sippen.</h4>
                 <p>Gesamt TN-Anzahl: {{ total_tn_count }}</p>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                        <tr>
-                            <th>Gruppe</th>
-                            <th>TN-Anzahl</th>
-                            <th></th>
-                        </tr>
-                        </thead>
-                        <tbody id="form-container-group">
-                        {{ group_formset.management_form }}
-                        {% for form in group_formset %}
-                            {% for hidden in form.hidden_fields %}
-                                {{ hidden }}
-                            {% endfor %}
+                <div id="rental-wrapper">
+                    <div class="table-responsive" id="rental-wrapper">
+                        <table>
+                            <thead>
                             <tr>
-                                <td>{% bootstrap_field form.name show_label=False %} </td>
+                                <th>Gruppe</th>
+                                <th>TN-Anzahl</th>
+                                <th></th>
+                            </tr>
+                            </thead>
+                            <tbody id="form-container-group">
+                            {{ group_formset.management_form }}
+                            {% for form in group_formset %}
+                                {% for hidden in form.hidden_fields %}
+                                    {{ hidden }}
+                                {% endfor %}
+                                <tr>
+                                    <td>{% bootstrap_field form.name show_label=False %} </td>
+                                    <td>{% bootstrap_field form.count show_label=False %}</td>
+                                    <td>
+                                        <input type="checkbox" name="{{ form.prefix }}-DELETE"
+                                               id="{{ form.prefix }}-DELETE"
+                                               class="delete-checkbox d-none">
+                                        <div class="mb-3">
+                                            <button type="button" class="btn btn-outline-danger remove-row">Löschen
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mb-3">
+                        <button type="button" id="add-row-group" class="btn btn-outline-primary">Zeile hinzufügen
+                        </button>
+                    </div>
+
+                    <h4>Konstruktionen:</h4>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Konstruktion</th>
+                                <th>Anzahl</th>
+                                <th>Beschreibung</th>
+                                <th></th>
+                            </tr>
+                            </thead>
+                            <tbody id="form-container">
+                            {{ construction_formset.management_form }}
+                            {% for form in construction_formset %}
+                                {% for hidden in form.hidden_fields %}
+                                    {{ hidden }}
+                                {% endfor %}
+                                <td>{% bootstrap_field form.construction show_label=False %} </td>
                                 <td>{% bootstrap_field form.count show_label=False %}</td>
+                                <td>{% bootstrap_field form.description show_label=False %}</td>
                                 <td>
                                     <input type="checkbox" name="{{ form.prefix }}-DELETE" id="{{ form.prefix }}-DELETE"
                                            class="delete-checkbox d-none">
@@ -36,56 +88,24 @@
                                         <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
                                     </div>
                                 </td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                <div class="mb-3">
-                    <button type="button" id="add-row-group" class="btn btn-outline-primary">Zeile hinzufügen</button>
-                </div>
-
-                <h4>Konstruktionen:</h4>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                        <tr>
-                            <th>Konstruktion</th>
-                            <th>Anzahl</th>
-                            <th>Beschreibung</th>
-                            <th></th>
-                        </tr>
-                        </thead>
-                        <tbody id="form-container">
-                        {{ construction_formset.management_form }}
-                        {% for form in construction_formset %}
-                            {% for hidden in form.hidden_fields %}
-                                {{ hidden }}
+                                </tr>
                             {% endfor %}
-                            <td>{% bootstrap_field form.construction show_label=False %} </td>
-                            <td>{% bootstrap_field form.count show_label=False %}</td>
-                            <td>{% bootstrap_field form.description show_label=False %}</td>
-                            <td>
-                                <input type="checkbox" name="{{ form.prefix }}-DELETE" id="{{ form.prefix }}-DELETE"
-                                       class="delete-checkbox d-none">
-                                <div class="mb-3">
-                                    <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
-                                </div>
-                            </td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="mb-3">
-
-                    <div class="mb-4">
-                        <button type="button" id="add-row" class="btn btn-outline-primary">Zeile hinzufügen</button>
+                            </tbody>
+                        </table>
                     </div>
 
+                    <div class="mb-3">
+
+                        <div class="mb-4">
+                            <button type="button" id="add-row" class="btn btn-outline-primary">Zeile hinzufügen</button>
+                        </div>
+
+                    </div>
                 </div>
                 <h4>Sonstiges Material:</h4>
+                <div id="recipient-wrapper1" class="alert alert-secondary small mt-3" style="display: none;">
+                    <p class="mb-0"><strong>Hinweis:</strong> Bitte jedes Material nur einmal aufführen!</p>
+                </div>
                 <div class="table-responsive">
                     <table>
                         <thead>
@@ -372,6 +392,33 @@
                     }
                 }
             }
+
+            //EIn Ausblednen verleihoptionen:
+            const typeField = document.getElementById('id_type');
+            const recipientWrapper = document.getElementById('recipient-wrapper');
+            const recipientWrapper1 = document.getElementById('recipient-wrapper1');
+            const rentalWrapper = document.getElementById('rental-wrapper');
+            const rentalWrapper1 = document.getElementById('rental-wrapper1');
+
+            function togglerecipient() {
+                if (typeField.value === "4") {
+                    recipientWrapper.style.display = 'block';
+                    recipientWrapper1.style.display = 'block';
+                    rentalWrapper.style.display = 'none';
+                    rentalWrapper1.style.display = 'none';
+                } else {
+                    recipientWrapper.style.display = 'none';
+                    recipientWrapper1.style.display = 'none';
+                    rentalWrapper.style.display = 'block';
+                    rentalWrapper1.style.display = 'block';
+                }
+            }
+
+            // Beim Laden ausführen
+            togglerecipient();
+
+            // Beim Ändern des Typs
+            typeField.addEventListener('change', togglerecipient);
         });
 
         function initializeSelect2() {
@@ -401,6 +448,7 @@
             });
 
         }
+
     </script>
     <style>
         .select2-container--default .select2-selection--single {

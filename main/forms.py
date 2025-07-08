@@ -11,7 +11,7 @@ from main.models import Organization
 class OrganizationForm(ModelForm):
     class Meta:
         model = Organization
-        fields = ['name', 'image']
+        fields = ['name', 'image','recipientcode']
 
 class MembershipForm(ModelForm):
     user = CharField(label='Benutzer')  # Override with a CharField

@@ -49,12 +49,16 @@ class Trip(models.Model):
         (TYPE_RENTAL, "Material-Verleih")
     )
     name = CharField(max_length=255)
+    description = CharField(max_length=1024, default="", blank=True, verbose_name="Beschreibung")
     owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
     type = models.IntegerField(choices=TYPES, null=True, blank=True, verbose_name="Typ")
-    description = CharField(max_length=1024, default="", blank=True, verbose_name="Beschreibung / Beim Material-Verleih Empfänger Organisation (Groß- / Kleinschreibung beachten!)")
     start_date = models.DateTimeField("Startdatum")
     end_date = models.DateTimeField("Enddatum")
     location = models.ForeignKey(Location, on_delete=models.CASCADE, null=True, blank=True,verbose_name="Ort")
+    recipient = CharField(max_length=1024, default="", blank=True,
+                            verbose_name="Empfänger Organisation (Groß- / Kleinschreibung beachten!)")
+    recipientcode = models.CharField(blank=True, max_length=20,
+                                     verbose_name="Empfängercode der empfangenden Organisation")
 
     def __str__(self):
         return self.name

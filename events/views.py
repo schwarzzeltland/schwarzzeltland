@@ -317,8 +317,8 @@ def edit_trip(request, pk=None):
                                 stock.save()
 
                     mat.save()
-                org = Organization.objects.filter(name=trip_d.description).first()
-                if trip_d.type == 4 and org:
+                org = Organization.objects.filter(name=trip_d.recipient).first()
+                if trip_d.type == 4 and org and org.recipientcode == trip_d.recipientcode:
                     """ Prüft, ob Materialien für einen Trip verfügbar sind, unter Berücksichtigung paralleler Nutzung durch andere Trips. """
 
                     # Mitgliedschaft abrufen
@@ -466,8 +466,8 @@ def edit_trip(request, pk=None):
                     mat_stock = StockMaterial.objects.filter(material__name=obj.material.name).first()
                     mat_stock.count += obj.reduced_from_stock
                     mat_stock.save()
-                    org = Organization.objects.filter(name=trip_d.description).first()
-                    if trip_d.type == 4 and org:
+                    org = Organization.objects.filter(name=trip_d.recipient).first()
+                    if trip_d.type == 4 and org and org.recipientcode == trip_d.recipientcode:
                         mat_rent = Material.objects.filter(
                                 name=f"{obj.material.name} Geliehen von {request.org.name} von {trip_d.start_date} bis {trip_d.end_date}",
                                 description=obj.material.description,
@@ -514,8 +514,8 @@ def edit_trip(request, pk=None):
                                 stock.save()
                     mat.save()
                 tripmaterial_formset.save_m2m()
-                org = Organization.objects.filter(name=trip_d.description).first()
-                if trip_d.type == 4 and org:
+                org = Organization.objects.filter(name=trip_d.recipient).first()
+                if trip_d.type == 4 and org and org.recipientcode == trip_d.recipientcode:
                     """ Prüft, ob Materialien für einen Trip verfügbar sind, unter Berücksichtigung paralleler Nutzung durch andere Trips. """
 
                     # Mitgliedschaft abrufen
@@ -1074,6 +1074,7 @@ def save_constructions_for_trip(request, pk=None):
 def find_optimal_construction_combination_w_check_material(teilnehmergruppen, konstruktionen, request,
                                                            min_sleep_place_count_construction, trip):
     max_sleep_places = max(teilnehmergruppen)
+    print(max(c.sleep_place_count for c in konstruktionen))
     max_sleep_place_count = max(c.sleep_place_count for c in konstruktionen)
 
     dp = [Decimal('Infinity')] * (max_sleep_places + max_sleep_place_count + 1)

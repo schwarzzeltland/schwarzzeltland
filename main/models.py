@@ -2,11 +2,15 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils.crypto import get_random_string
 
+def generate_recipient_code():
+    return get_random_string(length=20)
 
 class Organization(models.Model):
     name = models.CharField(unique=True, max_length=254)
     image = models.ImageField(upload_to="users/", blank=True, null=True,verbose_name="Bild")
+    recipientcode = models.CharField(default=generate_recipient_code, max_length=20,verbose_name="Empfängercode für den Materialverleih")
     members = models.ManyToManyField(
         User,
         through='Membership',

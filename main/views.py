@@ -14,6 +14,7 @@ from django.shortcuts import render, get_object_or_404
 from django.contrib import messages
 from django.template.loader import render_to_string
 from django.urls import reverse_lazy
+from django.utils.crypto import get_random_string
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 from buildings.models import Construction
@@ -27,7 +28,6 @@ from main.models import Organization, Membership
 # Create your views here.
 def home_view(request):
     constructions = Construction.objects.filter(Q(owner__isnull=True) | Q(public=True))
-
 
     return render(request, 'main/index.html', {
         'title': 'Home',
