@@ -1,7 +1,11 @@
+from datetime import timezone
+from time import timezone
+
 from django.contrib.auth.models import User
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 from django.utils.crypto import get_random_string
 
 def generate_recipient_code():
@@ -42,3 +46,22 @@ def user_created(sender, instance, created, **kwargs):
     if created:
         orga = Organization.objects.create(name=f"{instance.username}s Organisation")
         Membership.objects.create(user=instance, organization=orga, admin=True, material_manager=True)
+
+class Message(models.Model):
+    recipient = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        verbose_name="Empfänger",
+        related_name="received_messages"
+    )
+    sender = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        verbose_name="Absender",
+        related_name="sent_messages"
+    )
+    subject = models.CharField(blank=True, max_length=1024, verbose_name="Betreff")
+    text = models.TextField(blank=True, verbose_name="Nachricht")
+    created = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+

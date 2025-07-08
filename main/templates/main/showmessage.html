@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    <form>
+        {% csrf_token %}
+        {% if viewer == 'sender' %}
+            <div class="mb-3">
+                <label class="form-label">Empfänger</label>
+                <input type="text" class="form-control" value="{{ form.instance.recipient.name }}" readonly>
+            </div>
+        {% endif %}
+        {% if viewer == 'recipient' %}
+            <div class="mb-3">
+                <label class="form-label">Absender</label>
+                <input type="text" class="form-control" value="{{ form.instance.sender.name }}" readonly>
+            </div>
+        {% endif %}
+        <div class="mb-3">
+            <label class="form-label">Betreff</label>
+            <input type="text" class="form-control" value="{{ form.instance.subject }}" readonly>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Nachricht</label>
+            <textarea class="form-control" rows="6" readonly>{{ form.instance.text }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Gesendet am</label>
+            <input type="text" class="form-control" value="{{ form.instance.created|date:'d.m.Y H:i' }}" readonly>
+        </div>
+        {% if viewer == 'recipient' %}
+            <a href="{% url 'inboxmessages' %}" class="btn btn-secondary">Zurück zur Übersicht</a>
+        {% elif viewer == 'sender' %}
+            <a href="{% url 'sentmessages' %}" class="btn btn-secondary">Zurück zur Übersicht</a>
+        {% endif %}
+    </form>
+{% endblock %}

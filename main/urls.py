@@ -29,4 +29,9 @@ urlpatterns = [
     path('invalid_activationlink/', views.invalid_activation_link, name='invalid_activation_link'),
     path('send_username_email/', views.send_username_email, name='send_username_email'),
     path('organization/delete/<int:pk>/', views.delete_organization, name='delete_organization'),
+    path('messages/', views.messages_view, name='messages'),
+    path('messages/sent/', views.messagessent_view, name='sentmessages'),
+    path('messages/show/<int:pk>/', views.showmessage_view, name='showmessage'),
+    path('messages/send/', views.sendmessage_view, name='sendmessage'),
+    path('messages/inbox/', views.messagesinbox_view, name='inboxmessages'),
 ]

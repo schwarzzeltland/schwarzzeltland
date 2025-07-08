@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {% if not isadmin %}
+        <div class="alert alert-warning">
+            Dieser Bereich ist nur für Organisations-Admins zugänglich!
+        </div>
+    {% else %}
+        <p class="mb-4">Hier kannst du Nachrichten im Namen deiner Organisation senden und empfangen.</p>
+
+        <div class="row row-cols-1 row-cols-md-2 g-4">
+            <div class="col">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">📬 Posteingang</h5>
+                        <p class="card-text">Alle empfangenen Nachrichten anzeigen.</p>
+                        <a href="{% url 'inboxmessages' %}" class="btn btn-primary">Zum Posteingang</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">📤 Gesendet</h5>
+                        <p class="card-text">Von euch versendete Nachrichten anzeigen.</p>
+                        <a href="{% url 'sentmessages' %}" class="btn btn-secondary">Gesendete Nachrichten</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">✉️ Neue Nachricht senden</h5>
+                        <p class="card-text">Erstelle und verschicke eine Nachricht an andere Organisationen.</p>
+                        <a href="{% url 'sendmessage' %}" class="btn btn-success">Nachricht verfassen</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model, login
 from django.contrib.auth.models import User
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import send_mail
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, request
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -14,6 +14,7 @@ from django.shortcuts import render, get_object_or_404
 from django.contrib import messages
 from django.template.loader import render_to_string
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
@@ -21,8 +22,9 @@ from buildings.models import Construction
 from django.shortcuts import redirect
 
 from main.decorators import organization_admin_required
-from main.forms import OrganizationForm, MembershipFormset, CustomUserCreationForm, UsernameReminderForm
-from main.models import Organization, Membership
+from main.forms import OrganizationForm, MembershipFormset, CustomUserCreationForm, UsernameReminderForm, \
+    MessageSendForm, MessageShowForm
+from main.models import Organization, Membership, Message
 
 
 # Create your views here.
@@ -263,3 +265,78 @@ def delete_organization(request, pk=None):
             return HttpResponseRedirect(reverse_lazy('home'))
     return render(request, 'main/delete_organization.html',
                   {'title': 'Organisation löschen', 'organization': organization_d})
+
+
+@login_required
+def messages_view(request, pk=None):
+    m: Membership = request.user.membership_set.filter(organization=request.org).first()
+    return render(request, 'main/messages.html', {
+        'title': 'Nachrichten',
+        'isadmin': 'm.admin',
+    })
+
+
+@login_required
+@organization_admin_required
+def sendmessage_view(request, pk=None):
+    if request.method == 'POST':
+        form = MessageSendForm(request.POST)
+        if form.is_valid():
+            sentmessages = form.save(commit=False)
+            sentmessages.sender = request.org
+            sentmessages.save()
+            messages.success(request, f'Nachricht an {sentmessages.recipient} am {sentmessages.created} gesendet')
+            return HttpResponseRedirect(reverse_lazy('messages'))
+    else:
+        form = MessageSendForm()
+
+    return render(request, 'main/sendmessage.html', {
+        'title': 'Nachricht senden',
+        'sendmessageform': form,
+    })
+
+
+@login_required
+@organization_admin_required
+def showmessage_view(request, pk=None):
+    # Versuche Nachricht zu finden, bei der org Sender oder Empfänger ist
+    message = get_object_or_404(Message.objects.filter(Q(sender=request.org) | Q(recipient=request.org)),
+    pk=pk
+)
+    if message.sender == request.org:
+        viewer = 'sender'
+    else:
+        viewer = 'recipient'
+
+    if not message.is_read and viewer == 'recipient':
+        message.is_read = True
+        message.save(update_fields=['is_read'])
+    message.save(update_fields=['is_read'])
+    form = MessageShowForm(instance=message)
+    return render(request, 'main/showmessage.html', {
+        'title': 'Nachricht anzeigen',
+        'form': form,
+        'viewer':viewer,
+    })
+
+
+@login_required
+@organization_admin_required
+def messagessent_view(request, pk=None):
+    sent_messages = Message.objects.filter(sender=request.org).order_by('-id')
+
+    return render(request, 'main/messagessent.html', {
+        'title': 'Gesendete Nachrichten',
+        'sent_messages': sent_messages,
+    })
+
+
+@login_required
+@organization_admin_required
+def messagesinbox_view(request, pk=None):
+    inbox_messages = Message.objects.filter(recipient=request.org).order_by('-id')
+
+    return render(request, 'main/inbox.html', {
+        'title': 'Empfangene Nachrichten',
+        'inbox_messages': inbox_messages,
+    })

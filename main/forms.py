@@ -5,13 +5,14 @@ from django.core.exceptions import ValidationError
 from django.forms import ModelForm, CharField
 from django.forms.models import inlineformset_factory
 
-from main.models import Organization
+from main.models import Organization, Message
 
 
 class OrganizationForm(ModelForm):
     class Meta:
         model = Organization
-        fields = ['name', 'image','recipientcode']
+        fields = ['name', 'image', 'recipientcode']
+
 
 class MembershipForm(ModelForm):
     user = CharField(label='Benutzer')  # Override with a CharField
@@ -25,11 +26,12 @@ class MembershipForm(ModelForm):
 
     class Meta:
         model = Organization.members.through
-        fields = ['user', 'admin', 'material_manager','event_manager']
+        fields = ['user', 'admin', 'material_manager', 'event_manager']
 
 
 MembershipFormset = inlineformset_factory(Organization, Organization.members.through, form=MembershipForm, extra=1,
                                           can_delete=False)
+
 
 class CustomUserCreationForm(forms.ModelForm):
     password = forms.CharField(
@@ -84,9 +86,45 @@ class CustomUserCreationForm(forms.ModelForm):
         self.fields['password'].widget.attrs.update({'placeholder': 'Passwort'})
         self.fields['password_confirm'].widget.attrs.update({'placeholder': 'Passwort bestätigen'})
 
+
 class UsernameReminderForm(forms.Form):
     email = forms.EmailField(label="Deine E-Mail-Adresse")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['email'].required = True  # E-Mail als Pflichtfeld
+
+
+class MessageSendForm(forms.ModelForm):
+    recipient_name = forms.CharField(label="Empfänger", max_length=255)
+
+    class Meta:
+        model = Message
+        fields = ['recipient_name', 'subject', 'text']  # nicht recipient, sondern recipient_name
+
+    def clean_recipient_name(self):
+        name = self.cleaned_data['recipient_name'].strip()
+        from main.models import Organization
+        try:
+            return Organization.objects.get(name__iexact=name)  # ggf. auch .get(reciepentcode=name)
+        except Organization.DoesNotExist:
+            raise forms.ValidationError("Organisation mit diesem Namen nicht gefunden.")
+
+    def save(self, commit=True):
+        message = super().save(commit=False)
+        message.recipient = self.cleaned_data['recipient_name']
+        if commit:
+            message.save()
+        return message
+
+
+class MessageShowForm(forms.ModelForm):
+    class Meta:
+        model = Message
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Alle Felder readonly machen (nicht bearbeitbar)
+        for field in self.fields.values():
+            field.disabled = True
