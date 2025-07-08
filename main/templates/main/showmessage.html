@@ -30,6 +30,7 @@
         </div>
         {% if viewer == 'recipient' %}
             <a href="{% url 'inboxmessages' %}" class="btn btn-secondary">Zurück zur Übersicht</a>
+            <a href="{% url 'sendmessage' message_pk  %}" class="btn btn-primary">Antworten</a>
         {% elif viewer == 'sender' %}
             <a href="{% url 'sentmessages' %}" class="btn btn-secondary">Zurück zur Übersicht</a>
         {% endif %}

@@ -33,5 +33,6 @@ urlpatterns = [
     path('messages/sent/', views.messagessent_view, name='sentmessages'),
     path('messages/show/<int:pk>/', views.showmessage_view, name='showmessage'),
     path('messages/send/', views.sendmessage_view, name='sendmessage'),
+    path('messages/send/<int:pk>/', views.sendmessage_view, name='sendmessage'),
     path('messages/inbox/', views.messagesinbox_view, name='inboxmessages'),
 ]

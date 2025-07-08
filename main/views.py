@@ -279,6 +279,15 @@ def messages_view(request, pk=None):
 @login_required
 @organization_admin_required
 def sendmessage_view(request, pk=None):
+    initial_data = {}
+
+    if pk is not None:
+        old_message = get_object_or_404(Message, recipient=request.org, pk=pk)
+        initial_data = {
+            'recipient_name': old_message.sender.name,
+            'subject': f'AW: {old_message.subject}',
+        }
+        print(old_message.sender.name)
     if request.method == 'POST':
         form = MessageSendForm(request.POST)
         if form.is_valid():
@@ -288,8 +297,7 @@ def sendmessage_view(request, pk=None):
             messages.success(request, f'Nachricht an {sentmessages.recipient} am {sentmessages.created} gesendet')
             return HttpResponseRedirect(reverse_lazy('messages'))
     else:
-        form = MessageSendForm()
-
+        form = MessageSendForm(initial=initial_data)
     return render(request, 'main/sendmessage.html', {
         'title': 'Nachricht senden',
         'sendmessageform': form,
@@ -301,8 +309,8 @@ def sendmessage_view(request, pk=None):
 def showmessage_view(request, pk=None):
     # Versuche Nachricht zu finden, bei der org Sender oder Empfänger ist
     message = get_object_or_404(Message.objects.filter(Q(sender=request.org) | Q(recipient=request.org)),
-    pk=pk
-)
+                                pk=pk
+                                )
     if message.sender == request.org:
         viewer = 'sender'
     else:
@@ -316,7 +324,8 @@ def showmessage_view(request, pk=None):
     return render(request, 'main/showmessage.html', {
         'title': 'Nachricht anzeigen',
         'form': form,
-        'viewer':viewer,
+        'viewer': viewer,
+        'message_pk': message.pk,
     })
 
 
