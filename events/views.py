@@ -423,7 +423,7 @@ def edit_trip(request, pk=None):
                     else:
                         for mat in TripMaterial.objects.filter(trip=trip_d):
                             new_mat = Material.objects.create(
-                                name=f"{mat.material.name} Geliehen von {request.org.name} von {trip_d.start_date} bis {trip_d.end_date}",
+                                name=f"{mat.material.name}#Geliehen von {request.org.name} von {trip_d.start_date.date()} bis {trip_d.end_date.date()}#",
                                 description=mat.material.description,
                                 owner=org,
                                 public=False,
@@ -469,8 +469,8 @@ def edit_trip(request, pk=None):
                     org = trip_d.recipient_org
                     if trip_d.type == 4 and org and org.recipientcode == trip_d.recipientcode:
                         mat_rent = Material.objects.filter(
-                                name=f"{obj.material.name} Geliehen von {request.org.name} von {trip_d.start_date} bis {trip_d.end_date}",
-                                description=obj.material.description,
+                                name=obj.material.name,
+                                description=f"{obj.material.description} #Geliehen von {request.org.name} von {trip_d.start_date.date()} bis {trip_d.end_date.date()}#",
                                 owner=org,
                                 public=False,
                                 image=obj.material.image,
@@ -620,8 +620,8 @@ def edit_trip(request, pk=None):
                     else:
                         for mat in TripMaterial.objects.filter(trip=trip_d):
                             new_mat, created_mat = Material.objects.get_or_create(
-                                name=f"{mat.material.name} Geliehen von {request.org.name} von {trip_d.start_date} bis {trip_d.end_date}",
-                                description=mat.material.description,
+                                name=mat.material.name,
+                                description=f"{mat.material.description} #Geliehen von {request.org.name} von {trip_d.start_date.date()} bis {trip_d.end_date.date()}#",
                                 owner=org,
                                 public=False,
                                 image=mat.material.image,
@@ -672,7 +672,6 @@ def edit_trip(request, pk=None):
     else:
         if trip_d == None:
             trip_form = TripForm(instance=trip_d, organization=request.org)
-            print('neun')
         else :
             trip_form = TripForm(instance=trip_d, organization=request.org,initial={
             'recipient_org_name': trip_d.recipient_org.name if trip_d.recipient_org else ''})
