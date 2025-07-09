@@ -105,6 +105,12 @@
                 <a href="{% url 'check_trip_material' trip.pk %}" class="btn btn-outline-success">Materialverfügbarkeit
                     im Lager prüfen</a>
                 <a href="{% url 'construction_summary' trip.pk %}" class="btn btn-outline-success">Konstruktions-Zusammenfassung</a>
+
+                <button id="download-ics-btn" type="button" class="btn btn-outline-primary"
+                        data-url="{% url 'download_trip_ics' trip.id %}">
+                    Als iCalendar-Datei herunterladen
+                </button>
+
                 <button type="button" class="btn btn-secondary" onclick="history.back()">Zurück</button>
                 <noscript>
                     <a href="{% url 'trip' %}" class="btn btn-secondary">Zurück</a>
@@ -112,4 +118,18 @@
             </form>
         </div>
     </div>
+
+    <script>
+        document.getElementById('download-ics-btn')?.addEventListener('click', function () {
+            const url = this.dataset.url;
+            fetch(url)
+                .then(response => response.blob())
+                .then(blob => {
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = "trip.ics";
+                    a.click();
+                });
+        });
+    </script>
 {% endblock %}

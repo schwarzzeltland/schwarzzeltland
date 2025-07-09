@@ -197,6 +197,13 @@
                                    value="1" min="1" required style="width: 70px;">
                             <p class="mb-0 me-2">Schlafplätzen ignorieren!</p>
                         </div>
+
+                    </div>
+                    <div class="mb-2">
+                        <button id="download-ics-btn" type="button"  class="btn btn-outline-primary"
+                                data-url="{% url 'download_trip_ics' trip.id %}">
+                            Als iCalendar-Datei herunterladen
+                        </button>
                     </div>
                 {% endif %}
         </div>
@@ -450,6 +457,17 @@
 
         }
 
+        document.getElementById('download-ics-btn')?.addEventListener('click', function () {
+            const url = this.dataset.url;
+            fetch(url)
+                .then(response => response.blob())
+                .then(blob => {
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = "trip.ics";
+                    a.click();
+                });
+        });
     </script>
     <style>
         .select2-container--default .select2-selection--single {

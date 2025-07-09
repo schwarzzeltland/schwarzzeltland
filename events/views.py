@@ -10,11 +10,12 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q, Sum
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from icalendar import Calendar, Event
 from unicodedata import decimal
 
 from buildings.models import Construction, StockMaterial, ConstructionMaterial, Material
@@ -1252,3 +1253,20 @@ def change_packed_material(request, material_name):
     print(packed_material.packed)
 
     return JsonResponse({"status": "success", "packed": packed})
+
+def download_trip_ics(request, trip_id):
+    trip = get_object_or_404(Trip, id=trip_id)
+
+    cal = Calendar()
+    event = Event()
+    event.add('summary', trip.name)
+    event.add('description', trip.description)
+    event.add('dtstart', trip.start_date)
+    event.add('dtend', trip.end_date)
+    if trip.location:
+        event.add('location', str(trip.location))
+    cal.add_component(event)
+
+    response = HttpResponse(cal.to_ical(), content_type='text/calendar')
+    response['Content-Disposition'] = f'attachment; filename="{trip.name}.ics"'
+    return response
