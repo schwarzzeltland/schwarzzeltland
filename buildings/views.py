@@ -304,7 +304,6 @@ def check_material(request, pk=None):
 def material(request):
     temp_stock=StockMaterial.objects.filter(temporary=True, valid_until__lt=now().date()) #ausgeliehens material löschen, wenn es abgelaufen ist
     for tm in temp_stock:
-        print(tm.material.name)
         tm.material.delete()
         tm.delete()
     m: Membership = request.user.membership_set.filter(organization=request.org).first()

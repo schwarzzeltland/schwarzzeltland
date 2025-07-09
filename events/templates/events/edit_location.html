@@ -12,7 +12,11 @@
             <label for="address-input">Adresse</label>
             <input id="address-input" type="text" class="form-control" placeholder="Adresse eingeben">
         </div>
-
+        <div class="form-group mt-2">
+            <button type="button" id="use-current-location" class="btn btn-outline-primary">
+                Aktuelle Position übernehmen
+            </button>
+        </div>
         <div class="mb-3" id="map-placeholder"
              style="height: 400px; width: 100%; margin-top: 20px; background-color: #eee; display: flex; align-items: center; justify-content: center; text-align: center;">
             <div>
@@ -21,8 +25,11 @@
             </div>
         </div>
         <div id="map" style="height: 400px; width: 100%; display: none; margin-top: 20px;"></div>
-
         <script>
+            // Globale Variablen für Map und Marker
+            let map;
+            let marker;
+
             document.getElementById('load-map').addEventListener('click', function () {
                 const script = document.createElement('script');
                 script.src = "https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&libraries=places&callback=initMap";
@@ -39,12 +46,12 @@
                 const defaultLat = latitudeField.value ? parseFloat(latitudeField.value) : 48.1351;
                 const defaultLng = longitudeField.value ? parseFloat(longitudeField.value) : 11.5820;
 
-                const map = new google.maps.Map(document.getElementById('map'), {
+                map = new google.maps.Map(document.getElementById('map'), {
                     center: {lat: defaultLat, lng: defaultLng},
                     zoom: 12,
                 });
 
-                const marker = new google.maps.Marker({
+                marker = new google.maps.Marker({
                     position: {lat: defaultLat, lng: defaultLng},
                     map: map,
                     draggable: true,
@@ -80,7 +87,32 @@
                 document.getElementById('map-placeholder').style.display = 'none';
                 document.getElementById('map').style.display = 'block';
             }
+
+            document.getElementById('use-current-location').addEventListener('click', function () {
+                const latitudeField = document.getElementById('id_latitude');
+                const longitudeField = document.getElementById('id_longitude');
+
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function (position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+
+                        if (typeof map !== "undefined" && typeof marker !== "undefined") {
+                            map.setCenter({lat: lat, lng: lng});
+                            marker.setPosition({lat: lat, lng: lng});
+                        }
+
+                        latitudeField.value = lat.toFixed(6);
+                        longitudeField.value = lng.toFixed(6);
+                    }, function (error) {
+                        alert("Standort konnte nicht ermittelt werden: " + error.message);
+                    });
+                } else {
+                    alert("Geolocation wird von deinem Browser nicht unterstützt.");
+                }
+            });
         </script>
+
 
 
         {% buttons %}
