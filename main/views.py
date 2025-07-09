@@ -287,7 +287,6 @@ def sendmessage_view(request, pk=None):
             'recipient_name': old_message.sender.name,
             'subject': f'AW: {old_message.subject}',
         }
-        print(old_message.sender.name)
     if request.method == 'POST':
         form = MessageSendForm(request.POST)
         if form.is_valid():

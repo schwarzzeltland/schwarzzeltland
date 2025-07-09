@@ -317,7 +317,7 @@ def edit_trip(request, pk=None):
                                 stock.save()
 
                     mat.save()
-                org = Organization.objects.filter(name=trip_d.recipient).first()
+                org = trip_d.recipient_org
                 if trip_d.type == 4 and org and org.recipientcode == trip_d.recipientcode:
                     """ Prüft, ob Materialien für einen Trip verfügbar sind, unter Berücksichtigung paralleler Nutzung durch andere Trips. """
 
@@ -466,7 +466,7 @@ def edit_trip(request, pk=None):
                     mat_stock = StockMaterial.objects.filter(material__name=obj.material.name).first()
                     mat_stock.count += obj.reduced_from_stock
                     mat_stock.save()
-                    org = Organization.objects.filter(name=trip_d.recipient).first()
+                    org = trip_d.recipient_org
                     if trip_d.type == 4 and org and org.recipientcode == trip_d.recipientcode:
                         mat_rent = Material.objects.filter(
                                 name=f"{obj.material.name} Geliehen von {request.org.name} von {trip_d.start_date} bis {trip_d.end_date}",
@@ -514,7 +514,7 @@ def edit_trip(request, pk=None):
                                 stock.save()
                     mat.save()
                 tripmaterial_formset.save_m2m()
-                org = Organization.objects.filter(name=trip_d.recipient).first()
+                org = trip_d.recipient_org
                 if trip_d.type == 4 and org and org.recipientcode == trip_d.recipientcode:
                     """ Prüft, ob Materialien für einen Trip verfügbar sind, unter Berücksichtigung paralleler Nutzung durch andere Trips. """
 
@@ -670,7 +670,11 @@ def edit_trip(request, pk=None):
                     request.session["max_weight_increase_percent"] = max_weight_increase_percent
                 return redirect('find_construction_combination_w_check_material', trip_d.pk)
     else:
-        trip_form = TripForm(instance=trip_d, organization=request.org)
+        if trip_d == None:
+            trip_form = TripForm(instance=trip_d, organization=request.org)
+        else :
+            trip_form = TripForm(instance=trip_d, organization=request.org,initial={
+            'recipient_org_name': trip_d.recipient_org.name if trip_d.recipient_org else ''})
         tripconstruction_formset = TripConstructionFormSet(instance=trip_d, form_kwargs={'organization': request.org})
         tripgroup_formset = TripGroupFormSet(instance=trip_d, form_kwargs={'organization': request.org})
         tripmaterial_formset = TripMaterialFormSet(instance=trip_d, form_kwargs={'organization': request.org})

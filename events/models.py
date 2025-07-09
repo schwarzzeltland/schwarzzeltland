@@ -55,8 +55,12 @@ class Trip(models.Model):
     start_date = models.DateTimeField("Startdatum")
     end_date = models.DateTimeField("Enddatum")
     location = models.ForeignKey(Location, on_delete=models.CASCADE, null=True, blank=True,verbose_name="Ort")
-    recipient = CharField(max_length=1024, default="", blank=True,
-                            verbose_name="Empfänger Organisation (Groß- / Kleinschreibung beachten!)")
+    recipient_org = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        verbose_name="Empfänger Organisation (Groß- / Kleinschreibung beachten!)",
+        related_name="received_org", null=True, blank=True
+    )
     recipientcode = models.CharField(blank=True, max_length=20,
                                      verbose_name="Empfängercode der empfangenden Organisation")
 

@@ -9,7 +9,7 @@ from events.models import Trip, TripConstruction, Location, TripGroup, TripMater
 
 
 class TripForm(ModelForm):
-
+    recipient_org_name = forms.CharField(label="Empfänger", max_length=255)
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop('organization', None)
         super(TripForm, self).__init__(*args, **kwargs)
@@ -29,7 +29,7 @@ class TripForm(ModelForm):
     class Meta:
         model = Trip
         fields = '__all__'
-        exclude = ['owner']
+        exclude = ['owner','recipient_org']
         widgets = {
             'start_date': forms.DateTimeInput(format='%Y-%m-%dT%H:%M:%S', attrs={
                 'type': 'datetime-local',  # HTML5-Attribut für DateTime-Picker
@@ -40,7 +40,27 @@ class TripForm(ModelForm):
                 'class': 'form-control',
             }),
         }
+    def clean_recipient_org_name(self):
+        name = self.cleaned_data['recipient_org_name'].strip()
+        from main.models import Organization
+        try:
+            return Organization.objects.get(name__iexact=name)  # ggf. auch .get(reciepentcode=name)
+        except Organization.DoesNotExist:
+            raise forms.ValidationError("Organisation mit diesem Namen nicht gefunden.")
 
+    def clean(self):
+        cleaned_data = super().clean()
+        trip_type = cleaned_data.get('type')
+        recipientcode = cleaned_data.get('recipientcode')
+
+        if trip_type == Trip.TYPE_RENTAL and not recipientcode:
+            self.add_error('recipientcode', 'Empfängercode ist bei Material-Verleih erforderlich.')
+    def save(self, commit=True):
+        trip = super().save(commit=False)
+        trip.recipient_org = self.cleaned_data['recipient_org_name']
+        if commit:
+            trip.save()
+        return trip
 
 class TripConstructionForm(ModelForm):
     def __init__(self, *args, **kwargs):
