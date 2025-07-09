@@ -672,6 +672,7 @@ def edit_trip(request, pk=None):
     else:
         if trip_d == None:
             trip_form = TripForm(instance=trip_d, organization=request.org)
+            print('neun')
         else :
             trip_form = TripForm(instance=trip_d, organization=request.org,initial={
             'recipient_org_name': trip_d.recipient_org.name if trip_d.recipient_org else ''})

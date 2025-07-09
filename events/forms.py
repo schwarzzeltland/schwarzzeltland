@@ -9,7 +9,7 @@ from events.models import Trip, TripConstruction, Location, TripGroup, TripMater
 
 
 class TripForm(ModelForm):
-    recipient_org_name = forms.CharField(label="Empfänger", max_length=255)
+    recipient_org_name = forms.CharField(label="Empfänger", max_length=255, required=False)
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop('organization', None)
         super(TripForm, self).__init__(*args, **kwargs)
@@ -29,7 +29,7 @@ class TripForm(ModelForm):
     class Meta:
         model = Trip
         fields = '__all__'
-        exclude = ['owner','recipient_org']
+        exclude = ['owner']
         widgets = {
             'start_date': forms.DateTimeInput(format='%Y-%m-%dT%H:%M:%S', attrs={
                 'type': 'datetime-local',  # HTML5-Attribut für DateTime-Picker
@@ -40,24 +40,39 @@ class TripForm(ModelForm):
                 'class': 'form-control',
             }),
         }
+
     def clean_recipient_org_name(self):
-        name = self.cleaned_data['recipient_org_name'].strip()
+        name = self.cleaned_data.get('recipient_org_name', '')
+        name = name.strip()
+        if not name:
+            return None
         from main.models import Organization
         try:
-            return Organization.objects.get(name__iexact=name)  # ggf. auch .get(reciepentcode=name)
+            return Organization.objects.get(name__iexact=name)
         except Organization.DoesNotExist:
             raise forms.ValidationError("Organisation mit diesem Namen nicht gefunden.")
-
     def clean(self):
         cleaned_data = super().clean()
         trip_type = cleaned_data.get('type')
+        recipient_name = cleaned_data.get('recipient_org_name')
         recipientcode = cleaned_data.get('recipientcode')
 
-        if trip_type == Trip.TYPE_RENTAL and not recipientcode:
-            self.add_error('recipientcode', 'Empfängercode ist bei Material-Verleih erforderlich.')
+        if trip_type == Trip.TYPE_RENTAL:
+            if not recipient_name:
+                self.add_error('recipient_org_name', 'Empfänger ist bei Material-Verleih erforderlich.')
+            if not recipientcode:
+                self.add_error('recipientcode', 'Empfängercode ist bei Material-Verleih erforderlich.')
+
     def save(self, commit=True):
         trip = super().save(commit=False)
-        trip.recipient_org = self.cleaned_data['recipient_org_name']
+        trip_type = self.cleaned_data.get('type')
+
+        # Nur bei Materialverleih (TYPE_RENTAL) das ForeignKey setzen
+        if trip_type == Trip.TYPE_RENTAL:
+            trip.recipient_org = self.cleaned_data.get('recipient_org_name')
+        else:
+            trip.recipient_org = None
+
         if commit:
             trip.save()
         return trip
