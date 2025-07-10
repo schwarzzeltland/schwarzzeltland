@@ -20,8 +20,6 @@
                 {% bootstrap_form trip_form exclude='name,recipient_org_name, recipient_org,recipientcode,description, type,location' %}
                 <div id="rental-wrapper1" style="display: none;">
                     {% bootstrap_field trip_form.location %}
-                </div>
-                <div id="rental-wrapper">
                     <h4>Unterteile deine Teilmnehmer in Gruppen, z.B. nach Alter oder nach Sippen.</h4>
                     <p>Gesamt TN-Anzahl: {{ total_tn_count }}</p>
 
@@ -153,362 +151,383 @@
                         </button>
                     </div>
                 </div>
-                <div class="mb-2">
-                    <button type="submit" name="save" class="btn btn-success btn-green">Veranstaltung speichern
-                    </button>
-                    {% if trip %}
-                        <button type="submit" name="save_as_new" class="btn btn-primary btn-green">als neue
-                            Veranstaltung speichern
-                        </button>
-                    {% endif %}
-                </div>
                 {% if trip.pk != None %}
                     <div class="mb-2">
-                        <button type="submit" name="check_material" class="btn btn-outline-success btn-green">
+                        <button type="submit" name="check_material" class="btn btn-outline-success btn-green btn-equal">
                             Materialverfügbarkeit im Lager prüfen
                         </button>
-                        <button type="submit" name="construction_summary" class="btn btn-outline-success btn-green">
-                            Konstruktions-Zusammenfassung
-                        </button>
 
                     </div>
-                    <div class="table-responsive">
-                        <div class="mb-2 p-2 border rounded d-inline-flex align-items-center ">
-                            <button type="submit" name="find_construction_combination"
-                                    class="btn btn-outline-success btn-green mb-0 me-2">
-                                Optimale Konstruktions-Kombination finden (ohne Materialverfügbarkeitsprüfung)
-                            </button>
-                            <p class="mb-0 me-2"> Konstruktionen mit weniger als</p>
-                            <input type="number" name="min_sleeping_places_o_mp" class="form-control me-2 "
-                                   value="1" min="1" required style="width: 70px;">
-                            <p class="mb-0 me-2">Schlafplätzen ignorieren!</p>
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <div class="mb-2 p-2 border rounded d-inline-flex align-items-center ">
-
-                            <button type="submit" name="find_construction_combination_w_check_material"
-                                    class="btn btn-outline-success btn-green mb-0 me-2">
-                                Optimale Konstruktions-Kombination finden (mit Materialverfügbarkeitsprüfung)
+                    <div  id="rental-wrapper2">
+                        <div class="mb-2">
+                            <button type="submit" name="construction_summary"
+                                    class="btn btn-outline-success btn-green btn-equal">
+                                Konstruktions-Zusammenfassung
                             </button>
 
-                            <p class="mb-0 me-2"> Konstruktionen mit weniger als</p>
-                            <input type="number" name="min_sleeping_places_m_mp" class="form-control me-2 "
-                                   value="1" min="1" required style="width: 70px;">
-                            <p class="mb-0 me-2">Schlafplätzen ignorieren!</p>
+                        </div>
+                        <div class="table-responsive">
+                            <div class="mb-2 p-2 border rounded d-inline-flex align-items-center ">
+                                <button type="submit" name="find_construction_combination"
+                                        class="btn btn-outline-success btn-green mb-0 me-2 btn-equal2">
+                                    Optimale Konstruktions-Kombination finden (ohne Materialverfügbarkeitsprüfung)
+                                </button>
+                                <p class="mb-0 me-2"> Konstruktionen mit weniger als</p>
+                                <input type="number" name="min_sleeping_places_o_mp" class="form-control me-2 "
+                                       value="1" min="1" required style="width: 70px;">
+                                <p class="mb-0 me-2">Schlafplätzen ignorieren!</p>
+                            </div>
+
+                            <div class="mb-2 p-2 border rounded d-inline-flex align-items-center ">
+
+                                <button type="submit" name="find_construction_combination_w_check_material"
+                                        class="btn btn-outline-success btn-green mb-0 me-2 btn-equal2">
+                                    Optimale Konstruktions-Kombination finden (mit Materialverfügbarkeitsprüfung)
+                                </button>
+
+                                <p class="mb-0 me-2"> Konstruktionen mit weniger als</p>
+                                <input type="number" name="min_sleeping_places_m_mp" class="form-control me-2 "
+                                       value="1" min="1" required style="width: 70px;">
+                                <p class="mb-0 me-2">Schlafplätzen ignorieren!</p>
+                            </div>
+
                         </div>
 
                     </div>
+
                     <div class="mb-2">
-                        <button id="download-ics-btn" type="button"  class="btn btn-outline-primary"
+                        <button id="download-ics-btn" type="button" class="btn btn-outline-primary btn-equal"
                                 data-url="{% url 'download_trip_ics' trip.id %}">
                             Als iCalendar-Datei herunterladen
                         </button>
                     </div>
                 {% endif %}
+
+                <div class="mb-2">
+                    <button type="submit" name="save" class="btn btn-success btn-green btn-equal">Veranstaltung
+                        speichern
+                    </button>
+                    {% if trip %}
+                        <button type="submit" name="save_as_new" class="btn btn-primary btn-green btn-equal">als neue
+                            Veranstaltung speichern
+                        </button>
+                    {% endif %}
+                </div>
+                <div class="mb-2">
+                    <a href="{% url 'trip' %}" class="btn btn-secondary">Abbrechen</a>
+                </div>
+            </form>
         </div>
-        <div class="mb-2">
-            <a href="{% url 'trip' %}" class="btn btn-secondary">Abbrechen</a>
-        </div>
-        </form>
-    </div>
-    <!-- Vorlage für eine neue Zeile -->
-    <script type="text/template" id="empty-form-template">
-        <tr>
-            <td>
-                <div class="mb-3">
-                    <select name="tripconstruction_set-__prefix__-material" class="form-select select2">
-                        <option value="" selected>---------</option>
-                        <optgroup label="Eigene Konstruktionen">
-                            {% for construction in constructions.organization %}
-                                <option value="{{ construction.id }}">{{ construction.name }}</option>
-                            {% endfor %}
-                        </optgroup>
-                        <optgroup label="Grundkonstruktionen">
-                            {% for construction in constructions.public %}
-                                <option value="{{ construction.id }}">{{ construction.name }}</option>
-                            {% endfor %}
-                        </optgroup>
-                        <optgroup label="Öffentliche Konstruktionen anderer Organisationen">
-                            {% for construction in constructions.external %}
-                                <option value="{{ construction.id }}">{{ construction.name }}
-                                    ({{ construction.owner.name }})
-                                </option>
-                            {% endfor %}
-                        </optgroup>
-                    </select>
-                </div>
-            </td>
-            <td>
-                <div class="mb-3">
-                    <input type="number" name="tripconstruction_set-__prefix__-count" class="form-control"
-                           id="id_{{ formset_prefix }}-__prefix__-count">
-                </div>
-            </td>
-            <td>
-                <div class="mb-3">
-                    <input type="text" name="tripconstruction_set-__prefix__-description" class="form-control"
-                           id="id_{{ formset_prefix }}-__prefix__-description">
-                </div>
-            </td>
-            <td>
-                <div class="mb-3">
-                    <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
-                </div>
-            </td>
-        </tr>
+        <!-- Vorlage für eine neue Zeile -->
+        <script type="text/template" id="empty-form-template">
+            <tr>
+                <td>
+                    <div class="mb-3">
+                        <select name="tripconstruction_set-__prefix__-material" class="form-select select2">
+                            <option value="" selected>---------</option>
+                            <optgroup label="Eigene Konstruktionen">
+                                {% for construction in constructions.organization %}
+                                    <option value="{{ construction.id }}">{{ construction.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Grundkonstruktionen">
+                                {% for construction in constructions.public %}
+                                    <option value="{{ construction.id }}">{{ construction.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Öffentliche Konstruktionen anderer Organisationen">
+                                {% for construction in constructions.external %}
+                                    <option value="{{ construction.id }}">{{ construction.name }}
+                                        ({{ construction.owner.name }})
+                                    </option>
+                                {% endfor %}
+                            </optgroup>
+                        </select>
+                    </div>
+                </td>
+                <td>
+                    <div class="mb-3">
+                        <input type="number" name="tripconstruction_set-__prefix__-count" class="form-control"
+                               id="id_{{ formset_prefix }}-__prefix__-count">
+                    </div>
+                </td>
+                <td>
+                    <div class="mb-3">
+                        <input type="text" name="tripconstruction_set-__prefix__-description" class="form-control"
+                               id="id_{{ formset_prefix }}-__prefix__-description">
+                    </div>
+                </td>
+                <td>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
+                    </div>
+                </td>
+            </tr>
 
-    </script>
-    <script type="text/template" id="empty-form-template-group">
-        <tr>
-            <td>
-                <div class="mb-3">
-                    <input type="text" name="tripgroup_set-__prefix__-name" class="form-control"
-                           id="id_{{ formset_prefix_group }}-__prefix__-name">
-                </div>
-            </td>
-            <td>
-                <div class="mb-3">
-                    <input type="number" name="tripgroup_set-__prefix__-count" class="form-control"
-                           id="id_{{ formset_prefix_group }}-__prefix__-count">
-                </div>
-            </td>
-            <td>
-                <div class="mb-3">
-                    <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
-                </div>
-            </td>
-        </tr>
+        </script>
+        <script type="text/template" id="empty-form-template-group">
+            <tr>
+                <td>
+                    <div class="mb-3">
+                        <input type="text" name="tripgroup_set-__prefix__-name" class="form-control"
+                               id="id_{{ formset_prefix_group }}-__prefix__-name">
+                    </div>
+                </td>
+                <td>
+                    <div class="mb-3">
+                        <input type="number" name="tripgroup_set-__prefix__-count" class="form-control"
+                               id="id_{{ formset_prefix_group }}-__prefix__-count">
+                    </div>
+                </td>
+                <td>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
+                    </div>
+                </td>
+            </tr>
 
-    </script>
-    <script type="text/template" id="empty-form-template-material">
-        <tr>
-            <td>
-                <div class="mb-3">
-                    <select name="tripmaterial_set-__prefix__-material" class="form-select select2">
-                        <option value="" selected>---------</option>
-                        <optgroup label="Eigenes Material">
-                            {% for material in materials.organization %}
-                                <option value="{{ material.id }}">{{ material.name }}</option>
-                            {% endfor %}
-                        </optgroup>
-                        <optgroup label="Grundmaterial">
-                            {% for material in materials.public %}
-                                <option value="{{ material.id }}">{{ material.name }}</option>
-                            {% endfor %}
-                        </optgroup>
-                        <optgroup label="Öffentliches Material anderer Organisationen">
-                            {% for material in materials.external %}
-                                <option value="{{ material.id }}">{{ material.name }} ({{ material.owner.name }})
-                                </option>
-                            {% endfor %}
-                        </optgroup>
-                    </select>
-                </div>
-            </td>
-            <td>
-                <div class="mb-3">
-                    <input type="number" name="tripmaterial_set-__prefix__-count" class="form-control"
-                           id="id_{{ formset_prefix_material }}-__prefix__-count">
-                </div>
-            </td>
-            <td>
-                <div class="mb-3">
-                    <input type="text" name="tripmaterial_set-__prefix__-description" class="form-control"
-                           id="id_{{ formset_prefix_material }}-__prefix__-description">
-                </div>
-            </td>
-            <td>
-                <div class="mb-3">
-                    <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
-                </div>
-            </td>
-        </tr>
+        </script>
+        <script type="text/template" id="empty-form-template-material">
+            <tr>
+                <td>
+                    <div class="mb-3">
+                        <select name="tripmaterial_set-__prefix__-material" class="form-select select2">
+                            <option value="" selected>---------</option>
+                            <optgroup label="Eigenes Material">
+                                {% for material in materials.organization %}
+                                    <option value="{{ material.id }}">{{ material.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Grundmaterial">
+                                {% for material in materials.public %}
+                                    <option value="{{ material.id }}">{{ material.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Öffentliches Material anderer Organisationen">
+                                {% for material in materials.external %}
+                                    <option value="{{ material.id }}">{{ material.name }} ({{ material.owner.name }})
+                                    </option>
+                                {% endfor %}
+                            </optgroup>
+                        </select>
+                    </div>
+                </td>
+                <td>
+                    <div class="mb-3">
+                        <input type="number" name="tripmaterial_set-__prefix__-count" class="form-control"
+                               id="id_{{ formset_prefix_material }}-__prefix__-count">
+                    </div>
+                </td>
+                <td>
+                    <div class="mb-3">
+                        <input type="text" name="tripmaterial_set-__prefix__-description" class="form-control"
+                               id="id_{{ formset_prefix_material }}-__prefix__-description">
+                    </div>
+                </td>
+                <td>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
+                    </div>
+                </td>
+            </tr>
 
-    </script>
-    <!-- Include Select2 Library -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const addRowButton = document.getElementById('add-row');
-            const formContainer = document.getElementById('form-container');
-            const totalFormsInput = document.querySelector(`#id_tripconstruction_set-TOTAL_FORMS`);
-            const template = document.getElementById('empty-form-template').innerHTML;
-            initializeSelect2()
-            addRowButton.addEventListener('click', function () {
-                const formIndex = totalFormsInput.value; // Aktuelle Anzahl der Formulare
-                const newRow = template.replace(/__prefix__/g, formIndex);
-                formContainer.insertAdjacentHTML('beforeend', newRow);
-                totalFormsInput.value = parseInt(formIndex) + 1; // Anzahl erhöhen
-                // Wendet Select2 auf das neue Dropdown-Menü an
+        </script>
+        <!-- Include Select2 Library -->
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const addRowButton = document.getElementById('add-row');
+                const formContainer = document.getElementById('form-container');
+                const totalFormsInput = document.querySelector(`#id_tripconstruction_set-TOTAL_FORMS`);
+                const template = document.getElementById('empty-form-template').innerHTML;
                 initializeSelect2()
-            });
+                addRowButton.addEventListener('click', function () {
+                    const formIndex = totalFormsInput.value; // Aktuelle Anzahl der Formulare
+                    const newRow = template.replace(/__prefix__/g, formIndex);
+                    formContainer.insertAdjacentHTML('beforeend', newRow);
+                    totalFormsInput.value = parseInt(formIndex) + 1; // Anzahl erhöhen
+                    // Wendet Select2 auf das neue Dropdown-Menü an
+                    initializeSelect2()
+                });
 
-            const addRowButton_group = document.getElementById('add-row-group');
-            const formContainer_group = document.getElementById('form-container-group');
-            const totalFormsInput_group = document.querySelector(`#id_tripgroup_set-TOTAL_FORMS`);
-            const template_group = document.getElementById('empty-form-template-group').innerHTML;
-            addRowButton_group.addEventListener('click', function () {
-                const formIndex_group = totalFormsInput_group.value; // Aktuelle Anzahl der Formulare
-                const newRow_group = template_group.replace(/__prefix__/g, formIndex_group);
-                formContainer_group.insertAdjacentHTML('beforeend', newRow_group);
-                totalFormsInput_group.value = parseInt(formIndex_group) + 1; // Anzahl erhöhen
-            });
+                const addRowButton_group = document.getElementById('add-row-group');
+                const formContainer_group = document.getElementById('form-container-group');
+                const totalFormsInput_group = document.querySelector(`#id_tripgroup_set-TOTAL_FORMS`);
+                const template_group = document.getElementById('empty-form-template-group').innerHTML;
+                addRowButton_group.addEventListener('click', function () {
+                    const formIndex_group = totalFormsInput_group.value; // Aktuelle Anzahl der Formulare
+                    const newRow_group = template_group.replace(/__prefix__/g, formIndex_group);
+                    formContainer_group.insertAdjacentHTML('beforeend', newRow_group);
+                    totalFormsInput_group.value = parseInt(formIndex_group) + 1; // Anzahl erhöhen
+                });
 
-            const addRowButton_material = document.getElementById('add-row-material');
-            const formContainer_material = document.getElementById('form-container-material');
-            const totalFormsInput_material = document.querySelector(`#id_tripmaterial_set-TOTAL_FORMS`);
-            const template_material = document.getElementById('empty-form-template-material').innerHTML;
-            addRowButton_material.addEventListener('click', function () {
-                const formIndex_material = totalFormsInput_material.value; // Aktuelle Anzahl der Formulare
-                const newRow_material = template_material.replace(/__prefix__/g, formIndex_material);
-                formContainer_material.insertAdjacentHTML('beforeend', newRow_material);
-                totalFormsInput_material.value = parseInt(formIndex_material) + 1; // Anzahl erhöhen
-                // Wendet Select2 auf das neue Dropdown-Menü an
-                initializeSelect2()
+                const addRowButton_material = document.getElementById('add-row-material');
+                const formContainer_material = document.getElementById('form-container-material');
+                const totalFormsInput_material = document.querySelector(`#id_tripmaterial_set-TOTAL_FORMS`);
+                const template_material = document.getElementById('empty-form-template-material').innerHTML;
+                addRowButton_material.addEventListener('click', function () {
+                    const formIndex_material = totalFormsInput_material.value; // Aktuelle Anzahl der Formulare
+                    const newRow_material = template_material.replace(/__prefix__/g, formIndex_material);
+                    formContainer_material.insertAdjacentHTML('beforeend', newRow_material);
+                    totalFormsInput_material.value = parseInt(formIndex_material) + 1; // Anzahl erhöhen
+                    // Wendet Select2 auf das neue Dropdown-Menü an
+                    initializeSelect2()
 
-            });
-            // Event-Listener für Konstruktionen
-            formContainer.addEventListener('click', function (event) {
-                handleRowRemoval(event, formContainer, totalFormsInput);
-            });
+                });
+                // Event-Listener für Konstruktionen
+                formContainer.addEventListener('click', function (event) {
+                    handleRowRemoval(event, formContainer, totalFormsInput);
+                });
 
 // Event-Listener für Gruppen
-            formContainer_group.addEventListener('click', function (event) {
-                handleRowRemoval(event, formContainer_group, totalFormsInput_group);
-            });
+                formContainer_group.addEventListener('click', function (event) {
+                    handleRowRemoval(event, formContainer_group, totalFormsInput_group);
+                });
 
 // Event-Listener für Materialien
-            formContainer_material.addEventListener('click', function (event) {
-                handleRowRemoval(event, formContainer_material, totalFormsInput_material);
-            });
+                formContainer_material.addEventListener('click', function (event) {
+                    handleRowRemoval(event, formContainer_material, totalFormsInput_material);
+                });
 
 // Generische Funktion zum Entfernen von Zeilen
-            function handleRowRemoval(event, container, totalFormsInput) {
-                if (event.target.classList.contains('remove-row')) {
-                    const row = event.target.closest('tr');
-                    const deleteCheckbox = row.querySelector('.delete-checkbox');
+                function handleRowRemoval(event, container, totalFormsInput) {
+                    if (event.target.classList.contains('remove-row')) {
+                        const row = event.target.closest('tr');
+                        const deleteCheckbox = row.querySelector('.delete-checkbox');
 
-                    if (deleteCheckbox) {
-                        deleteCheckbox.checked = true; // Markiere für Löschung
-                        row.style.display = 'none'; // Visuell ausblenden
-                    } else {
-                        row.remove(); // Entferne neue Zeilen komplett
-                        totalFormsInput.value = container.querySelectorAll('tr').length;
+                        if (deleteCheckbox) {
+                            deleteCheckbox.checked = true; // Markiere für Löschung
+                            row.style.display = 'none'; // Visuell ausblenden
+                        } else {
+                            row.remove(); // Entferne neue Zeilen komplett
+                            totalFormsInput.value = container.querySelectorAll('tr').length;
+                        }
                     }
                 }
+
+                //EIn Ausblednen verleihoptionen:
+                const typeField = document.getElementById('id_type');
+                const recipientWrapper = document.getElementById('recipient-wrapper');
+                const recipientWrapper1 = document.getElementById('recipient-wrapper1');
+                const rentalWrapper = document.getElementById('rental-wrapper');
+                const rentalWrapper1 = document.getElementById('rental-wrapper1');
+                const rentalWrapper2 = document.getElementById('rental-wrapper2');
+
+                function togglerecipient() {
+                    if (typeField.value === "4") {
+                        recipientWrapper.style.display = 'block';
+                        recipientWrapper1.style.display = 'block';
+                        rentalWrapper.style.display = 'none';
+                        rentalWrapper1.style.display = 'none';
+                        rentalWrapper2.style.display = 'none';
+                    } else {
+                        recipientWrapper.style.display = 'none';
+                        recipientWrapper1.style.display = 'none';
+                        rentalWrapper.style.display = 'block';
+                        rentalWrapper1.style.display = 'block';
+                        rentalWrapper2.style.display = 'block';
+                    }
+                }
+
+                // Beim Laden ausführen
+                togglerecipient();
+
+                // Beim Ändern des Typs
+                typeField.addEventListener('change', togglerecipient);
+            });
+
+            function initializeSelect2() {
+                $('#id_location').each(function () {
+                    const $select = $(this);
+                    $select.select2({
+                        placeholder: "---------",
+                        allowClear: true,
+                        width: '100%'
+                    });
+                });
+                $('select[name^="tripconstruction_set"]').each(function () {
+                    const $select = $(this);
+                    $select.select2({
+                        placeholder: "---------",
+                        allowClear: true,
+                        width: '250px'
+                    });
+                });
+                $('select[name^="tripmaterial_set"]').each(function () {
+                    const $select = $(this);
+                    $select.select2({
+                        placeholder: "---------",
+                        allowClear: true,
+                        width: '250px'
+                    });
+                });
+
             }
 
-            //EIn Ausblednen verleihoptionen:
-            const typeField = document.getElementById('id_type');
-            const recipientWrapper = document.getElementById('recipient-wrapper');
-            const recipientWrapper1 = document.getElementById('recipient-wrapper1');
-            const rentalWrapper = document.getElementById('rental-wrapper');
-            const rentalWrapper1 = document.getElementById('rental-wrapper1');
+            document.getElementById('download-ics-btn')?.addEventListener('click', function () {
+                const url = this.dataset.url;
+                fetch(url)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = "trip.ics";
+                        a.click();
+                    });
+            });
+        </script>
+        <style>
+            .btn-equal {
+                min-width: 320px; /* oder auto, je nach gewünschter Breite */
+                white-space: nowrap;
+            }
 
-            function togglerecipient() {
-                if (typeField.value === "4") {
-                    recipientWrapper.style.display = 'block';
-                    recipientWrapper1.style.display = 'block';
-                    rentalWrapper.style.display = 'none';
-                    rentalWrapper1.style.display = 'none';
-                } else {
-                    recipientWrapper.style.display = 'none';
-                    recipientWrapper1.style.display = 'none';
-                    rentalWrapper.style.display = 'block';
-                    rentalWrapper1.style.display = 'block';
+            .btn-equal2 {
+                min-width: 650px; /* oder auto, je nach gewünschter Breite */
+                white-space: nowrap;
+            }
+
+            .select2-container--default .select2-selection--single {
+                width: 100%;
+                height: 38px; /* Abstimmung mit Bootstrap-Form-Höhe */
+                font-size: 16px;
+                display: flex;
+                align-items: center;
+                padding: 0 10px; /* Nur horizontale Innenabstände */
+            }
+
+            .select2-container--default .select2-selection--single {
+                border: 1px solid #ced4da; /* Bootstrap-Standard-Rahmenfarbe */
+                background-color: #fff; /* Hintergrundfarbe */
+            }
+
+            .select2-container--default .select2-selection--single .select2-selection__arrow {
+                height: 100%; /* Pfeil anpassen */
+                right: 10px; /* Pfeil-Abstand */
+            }
+
+
+            .select2-container--default .select2-selection--single:focus,
+            .select2-container--default .select2-selection--single:hover {
+                border-color: #80bdff; /* Bootstrap-Fokusfarbe */
+                outline: 0;
+                box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Fokus-Schlagschatten */
+            }
+
+            .btn-green {
+            }
+
+            @media (max-width: 576px) {
+                .btn-green {
+                    display: flex;
+                    justify-content: center; /* Zentriert den Text */
+                    width: 100%; /* Gleiche Breite bei mobilen Geräten */
+                    max-width: 250px; /* Optional: maximale Breite für größere Geräte */
+                    margin: 5px 0; /* Abstand zwischen den Buttons */
                 }
             }
 
-            // Beim Laden ausführen
-            togglerecipient();
-
-            // Beim Ändern des Typs
-            typeField.addEventListener('change', togglerecipient);
-        });
-
-        function initializeSelect2() {
-            $('#id_location').each(function () {
-                const $select = $(this);
-                $select.select2({
-                    placeholder: "---------",
-                    allowClear: true,
-                    width: '100%'
-                });
-            });
-            $('select[name^="tripconstruction_set"]').each(function () {
-                const $select = $(this);
-                $select.select2({
-                    placeholder: "---------",
-                    allowClear: true,
-                    width: '250px'
-                });
-            });
-            $('select[name^="tripmaterial_set"]').each(function () {
-                const $select = $(this);
-                $select.select2({
-                    placeholder: "---------",
-                    allowClear: true,
-                    width: '250px'
-                });
-            });
-
-        }
-
-        document.getElementById('download-ics-btn')?.addEventListener('click', function () {
-            const url = this.dataset.url;
-            fetch(url)
-                .then(response => response.blob())
-                .then(blob => {
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = "trip.ics";
-                    a.click();
-                });
-        });
-    </script>
-    <style>
-        .select2-container--default .select2-selection--single {
-            width: 100%;
-            height: 38px; /* Abstimmung mit Bootstrap-Form-Höhe */
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            padding: 0 10px; /* Nur horizontale Innenabstände */
-        }
-
-        .select2-container--default .select2-selection--single {
-            border: 1px solid #ced4da; /* Bootstrap-Standard-Rahmenfarbe */
-            background-color: #fff; /* Hintergrundfarbe */
-        }
-
-        .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 100%; /* Pfeil anpassen */
-            right: 10px; /* Pfeil-Abstand */
-        }
-
-
-        .select2-container--default .select2-selection--single:focus,
-        .select2-container--default .select2-selection--single:hover {
-            border-color: #80bdff; /* Bootstrap-Fokusfarbe */
-            outline: 0;
-            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Fokus-Schlagschatten */
-        }
-
-        .btn-green {
-        }
-
-        @media (max-width: 576px) {
-            .btn-green {
-                display: flex;
-                justify-content: center; /* Zentriert den Text */
-                width: 100%; /* Gleiche Breite bei mobilen Geräten */
-                max-width: 250px; /* Optional: maximale Breite für größere Geräte */
-                margin: 5px 0; /* Abstand zwischen den Buttons */
-            }
-        }
-
-    </style>
+        </style>
 {% endblock %}

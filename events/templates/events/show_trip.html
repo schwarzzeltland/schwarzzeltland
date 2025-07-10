@@ -8,7 +8,8 @@
             <form method="post" enctype='multipart/form-data'>
                 {% csrf_token %}
                 <h4>Tripdaten:</h4>
-                <table class="table">
+            <div class="table-responsive">
+                <table class="table" >
                     <tbody>
                     <tr>
                         <td><strong>Name:</strong></td>
@@ -40,7 +41,7 @@
                         <td>{{ total_tn_count }}</td>
                     </tr>
                     </tbody>
-                </table>
+                </table></div>
                 <h4>Gruppen:</h4>
                 <table class="table">
                     <tbody>
@@ -102,19 +103,22 @@
                         </tbody>
                     </table>
                 </div>
-                <a href="{% url 'check_trip_material' trip.pk %}" class="btn btn-outline-success">Materialverfügbarkeit
-                    im Lager prüfen</a>
-                <a href="{% url 'construction_summary' trip.pk %}" class="btn btn-outline-success">Konstruktions-Zusammenfassung</a>
+                <div class="mb-2">
+                    <a href="{% url 'check_trip_material' trip.pk %}" class="btn btn-outline-success">Materialverfügbarkeit
+                        im Lager prüfen</a>
+                    <a href="{% url 'construction_summary' trip.pk %}" class="btn btn-outline-success">Konstruktions-Zusammenfassung</a>
 
-                <button id="download-ics-btn" type="button" class="btn btn-outline-primary"
-                        data-url="{% url 'download_trip_ics' trip.id %}">
-                    Als iCalendar-Datei herunterladen
-                </button>
+                </div>
+                <div class="mb-2">
+                    <button id="download-ics-btn" type="button" class="btn btn-outline-primary"
+                            data-url="{% url 'download_trip_ics' trip.id %}">
+                        Als iCalendar-Datei herunterladen
+                    </button>
+                </div>
+                <div class="mb-2">
+                    <button type="button" class="btn btn-secondary" onclick="history.back()">Zurück</button>
 
-                <button type="button" class="btn btn-secondary" onclick="history.back()">Zurück</button>
-                <noscript>
-                    <a href="{% url 'trip' %}" class="btn btn-secondary">Zurück</a>
-                </noscript>
+                </div>
             </form>
         </div>
     </div>
