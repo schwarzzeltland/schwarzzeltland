@@ -150,7 +150,6 @@ def check_trip_material(request, pk=None):
         )
         # Berechne die Gesamtmenge der verfügbaren Materialien
         available_quantity = sum(m.count for m in stock_materials) - sum(m.condition_broke for m in stock_materials)
-
         trip_materials_type_6 = trip_materials.filter(material__type=6, material__name=material_name)
         for tm in trip_materials_type_6:
             available_quantity += tm.reduced_from_stock  # Nur zur Berechnung der verfügbaren Menge hinzufügen
@@ -158,7 +157,7 @@ def check_trip_material(request, pk=None):
         # Trips abrufen, die das gleiche Material nutzen und **vor oder parallel** zum aktuellen Trip liegen
         conflicting_trips = Trip.objects.filter(
             start_date__lt=trip.end_date,  # Startet vor dem Ende des aktuellen Trips
-            end_date__gt=trip.start_date,  # Endet nach dem Start des aktuellen Trips (also überlappt)
+            end_date__gt=trip.start_date, owner=request.org # Endet nach dem Start des aktuellen Trips (also überlappt)
         ).exclude(pk=trip.pk)
 
         # Material aus `TripMaterial` dieser Trips summieren
@@ -181,7 +180,6 @@ def check_trip_material(request, pk=None):
 
         # Gesamtverbrauch aus beiden Quellen berechnen
         used_in_other_trips = used_in_trip_materials + used_in_construction_materials
-
         # Effektiv verfügbare Menge berechnen
         effective_available_quantity = max(available_quantity - used_in_other_trips, 0)
 
@@ -367,7 +365,7 @@ def edit_trip(request, pk=None):
                         # Trips abrufen, die das gleiche Material nutzen und **vor oder parallel** zum aktuellen Trip liegen
                         conflicting_trips = Trip.objects.filter(
                             start_date__lt=trip.end_date,  # Startet vor dem Ende des aktuellen Trips
-                            end_date__gt=trip.start_date,  # Endet nach dem Start des aktuellen Trips (also überlappt)
+                            end_date__gt=trip.start_date,owner=request.org  # Endet nach dem Start des aktuellen Trips (also überlappt)
                         ).exclude(pk=trip.pk)
 
                         # Material aus `TripMaterial` dieser Trips summieren
@@ -564,7 +562,7 @@ def edit_trip(request, pk=None):
                         # Trips abrufen, die das gleiche Material nutzen und **vor oder parallel** zum aktuellen Trip liegen
                         conflicting_trips = Trip.objects.filter(
                             start_date__lt=trip.end_date,  # Startet vor dem Ende des aktuellen Trips
-                            end_date__gt=trip.start_date,  # Endet nach dem Start des aktuellen Trips (also überlappt)
+                            end_date__gt=trip.start_date,owner=request.org  # Endet nach dem Start des aktuellen Trips (also überlappt)
                         ).exclude(pk=trip.pk)
 
                         # Material aus `TripMaterial` dieser Trips summieren
@@ -1161,7 +1159,7 @@ def check_material_availability(total_material_counts, request, trip):
 
     conflicting_trips = Trip.objects.filter(
         start_date__lt=trip.end_date,
-        end_date__gt=trip.start_date
+        end_date__gt=trip.start_date,owner=request.org
     ).exclude(pk=trip.pk)
 
     material_used_parallel = defaultdict(int)

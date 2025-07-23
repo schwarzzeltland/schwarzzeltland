@@ -158,7 +158,7 @@
                         </button>
 
                     </div>
-                    <div  id="rental-wrapper2">
+                    <div id="rental-wrapper2">
                         <div class="mb-2">
                             <button type="submit" name="construction_summary"
                                     class="btn btn-outline-success btn-green btn-equal">
@@ -414,8 +414,10 @@
                 const rentalWrapper = document.getElementById('rental-wrapper');
                 const rentalWrapper1 = document.getElementById('rental-wrapper1');
                 const rentalWrapper2 = document.getElementById('rental-wrapper2');
+                var tripExists = {% if trip %}true{% else %}false{% endif %};
 
                 function togglerecipient() {
+                    if (!typeField) return;
                     if (typeField.value === "4") {
                         recipientWrapper.style.display = 'block';
                         recipientWrapper1.style.display = 'block';
@@ -427,7 +429,9 @@
                         recipientWrapper1.style.display = 'none';
                         rentalWrapper.style.display = 'block';
                         rentalWrapper1.style.display = 'block';
-                        rentalWrapper2.style.display = 'block';
+                        if (tripExists) {
+                            rentalWrapper2.style.display = 'block';
+                        }
                     }
                 }
 
