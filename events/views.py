@@ -3,6 +3,7 @@ import os
 from collections import defaultdict
 from copy import deepcopy
 from itertools import combinations
+from urllib.parse import unquote
 
 from django.utils.timezone import now
 from _decimal import Decimal
@@ -1237,9 +1238,16 @@ def find_construction_combination_w_check_material(request, pk=None):
 
 @require_POST
 @event_manager_required
-def change_packed_material(request, material_name):
-    """ Speichert den `packed`-Status eines Materials für den aktuellen Trip. """
-    trip = get_object_or_404(Trip, pk=request.POST.get("trip_id"))
+def change_packed_material(request):
+    raw_name = request.GET.get("material_name")
+    trip_id = request.GET.get("trip_id")
+
+    if not raw_name or not trip_id:
+        # Optional: Fehlermeldung oder redirect
+        return redirect("trip")
+
+    material_name = unquote(raw_name)
+    trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
     packed_value = request.POST.get("packed")
     packed = packed_value.lower() == "true"
 

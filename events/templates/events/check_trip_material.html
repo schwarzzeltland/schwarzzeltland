@@ -31,7 +31,7 @@
                         <td>
                             <input class="form-check-input" type="checkbox"
                                    hx-trigger="change"
-                                   hx-post="{% url 'change_packed_material' material.material %}"
+                                   hx-post="{% url 'change_packed_material' %}?material_name={{ material.material|urlencode }}&trip_id={{ trip.pk }}"
                                    hx-vals='js:{"trip_id": "{{ trip.pk }}", "packed": event.target.checked}'
                                    hx-swap="none"
                                     {% if material.packed %} checked {% endif %}
