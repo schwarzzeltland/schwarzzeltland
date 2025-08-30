@@ -272,7 +272,7 @@ def messages_view(request, pk=None):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
     return render(request, 'main/messages.html', {
         'title': 'Nachrichten',
-        'isadmin': 'm.admin',
+        'isadmin': m.admin,
     })
 
 
