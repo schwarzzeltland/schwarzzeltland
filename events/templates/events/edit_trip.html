@@ -151,15 +151,9 @@
                         </button>
                     </div>
                 </div>
-                {% if trip.owner.pro1 %}
-                    <div class="mb-2">
-                        <a href="{% url 'shoppinglist' trip.id %}" class="btn btn-primary btn-equal"> Einkaufsliste</a>
-                    </div>
-                    <div class="mb-2">
-                        <a href="{% url 'trip_vacancies' trip.id %}" class="btn btn-primary btn-equal"> Vakanzenliste</a>
-                    </div>
-                {% endif %}
+
                 {% if trip.pk != None %}
+                    <h5>Lager:</h5>
                     <div class="mb-2">
                         <button type="submit" name="check_material" class="btn btn-outline-success btn-green btn-equal">
                             Materialverfügbarkeit im Lager prüfen
@@ -167,6 +161,7 @@
 
                     </div>
                     <div id="rental-wrapper2">
+                    <h5>Konstruktionen:</h5>
                         <div class="mb-2">
                             <button type="submit" name="construction_summary"
                                     class="btn btn-outline-success btn-green btn-equal">
@@ -200,9 +195,17 @@
                             </div>
 
                         </div>
-
+                        <h5>Zusatzfunktionen:</h5>
+                        {% if trip.owner.pro1 %}
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                <a href="{% url 'shoppinglist' trip.id %}" class="btn btn-primary btn-equal">
+                                    Einkaufsliste</a>
+                                <a href="{% url 'trip_vacancies' trip.id %}" class="btn btn-primary btn-equal">
+                                    Vakanzenliste</a>
+                            </div>
+                        {% endif %}
                     </div>
-
+                    <h5>Kalenderdownload:</h5>
                     <div class="mb-2">
                         <button id="download-ics-btn" type="button" class="btn btn-outline-primary btn-equal"
                                 data-url="{% url 'download_trip_ics' trip.id %}">
@@ -210,7 +213,7 @@
                         </button>
                     </div>
                 {% endif %}
-
+                <h5>Speichern&Abbrechen:</h5>
                 <div class="mb-2">
                     <button type="submit" name="save" class="btn btn-success btn-green btn-equal">Veranstaltung
                         speichern
