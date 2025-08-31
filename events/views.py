@@ -8,6 +8,7 @@ from copy import deepcopy
 from itertools import combinations
 from urllib.parse import unquote
 
+from django.utils.text import slugify
 from django.utils.timezone import now
 from _decimal import Decimal
 from django.contrib import messages
@@ -1315,8 +1316,6 @@ def shoppinglist(request, pk=None):
     })
 
 
-
-
 @require_POST
 def add_shoppinglist_item(request, trip_id):
     trip = get_object_or_404(Trip, pk=trip_id)
@@ -1393,7 +1392,7 @@ def delete_shoppinglist_item(request, item_id):
 @login_required
 @pro1_required
 def trip_vacancies(request, trip_id):
-    trip = get_object_or_404(Trip, pk=trip_id,owner=request.org)
+    trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
     form = TripVacancyForm()
     vacancies = trip.vacancies.all()
     search_query = request.GET.get('search', '')
@@ -1401,7 +1400,7 @@ def trip_vacancies(request, trip_id):
         vacancies = vacancies.filter(
             Q(name__icontains=search_query)).order_by('name')
     return render(request, "events/trip_vacancies.html", {
-        'title':f"Teilnehmer-Vakanzen zur Veranstaltung: {trip.name}",
+        'title': f"Teilnehmer-Vakanzen zur Veranstaltung: {trip.name}",
         'trip': trip,
         'vacancies': vacancies,
         'form': form,
@@ -1458,6 +1457,8 @@ def add_vacancy(request, trip_id):
             "delete_url": reverse("delete_vacancy", args=[item.pk])
         }
     })
+
+
 @require_POST
 def update_vacancy(request):
     if not request.user.is_authenticated:
@@ -1510,32 +1511,33 @@ def update_vacancy(request):
         return JsonResponse({"success": False, "error": str(e)})
 
 
-
-
 @require_POST
 def delete_vacancy(request, vacancy_id):
     item = get_object_or_404(TripVacancy, pk=vacancy_id)
     item.delete()
     return JsonResponse({"success": True})
 
+
 def export_vacancies_csv(request, trip_id):
     trip = get_object_or_404(Trip, pk=trip_id)
     vacancies = trip.vacancies.all()
 
-    # CSV Response vorbereiten
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="Vakanzen_Veranstaltung_{trip.name}.csv"'
+    # CSV Response vorbereiten (UTF-8)
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    filename = f'Vakanzen_Veranstaltung_{slugify(trip.name)}.csv'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     writer = csv.writer(response)
-    # Header
-    writer.writerow(['Name', 'Ankunft', 'Abreise'])
+    writer.writerow(['Name', 'Anwesenheit'])  # Header
 
-    # Daten
     for v in vacancies:
-        writer.writerow([
-            v.name,
-            v.arrival.strftime('%Y-%m-%d %H:%M'),
-            v.departure.strftime('%Y-%m-%d %H:%M')
-        ])
+        # Anwesenheit-Text zusammenbauen
+        arrival_str = v.arrival.strftime('%d-%m-%Y %H:%M') if v.arrival else 'unbekannt'
+        departure_str = v.departure.strftime('%d-%m-%Y %H:%M') if v.departure else 'unbekannt'
+        presence_text = f'Von {arrival_str} bis {departure_str} anwesend'
 
+        writer.writerow([
+            v.name or '',
+            presence_text
+        ])
     return response
