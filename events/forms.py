@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.forms import ModelForm, IntegerField, inlineformset_factory, Form, ModelChoiceField
 
 from buildings.models import Construction, Material
-from events.models import Trip, TripConstruction, Location, TripGroup, TripMaterial
+from events.models import Trip, TripConstruction, Location, TripGroup, TripMaterial, ShoppingListItem
 
 
 class TripForm(ModelForm):
@@ -214,3 +214,13 @@ TripMaterialFormSet = inlineformset_factory(
         fields=("material", "count", "description"),
         extra=1, can_delete=True
     )
+
+class ShoppingListItemForm(forms.ModelForm):
+    class Meta:
+        model = ShoppingListItem
+        fields = ["name", "amount", "unit"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Artikel"}),
+            "amount": forms.NumberInput(attrs={"class": "form-control", "placeholder": "Menge"}),
+            "unit": forms.TextInput(attrs={"class": "form-control", "placeholder": "Einheit"}),
+        }

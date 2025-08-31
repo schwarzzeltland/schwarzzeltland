@@ -1,5 +1,6 @@
 import json
 import os
+from audioop import reverse
 from collections import defaultdict
 from copy import deepcopy
 from itertools import combinations
@@ -11,19 +12,20 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q, Sum
-from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponse, HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from icalendar import Calendar, Event
 from unicodedata import decimal
+from django.urls import reverse
 
 from buildings.models import Construction, StockMaterial, ConstructionMaterial, Material
 from events.forms import TripForm, TripConstructionFormSet, LocationForm, ImportLocationForm, TripGroupFormSet, \
-    TripMaterialFormSet
-from events.models import Trip, TripConstruction, Location, PackedMaterial, TripGroup, TripMaterial
-from main.decorators import organization_admin_required, event_manager_required
+    TripMaterialFormSet, ShoppingListItemForm
+from events.models import Trip, TripConstruction, Location, PackedMaterial, TripGroup, TripMaterial, ShoppingListItem
+from main.decorators import organization_admin_required, event_manager_required, pro1_required
 from main.models import Membership, Organization
 
 
@@ -158,7 +160,7 @@ def check_trip_material(request, pk=None):
         # Trips abrufen, die das gleiche Material nutzen und **vor oder parallel** zum aktuellen Trip liegen
         conflicting_trips = Trip.objects.filter(
             start_date__lt=trip.end_date,  # Startet vor dem Ende des aktuellen Trips
-            end_date__gt=trip.start_date, owner=request.org # Endet nach dem Start des aktuellen Trips (also überlappt)
+            end_date__gt=trip.start_date, owner=request.org  # Endet nach dem Start des aktuellen Trips (also überlappt)
         ).exclude(pk=trip.pk)
 
         # Material aus `TripMaterial` dieser Trips summieren
@@ -366,7 +368,8 @@ def edit_trip(request, pk=None):
                         # Trips abrufen, die das gleiche Material nutzen und **vor oder parallel** zum aktuellen Trip liegen
                         conflicting_trips = Trip.objects.filter(
                             start_date__lt=trip.end_date,  # Startet vor dem Ende des aktuellen Trips
-                            end_date__gt=trip.start_date,owner=request.org  # Endet nach dem Start des aktuellen Trips (also überlappt)
+                            end_date__gt=trip.start_date, owner=request.org
+                            # Endet nach dem Start des aktuellen Trips (also überlappt)
                         ).exclude(pk=trip.pk)
 
                         # Material aus `TripMaterial` dieser Trips summieren
@@ -469,18 +472,18 @@ def edit_trip(request, pk=None):
                     org = trip_d.recipient_org
                     if trip_d.type == 4 and org and org.recipientcode == trip_d.recipientcode:
                         mat_rent = Material.objects.filter(
-                                name=obj.material.name,
-                                description=f"{obj.material.description} #Geliehen von {request.org.name} von {trip_d.start_date.date()} bis {trip_d.end_date.date()}#",
-                                owner=org,
-                                public=False,
-                                image=obj.material.image,
-                                weight=obj.material.weight,
-                                type=obj.material.type,
-                                length_min=obj.material.length_min,
-                                length_max=obj.material.length_max,
-                                width=obj.material.width
-                            ).first()
-                        stock_mat= StockMaterial.objects.filter(
+                            name=obj.material.name,
+                            description=f"{obj.material.description} #Geliehen von {request.org.name} von {trip_d.start_date.date()} bis {trip_d.end_date.date()}#",
+                            owner=org,
+                            public=False,
+                            image=obj.material.image,
+                            weight=obj.material.weight,
+                            type=obj.material.type,
+                            length_min=obj.material.length_min,
+                            length_max=obj.material.length_max,
+                            width=obj.material.width
+                        ).first()
+                        stock_mat = StockMaterial.objects.filter(
                             material=mat_rent,
                             organization=org,
                             storage_place='Geliehen',
@@ -563,7 +566,8 @@ def edit_trip(request, pk=None):
                         # Trips abrufen, die das gleiche Material nutzen und **vor oder parallel** zum aktuellen Trip liegen
                         conflicting_trips = Trip.objects.filter(
                             start_date__lt=trip.end_date,  # Startet vor dem Ende des aktuellen Trips
-                            end_date__gt=trip.start_date,owner=request.org  # Endet nach dem Start des aktuellen Trips (also überlappt)
+                            end_date__gt=trip.start_date, owner=request.org
+                            # Endet nach dem Start des aktuellen Trips (also überlappt)
                         ).exclude(pk=trip.pk)
 
                         # Material aus `TripMaterial` dieser Trips summieren
@@ -672,9 +676,9 @@ def edit_trip(request, pk=None):
     else:
         if trip_d == None:
             trip_form = TripForm(instance=trip_d, organization=request.org)
-        else :
-            trip_form = TripForm(instance=trip_d, organization=request.org,initial={
-            'recipient_org_name': trip_d.recipient_org.name if trip_d.recipient_org else ''})
+        else:
+            trip_form = TripForm(instance=trip_d, organization=request.org, initial={
+                'recipient_org_name': trip_d.recipient_org.name if trip_d.recipient_org else ''})
         tripconstruction_formset = TripConstructionFormSet(instance=trip_d, form_kwargs={'organization': request.org})
         tripgroup_formset = TripGroupFormSet(instance=trip_d, form_kwargs={'organization': request.org})
         tripmaterial_formset = TripMaterialFormSet(instance=trip_d, form_kwargs={'organization': request.org})
@@ -1160,7 +1164,7 @@ def check_material_availability(total_material_counts, request, trip):
 
     conflicting_trips = Trip.objects.filter(
         start_date__lt=trip.end_date,
-        end_date__gt=trip.start_date,owner=request.org
+        end_date__gt=trip.start_date, owner=request.org
     ).exclude(pk=trip.pk)
 
     material_used_parallel = defaultdict(int)
@@ -1260,6 +1264,7 @@ def change_packed_material(request):
 
     return JsonResponse({"status": "success", "packed": packed})
 
+
 def download_trip_ics(request, trip_id):
     trip = get_object_or_404(Trip, id=trip_id)
 
@@ -1276,3 +1281,103 @@ def download_trip_ics(request, trip_id):
     response = HttpResponse(cal.to_ical(), content_type='text/calendar')
     response['Content-Disposition'] = f'attachment; filename="{trip.name}.ics"'
     return response
+
+
+@login_required
+@pro1_required
+def shoppinglist(request, pk=None):
+    m: Membership = request.user.membership_set.filter(organization=request.org).first()
+    trip = get_object_or_404(Trip, pk=pk, owner=request.org)
+    items = trip.shoppinglist.all()
+    search_query = request.GET.get('search', '')
+    if search_query:
+        items = items.filter(
+            Q(name__icontains=search_query)).order_by('name')
+    for item in items:
+        item.amount_str = "{0:.2f}".format(item.amount)
+    form = ShoppingListItemForm()  # <-- Form muss erstellt werden
+    return render(request, 'events/shoppinglist.html', {
+        'title': f"Einkaufsliste zur Veranstaltung: {trip.name}",
+        'trip': trip,
+        'shoppinglist': items,
+        'form': form,
+    })
+
+
+from decimal import Decimal, InvalidOperation
+
+
+@require_POST
+def add_shoppinglist_item(request, trip_id):
+    trip = get_object_or_404(Trip, pk=trip_id)
+    form = ShoppingListItemForm(request.POST)
+    print("POST data:", request.POST)
+    print("form cleaned:", form.cleaned_data if form.is_valid() else form.errors)
+    if form.is_valid():
+        item = form.save(commit=False)
+        item.trip = trip
+
+        # amount sauber in Decimal umwandeln
+        try:
+            item.amount = Decimal(str(form.cleaned_data["amount"]).replace(",", "."))
+        except (InvalidOperation, TypeError):
+            item.amount = Decimal("0")
+
+        item.save()
+        print("SAVED item:", item.name, item.amount, item.unit)
+
+        return JsonResponse({
+            "success": True,
+            "item": {
+                "id": item.pk,
+                "name": item.name,
+                "amount": str(item.amount),
+                "unit": item.unit,
+                "delete_url": reverse("delete_shoppinglist_item", args=[item.pk])
+            }
+        })
+    else:
+        return JsonResponse({"success": False, "error": form.errors})
+
+
+@require_POST
+def update_shoppinglist_item(request):
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden()
+
+    try:
+        data = json.loads(request.body)
+        item = get_object_or_404(ShoppingListItem, pk=data.get("id"))
+        field = data.get("field")
+        value = data.get("value")
+
+        if field not in ["amount", "unit"]:
+            return JsonResponse({"success": False, "error": "Ungültiges Feld"})
+
+        if field == "amount":
+            try:
+                value = Decimal(str(value).replace(",", "."))
+            except (InvalidOperation, TypeError):
+                return JsonResponse({"success": False, "error": "Ungültige Zahl"})
+
+        setattr(item, field, value)
+        item.save()
+
+        return JsonResponse({
+            "success": True,
+            "item": {
+                "id": item.pk,
+                "name": item.name,
+                "amount": str(item.amount),
+                "unit": item.unit
+            }
+        })
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)})
+
+
+@require_POST
+def delete_shoppinglist_item(request, item_id):
+    item = get_object_or_404(ShoppingListItem, pk=item_id)
+    item.delete()
+    return JsonResponse({"success": True})

@@ -19,6 +19,7 @@ class Organization(models.Model):
         User,
         through='Membership',
     )
+    pro1 = models.BooleanField(default=False)
 
     def get_owner(self) -> 'Membership':
         return self.membership_set.earliest("id")

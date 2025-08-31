@@ -2,7 +2,7 @@ from django.contrib import admin
 from nested_admin.nested import NestedTabularInline, NestedModelAdmin
 
 from buildings.models import StockMaterial, Construction
-from main.models import Organization, Membership
+from main.models import Organization, Membership, Message
 
 
 class MembershipInline(NestedTabularInline):
@@ -29,3 +29,8 @@ class OrganizationAdmin(NestedModelAdmin):
 class MembershipAdmin(admin.ModelAdmin):
     search_fields = ['user__username', 'user__first_name', 'user__last_name']
     list_display = ["user", "organization", "admin", "material_manager", "event_manager"]
+
+@admin.register(Message)
+class MessageAdmin(admin.ModelAdmin):
+    search_fields = ['recipient','sender','subject','text','created','is_read']
+    list_display = ['recipient','sender','subject','text','created','is_read']
