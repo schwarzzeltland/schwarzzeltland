@@ -1532,8 +1532,8 @@ def export_vacancies_csv(request, trip_id):
 
     for v in vacancies:
         # Anwesenheit-Text zusammenbauen
-        arrival_str = v.arrival.strftime('%d-%m-%Y %H:%M') if v.arrival else 'unbekannt'
-        departure_str = v.departure.strftime('%d-%m-%Y %H:%M') if v.departure else 'unbekannt'
+        arrival_str = v.arrival.strftime('%d-%m-%Y %H:%M') if v.arrival else 'unbekannt '
+        departure_str = v.departure.strftime('%d-%m-%Y %H:%M') if v.departure else 'unbekannt '
         presence_text = f'Von {arrival_str} bis {departure_str} anwesend'
 
         writer.writerow([
