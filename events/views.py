@@ -8,6 +8,7 @@ from copy import deepcopy
 from itertools import combinations
 from urllib.parse import unquote
 
+from django.utils.dateparse import parse_datetime
 from django.utils.text import slugify
 from django.utils.timezone import now
 from _decimal import Decimal
@@ -1541,3 +1542,29 @@ def export_vacancies_csv(request, trip_id):
             presence_text
         ])
     return response
+
+def import_vacancies_csv(request, trip_id):
+    if request.method == "POST" and request.FILES.get("csv_file"):
+        csv_file = request.FILES["csv_file"].read().decode("utf-8").splitlines()
+        reader = csv.DictReader(csv_file, delimiter=",")
+        trip = get_object_or_404(Trip, pk=trip_id)
+        created = 0
+        for row in reader:
+            name = row.get("Name")
+            arrival = parse_datetime(row.get("Ankunft")) if row.get("Ankunft") else None
+            departure = parse_datetime(row.get("Abreise")) if row.get("Abreise") else None
+
+            if name:  # nur mit Name speichern
+                TripVacancy.objects.create(
+                    trip=trip,
+                    name=name.strip(),
+                    arrival=arrival,
+                    departure=departure,
+                )
+                created += 1
+
+        messages.success(request, f"{created} Teilnehmer erfolgreich importiert.")
+    else:
+        messages.error(request, "Bitte eine CSV-Datei hochladen.")
+
+    return redirect("trip_vacancies", trip_id=trip_id)

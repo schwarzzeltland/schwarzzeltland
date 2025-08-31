@@ -18,6 +18,7 @@ urlpatterns = [
     path("vacancies/update/", views.update_vacancy, name="update_vacancy"),
     path("vacancies/<int:vacancy_id>/delete/", views.delete_vacancy, name="delete_vacancy"),
     path('trip/<int:trip_id>/vacancies/export/', views.export_vacancies_csv, name='export_vacancies_csv'),
+    path("trips/<int:trip_id>/vacancies/import/", views.import_vacancies_csv, name="import_vacancies_csv"),
     path('trip/check_trip_material/<int:pk>/', views.check_trip_material, name='check_trip_material'),
     path('location', views.location, name='location'),
     path('location/edit/<int:pk>/', views.edit_location, name='edit_location'),

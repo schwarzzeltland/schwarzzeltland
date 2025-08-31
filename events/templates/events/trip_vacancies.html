@@ -65,9 +65,23 @@
         </form>
     </div>
     <div class="mb-3">
-        <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary me-2">Zurück</a>
-        <a href="{% url 'export_vacancies_csv' trip.pk %}" class="btn btn-primary">CSV herunterladen</a>
+    <a href="{% url 'export_vacancies_csv' trip.pk %}" class="btn btn-primary">CSV herunterladen</a>
+
     </div>
+    <div class="mb-3">
+    <form method="post" action="{% url 'import_vacancies_csv' trip.pk %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="input-group">
+            <input type="file" name="csv_file" accept=".csv" class="form-control" required>
+            <button type="submit" class="btn btn-warning">CSV importieren</button>
+        </div>
+    </form>
+    </div>
+    <div class="mb-3">
+        <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary me-2">Zurück</a>
+    </div>
+
+
 
     <script>
         const form = document.getElementById("vacancy-form");
