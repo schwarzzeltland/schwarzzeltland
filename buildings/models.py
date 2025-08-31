@@ -49,7 +49,8 @@ class StockMaterial(models.Model):
     material_condition_description=CharField(max_length=1024, default="",blank=True,verbose_name="Zustands-Beschreibung")
     temporary = models.BooleanField(default=False)  # für verliehenes Material
     valid_until = models.DateField(null=True, blank=True)
-
+    def __str__(self):
+        return f"{self.material.name} ({self.organization.name})"
 
 class Construction(models.Model):
     name = CharField(max_length=255)

@@ -21,7 +21,7 @@ class ConstructionInLine(NestedTabularInline):
 
 @admin.register(Organization)
 class OrganizationAdmin(NestedModelAdmin):
-    inlines = [MembershipInline,MaterialInline,ConstructionInLine]
+    inlines = [MembershipInline]
     search_fields = ['name']
 
 
@@ -32,5 +32,5 @@ class MembershipAdmin(admin.ModelAdmin):
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    search_fields = ['recipient','sender','subject','text','created','is_read']
+    search_fields = ['recipient__name','sender__name','subject','text','created','is_read']
     list_display = ['recipient','sender','subject','text','created','is_read']
