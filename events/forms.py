@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.forms import ModelForm, IntegerField, inlineformset_factory, Form, ModelChoiceField
 
 from buildings.models import Construction, Material
-from events.models import Trip, TripConstruction, Location, TripGroup, TripMaterial, ShoppingListItem
+from events.models import Trip, TripConstruction, Location, TripGroup, TripMaterial, ShoppingListItem, TripVacancy
 
 
 class TripForm(ModelForm):
@@ -223,4 +223,14 @@ class ShoppingListItemForm(forms.ModelForm):
             "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Artikel"}),
             "amount": forms.NumberInput(attrs={"class": "form-control", "placeholder": "Menge"}),
             "unit": forms.TextInput(attrs={"class": "form-control", "placeholder": "Einheit"}),
+        }
+
+class TripVacancyForm(forms.ModelForm):
+    class Meta:
+        model = TripVacancy
+        fields = ["name", "arrival", "departure"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Name"}),
+            "arrival": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
+            "departure": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
         }

@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block content %}
+    <!-- Suchfeld -->
+    <form method="get" action="" class="mb-3">
+        <div class="input-group">
+            <input type="text" class="form-control" name="search" value="{{ search_query }}"
+                   placeholder="Suchen nach Teilnehmer">
+            <button class="btn btn-outline-secondary" type="submit">Suchen</button>
+        </div>
+    </form>
+    <div class="table-responsive mb-3">
+        <table class="table" id="vacancies-table">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Ankunft</th>
+                <th>Abreise</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for item in vacancies %}
+                <tr id="item-{{ item.pk }}">
+                    <td>{{ item.name }}</td>
+                    <td>
+                        <input type="datetime-local" class="form-control form-control-sm inline-edit"
+                               data-id="{{ item.pk }}" data-field="arrival"
+                               value="{{ item.arrival|date:'Y-m-d\TH:i' }}">
+                    </td>
+                    <td>
+                        <input type="datetime-local" class="form-control form-control-sm inline-edit"
+                               data-id="{{ item.pk }}" data-field="departure"
+                               value="{{ item.departure|date:'Y-m-d\TH:i' }}">
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-danger btn-sm delete-item"
+                                data-id="{{ item.pk }}"
+                                data-url="{% url 'delete_vacancy' item.pk %}">Löschen
+                        </button>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr id="no-items-row">
+                    <td colspan="4" class="text-center text-muted">Keine Teilnehmer vorhanden.</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+
+        <form id="vacancy-form" method="post" class="d-flex gap-2 align-items-end mb-3">
+            {% csrf_token %}
+            <div style="flex: 2;">
+                {{ form.name }}
+            </div>
+            <div style="flex: 1;">
+                {{ form.arrival }}
+            </div>
+            <div style="flex: 1;">
+                {{ form.departure }}
+            </div>
+            <div>
+                <button type="submit" class="btn btn-success">Teilnehmer hinzufügen</button>
+            </div>
+        </form>
+    </div>
+    <div class="mb-3">
+        <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary me-2">Zurück</a>
+        <a href="{% url 'export_vacancies_csv' trip.pk %}" class="btn btn-primary">CSV herunterladen</a>
+    </div>
+
+    <script>
+        const form = document.getElementById("vacancy-form");
+
+        form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const csrftoken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+            fetch("{% url 'add_vacancy' trip.pk %}", {
+                method: "POST",
+                body: formData,
+                headers: {"X-CSRFToken": csrftoken}
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const tbody = document.querySelector("#vacancies-table tbody");
+                        const noItemsRow = document.getElementById("no-items-row");
+                        if (noItemsRow) noItemsRow.remove();
+
+                        tbody.insertAdjacentHTML("beforeend", `
+                <tr id="item-${data.item.id}">
+                    <td>${data.item.name}</td>
+                    <td><input type="datetime-local" class="form-control form-control-sm inline-edit" data-id="${data.item.id}" data-field="arrival" value="${data.item.arrival}"></td>
+                    <td><input type="datetime-local" class="form-control form-control-sm inline-edit" data-id="${data.item.id}" data-field="departure" value="${data.item.departure}"></td>
+                    <td class="text-end">
+                        <button class="btn btn-danger btn-sm delete-item" data-id="${data.item.id}" data-url="${data.item.delete_url}">Löschen</button>
+                    </td>
+                </tr>
+            `);
+
+                        attachDeleteHandlers();
+                        attachInlineEditHandlers();
+                        form.reset();
+                    } else {
+                        alert("Fehler: " + JSON.stringify(data.error));
+                    }
+                });
+        });
+
+        function attachDeleteHandlers() {
+            document.querySelectorAll(".delete-item").forEach(btn => {
+                btn.onclick = function (e) {
+                    e.preventDefault();
+                    const id = this.dataset.id;
+                    const url = this.dataset.url;
+                    const csrftoken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+                    fetch(url, {method: "POST", headers: {"X-CSRFToken": csrftoken}})
+                        .then(res => {
+                            if (res.ok) document.getElementById(`item-${id}`).remove();
+                        });
+                }
+            });
+        }
+
+        function attachInlineEditHandlers() {
+            document.querySelectorAll(".inline-edit").forEach(input => {
+                input.onchange = function () {
+                    const id = this.dataset.id;
+                    const field = this.dataset.field;
+                    const value = this.value;
+                    const csrftoken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
+                    const currentInput = this;
+
+                    fetch("{% url 'update_vacancy' %}", {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json", "X-CSRFToken": csrftoken},
+                        body: JSON.stringify({id, field, value})
+                    })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                currentInput.value = data.item[field];
+                                currentInput.classList.remove("is-invalid");
+                                if (currentInput.nextElementSibling && currentInput.nextElementSibling.classList.contains("invalid-feedback")) {
+                                    currentInput.nextElementSibling.remove();
+                                }
+                            } else {
+                                currentInput.classList.add("is-invalid");
+                                const errorEl = document.createElement("div");
+                                errorEl.className = "invalid-feedback";
+                                errorEl.textContent = data.error;
+                                if (!currentInput.nextElementSibling) currentInput.parentNode.appendChild(errorEl);
+                            }
+                        });
+                }
+            });
+        }
+
+        attachDeleteHandlers();
+        attachInlineEditHandlers();
+    </script>
+
+    <style>
+        /* Optional: alle inputs innerhalb des Formulars Bootstrap-Form-Control */
+        #vacancy-form input {
+            min-width: 100px;
+        }
+    </style>
+{% endblock %}

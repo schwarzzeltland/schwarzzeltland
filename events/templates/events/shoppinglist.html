@@ -11,56 +11,62 @@
             <button class="btn btn-outline-secondary" type="submit">Suchen</button>
         </div>
     </form>
-
-    <table class="table" id="shoppinglist-table">
-        <thead>
-        <tr>
-            <th>Artikel</th>
-            <th>Menge</th>
-            <th>Einheit</th>
-            <th></th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for item in shoppinglist %}
-            <tr id="item-{{ item.pk }}">
-                <td>{{ item.name }}</td>
-                <td>
-                    <input type="number" step="0.01" class="form-control form-control-sm inline-edit"
-                           data-id="{{ item.pk }}" data-field="amount"
-                           value="{{ item.amount_str }}">
-                </td>
-                <td>
-                    <input type="text" class="form-control form-control-sm inline-edit"
-                           data-id="{{ item.pk }}" data-field="unit"
-                           value="{{ item.unit }}">
-                </td>
-                <td class="text-end">
-                    <button class="btn btn-danger btn-sm delete-item"
-                            data-id="{{ item.pk }}"
-                            data-url="{% url 'delete_shoppinglist_item' item.pk %}">
-                        Löschen
-                    </button>
-                </td>
+    <div class="table-responsive mb-3">
+        <table class="table" id="shoppinglist-table">
+            <thead>
+            <tr>
+                <th>Artikel</th>
+                <th>Menge</th>
+                <th>Einheit</th>
+                <th></th>
             </tr>
-        {% empty %}
-            <tr id="no-items-row">
-                <td colspan="4" class="text-center text-muted">Keine Artikel in der Einkaufsliste.</td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+            {% for item in shoppinglist %}
+                <tr id="item-{{ item.pk }}">
+                    <td>{{ item.name }}</td>
+                    <td>
+                        <input type="number" step="0.01" class="form-control form-control-sm inline-edit"
+                               data-id="{{ item.pk }}" data-field="amount"
+                               value="{{ item.amount_str }}">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm inline-edit"
+                               data-id="{{ item.pk }}" data-field="unit"
+                               value="{{ item.unit }}">
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-danger btn-sm delete-item"
+                                data-id="{{ item.pk }}"
+                                data-url="{% url 'delete_shoppinglist_item' item.pk %}">
+                            Löschen
+                        </button>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr id="no-items-row">
+                    <td colspan="4" class="text-center text-muted">Keine Artikel in der Einkaufsliste.</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
 
-
-    <form id="shoppinglist-form" method="post" class="form">
-        {% csrf_token %}
-        <div class="input-group">
-            {{ form.name }}
-            {{ form.amount }}
-            {{ form.unit }}
-            <button type="submit" class="btn btn-success">Artikel hinzufügen</button>
-        </div>
-    </form>
+        <form id="shoppinglist-form" method="post" class="d-flex gap-2 align-items-end">
+            {% csrf_token %}
+            <div style="flex: 2;">
+                {{ form.name }}
+            </div>
+            <div style="flex: 1;">
+                {{ form.amount }}
+            </div>
+            <div style="flex: 1;">
+                {{ form.unit }}
+            </div>
+            <div>
+                <button type="submit" class="btn btn-success">Artikel hinzufügen</button>
+            </div>
+        </form>
+    </div>
     <div class="mt-2">
         <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary">Zurück</a>
     </div>
@@ -167,16 +173,9 @@
         attachInlineEditHandlers();
     </script>
     <style>
-        .btn {
-            min-width: 100px;
-        }
-
-        .table-responsive {
-            overflow-x: auto;
-        }
-
-        .inline-edit {
-            max-width: 120px;
+        #shoppinglist-form input {
+            width: 100%;
+            min-width: 80px;
         }
     </style>
 {% endblock %}

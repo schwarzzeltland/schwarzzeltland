@@ -153,8 +153,10 @@
                 </div>
                 {% if trip.owner.pro1 %}
                     <div class="mb-2">
-                        <a href="{% url 'shoppinglist' trip.id %}" class="btn btn-primary btn-equal"> Einkaufsliste
-                            anzeigen</a>
+                        <a href="{% url 'shoppinglist' trip.id %}" class="btn btn-primary btn-equal"> Einkaufsliste</a>
+                    </div>
+                    <div class="mb-2">
+                        <a href="{% url 'trip_vacancies' trip.id %}" class="btn btn-primary btn-equal"> Vakanzenliste</a>
                     </div>
                 {% endif %}
                 {% if trip.pk != None %}

@@ -1,3 +1,5 @@
+import csv
+import datetime
 import json
 import os
 from audioop import reverse
@@ -20,11 +22,20 @@ from django.views.decorators.http import require_POST
 from icalendar import Calendar, Event
 from unicodedata import decimal
 from django.urls import reverse
+from datetime import datetime
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse, HttpResponseForbidden
+from django.shortcuts import get_object_or_404
+from .models import Trip, TripVacancy
+
+from decimal import Decimal, InvalidOperation
 
 from buildings.models import Construction, StockMaterial, ConstructionMaterial, Material
 from events.forms import TripForm, TripConstructionFormSet, LocationForm, ImportLocationForm, TripGroupFormSet, \
-    TripMaterialFormSet, ShoppingListItemForm
-from events.models import Trip, TripConstruction, Location, PackedMaterial, TripGroup, TripMaterial, ShoppingListItem
+    TripMaterialFormSet, ShoppingListItemForm, TripVacancyForm
+from events.models import Trip, TripConstruction, Location, PackedMaterial, TripGroup, TripMaterial, ShoppingListItem, \
+    TripVacancy
 from main.decorators import organization_admin_required, event_manager_required, pro1_required
 from main.models import Membership, Organization
 
@@ -1304,15 +1315,12 @@ def shoppinglist(request, pk=None):
     })
 
 
-from decimal import Decimal, InvalidOperation
 
 
 @require_POST
 def add_shoppinglist_item(request, trip_id):
     trip = get_object_or_404(Trip, pk=trip_id)
     form = ShoppingListItemForm(request.POST)
-    print("POST data:", request.POST)
-    print("form cleaned:", form.cleaned_data if form.is_valid() else form.errors)
     if form.is_valid():
         item = form.save(commit=False)
         item.trip = trip
@@ -1324,7 +1332,6 @@ def add_shoppinglist_item(request, trip_id):
             item.amount = Decimal("0")
 
         item.save()
-        print("SAVED item:", item.name, item.amount, item.unit)
 
         return JsonResponse({
             "success": True,
@@ -1381,3 +1388,154 @@ def delete_shoppinglist_item(request, item_id):
     item = get_object_or_404(ShoppingListItem, pk=item_id)
     item.delete()
     return JsonResponse({"success": True})
+
+
+@login_required
+@pro1_required
+def trip_vacancies(request, trip_id):
+    trip = get_object_or_404(Trip, pk=trip_id,owner=request.org)
+    form = TripVacancyForm()
+    vacancies = trip.vacancies.all()
+    search_query = request.GET.get('search', '')
+    if search_query:
+        vacancies = vacancies.filter(
+            Q(name__icontains=search_query)).order_by('name')
+    return render(request, "events/trip_vacancies.html", {
+        'title':f"Teilnehmer-Vakanzen zur Veranstaltung: {trip.name}",
+        'trip': trip,
+        'vacancies': vacancies,
+        'form': form,
+    })
+
+
+@require_POST
+def add_vacancy(request, trip_id):
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden()
+
+    trip = get_object_or_404(Trip, pk=trip_id)
+
+    # FormData aus request.POST
+    name = request.POST.get("name", "").strip()
+    arrival_str = request.POST.get("arrival", "")
+    departure_str = request.POST.get("departure", "")
+
+    if not name:
+        return JsonResponse({"success": False, "error": "Name darf nicht leer sein"})
+
+    # Datum umwandeln
+    arrival = None
+    departure = None
+    try:
+        if arrival_str:
+            arrival = datetime.strptime(arrival_str, "%Y-%m-%dT%H:%M")
+            arrival = timezone.make_aware(arrival, timezone.get_current_timezone())
+        if departure_str:
+            departure = datetime.strptime(departure_str, "%Y-%m-%dT%H:%M")
+            departure = timezone.make_aware(departure, timezone.get_current_timezone())
+    except ValueError:
+        return JsonResponse({"success": False, "error": "Ungültiges Datum/Zeit"})
+
+    # Prüfen, dass Ankunft ≤ Abreise
+    if arrival and departure and arrival > departure:
+        return JsonResponse({"success": False, "error": "Ankunft darf nicht nach Abreise liegen"})
+
+    # Neues Vacancy erstellen
+    item = TripVacancy.objects.create(
+        trip=trip,
+        name=name,
+        arrival=arrival,
+        departure=departure
+    )
+
+    return JsonResponse({
+        "success": True,
+        "item": {
+            "id": item.pk,
+            "name": item.name,
+            "arrival": item.arrival.strftime("%Y-%m-%dT%H:%M") if item.arrival else "",
+            "departure": item.departure.strftime("%Y-%m-%dT%H:%M") if item.departure else "",
+            "delete_url": reverse("delete_vacancy", args=[item.pk])
+        }
+    })
+@require_POST
+def update_vacancy(request):
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden()
+
+    try:
+        data = json.loads(request.body)
+        item = get_object_or_404(TripVacancy, pk=data.get("id"))
+        field = data.get("field")
+        value = data.get("value")
+
+        if field not in ["arrival", "departure"]:
+            return JsonResponse({"success": False, "error": "Ungültiges Feld"})
+
+        # Datum umwandeln
+        if value:
+            try:
+                value_dt = datetime.strptime(value, "%Y-%m-%dT%H:%M")
+                value_dt = timezone.make_aware(value_dt, timezone.get_current_timezone())
+            except ValueError:
+                return JsonResponse({"success": False, "error": "Ungültiges Datum/Zeit"})
+        else:
+            value_dt = None
+
+        # Temporär setzen, um Reihenfolge prüfen zu können
+        if field == "arrival":
+            arrival = value_dt
+            departure = item.departure
+        else:
+            arrival = item.arrival
+            departure = value_dt
+
+        if arrival and departure and arrival > departure:
+            return JsonResponse({"success": False, "error": "Ankunft darf nicht nach Abreise liegen"})
+
+        setattr(item, field, value_dt)
+        item.save()
+
+        return JsonResponse({
+            "success": True,
+            "item": {
+                "id": item.pk,
+                "name": item.name,
+                "arrival": item.arrival.strftime("%Y-%m-%dT%H:%M") if item.arrival else "",
+                "departure": item.departure.strftime("%Y-%m-%dT%H:%M") if item.departure else ""
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)})
+
+
+
+
+@require_POST
+def delete_vacancy(request, vacancy_id):
+    item = get_object_or_404(TripVacancy, pk=vacancy_id)
+    item.delete()
+    return JsonResponse({"success": True})
+
+def export_vacancies_csv(request, trip_id):
+    trip = get_object_or_404(Trip, pk=trip_id)
+    vacancies = trip.vacancies.all()
+
+    # CSV Response vorbereiten
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="Vakanzen_Veranstaltung_{trip.name}.csv"'
+
+    writer = csv.writer(response)
+    # Header
+    writer.writerow(['Name', 'Ankunft', 'Abreise'])
+
+    # Daten
+    for v in vacancies:
+        writer.writerow([
+            v.name,
+            v.arrival.strftime('%Y-%m-%d %H:%M'),
+            v.departure.strftime('%Y-%m-%d %H:%M')
+        ])
+
+    return response
