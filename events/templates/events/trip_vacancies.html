@@ -46,8 +46,8 @@
             {% endfor %}
             </tbody>
         </table>
-
-
+    </div>
+    <div class="table-responsive mb-3">
         <form id="vacancy-form" method="post" class="d-flex gap-2 align-items-end mb-3">
             {% csrf_token %}
             <div style="flex: 2;">
@@ -166,7 +166,7 @@
     <style>
         /* Optional: alle inputs innerhalb des Formulars Bootstrap-Form-Control */
         #vacancy-form input {
-            min-width: 100px;
+            min-width: 120px;
         }
     </style>
 {% endblock %}

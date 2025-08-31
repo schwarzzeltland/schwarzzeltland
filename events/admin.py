@@ -1,23 +1,33 @@
 from django.contrib import admin
 from nested_admin.nested import NestedTabularInline
 
-from events.models import Trip, TripConstruction, Location, ShoppingListItem, TripMaterial, TripGroup
+from events.models import Trip, TripConstruction, Location, ShoppingListItem, TripMaterial, TripGroup, TripVacancy
 
 
 class TripConstructionInline(NestedTabularInline):
     model = TripConstruction
     extra = 1
+
+
 class TripMaterialInLine(NestedTabularInline):
-    model= TripMaterial
+    model = TripMaterial
     extra = 1
+
 
 class TripGroupInLine(NestedTabularInline):
-    model= TripGroup
+    model = TripGroup
     extra = 1
 
+
 class TripShoppinglistInLine(NestedTabularInline):
-    model= ShoppingListItem
+    model = ShoppingListItem
     extra = 1
+
+
+class TripVacancyInLine(NestedTabularInline):
+    model = TripVacancy
+    extra = 1
+
 
 @admin.register(Trip)
 class TripAdmin(admin.ModelAdmin):
@@ -27,7 +37,8 @@ class TripAdmin(admin.ModelAdmin):
         TripConstructionInline,
         TripGroupInLine,
         TripMaterialInLine,
-        TripShoppinglistInLine
+        TripShoppinglistInLine,
+        TripVacancyInLine
     ]
 
 

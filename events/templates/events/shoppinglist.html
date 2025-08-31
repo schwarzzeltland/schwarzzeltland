@@ -50,7 +50,8 @@
             {% endfor %}
             </tbody>
         </table>
-
+    </div>
+    <div class="table-responsive mb-3">
         <form id="shoppinglist-form" method="post" class="d-flex gap-2 align-items-end">
             {% csrf_token %}
             <div style="flex: 2;">
@@ -175,7 +176,7 @@
     <style>
         #shoppinglist-form input {
             width: 100%;
-            min-width: 80px;
+            min-width: 120px;
         }
     </style>
 {% endblock %}
