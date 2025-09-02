@@ -1543,21 +1543,39 @@ def export_vacancies_csv(request, trip_id):
         ])
     return response
 
+
 def import_vacancies_csv(request, trip_id):
     if request.method == "POST" and request.FILES.get("csv_file"):
-        csv_file = request.FILES["csv_file"].read().decode("utf-8").splitlines()
-        reader = csv.DictReader(csv_file, delimiter=",")
+        csv_file = request.FILES["csv_file"].read().decode("utf-8-sig").splitlines()
+        reader = csv.DictReader(csv_file, delimiter=",", quotechar='"')
         trip = get_object_or_404(Trip, pk=trip_id)
         created = 0
+        vorname_col = next((f for f in reader.fieldnames if "vorname" in f.lower()), None)
+        nachname_col = next((f for f in reader.fieldnames if "nachname" in f.lower()), None)
         for row in reader:
-            name = row.get("Name")
-            arrival = parse_datetime(row.get("Ankunft")) if row.get("Ankunft") else None
-            departure = parse_datetime(row.get("Abreise")) if row.get("Abreise") else None
+            vorname = row.get(vorname_col)
+            nachname = row.get(nachname_col)
+            if nachname and vorname:
+                name = f"{vorname} {nachname}".strip()
+            else:
+                name = None
+            arrival = None
+            departure = None
+            try:
+                if row.get("Ankunft"):
+                    arrival = datetime.strptime(row["Ankunft"].strip(), "%d-%m-%YT%H:%M")
+            except ValueError:
+                arrival = None
 
+            try:
+                if row.get("Abreise"):
+                    departure = datetime.strptime(row["Abreise"].strip(), "%d-%m-%YT%H:%M")
+            except ValueError:
+                departure = None
             if name:  # nur mit Name speichern
                 TripVacancy.objects.create(
                     trip=trip,
-                    name=name.strip(),
+                    name=name,
                     arrival=arrival,
                     departure=departure,
                 )
