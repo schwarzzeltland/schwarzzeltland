@@ -183,7 +183,7 @@ document.addEventListener("DOMContentLoaded", function() {
           body: JSON.stringify({accept: true})
       }).then(res => {
           if (res.ok) {
-              document.cookie = "cookies_accepted=true; path=/; samesite=lax";
+              document.cookie = "cookies_accepted=true; path=/; samesite=lax; max-age=31536000";
               banner.classList.remove("show");
               location.reload();  // Seite neu laden, damit Session funktioniert
           }

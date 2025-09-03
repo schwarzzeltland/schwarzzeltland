@@ -357,7 +357,7 @@ def accept_cookies(request):
     """
     response = JsonResponse({"status": "ok"})
     response.set_cookie(
-        "cookies_accepted", "true", max_age=60*60*24*365,  # 1 Jahr
-        samesite="Lax", secure=False  # evtl. secure=True in Produktion mit HTTPS
+        "cookies_accepted", "true", max_age=31536000,  # 1 Jahr
+        samesite="Lax", secure=True  # evtl. secure=True in Produktion mit HTTPS
     )
     return response
