@@ -142,7 +142,55 @@
     </section>
 
 </main><!-- End #main -->
+<style>
+#cookie-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #222;
+    color: white;
+    padding: 1em;
+    text-align: center;
+    display: none;
+}
+#cookie-banner.show {
+    display: block;
+}
+</style>
 
+<div id="cookie-banner">
+ Diese Webseite verwendet technisch notwendige Cookies.
+    <a href="{% url 'privacypolice' %}">Datenschutzerklärung</a>
+  <button id="accept-cookies" class="btn btn-sm btn-success ms-3">Ok, verstanden.</button>
+</div>
+
+<script>
+function getCookie(name){
+  const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return m ? m.pop() : '';
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  const banner = document.getElementById("cookie-banner");
+  if (!document.cookie.includes("cookies_accepted=true")) {
+      banner.classList.add("show");
+  }
+  document.getElementById("accept-cookies").onclick = function() {
+      fetch("{% url 'accept_cookies' %}", {
+          method: "POST",
+          headers: {"X-CSRFToken": getCookie("csrftoken"), "Content-Type": "application/json"},
+          body: JSON.stringify({accept: true})
+      }).then(res => {
+          if (res.ok) {
+              document.cookie = "cookies_accepted=true; path=/; samesite=lax";
+              banner.classList.remove("show");
+              location.reload();  // Seite neu laden, damit Session funktioniert
+          }
+      });
+  };
+});
+</script>
 <!-- ======= Footer ======= -->
 <footer id="footer">
     <div class="footer-top">

@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model, login
 from django.contrib.auth.models import User
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import send_mail
-from django.http import HttpResponse, HttpResponseRedirect, request
+from django.http import HttpResponse, HttpResponseRedirect, request, JsonResponse
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -17,6 +17,7 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.views.decorators.csrf import csrf_exempt
 
 from buildings.models import Construction
 from django.shortcuts import redirect
@@ -348,3 +349,15 @@ def messagesinbox_view(request, pk=None):
         'title': 'Empfangene Nachrichten',
         'inbox_messages': inbox_messages,
     })
+
+@csrf_exempt
+def accept_cookies(request):
+    """
+    Setzt ein Cookie, wenn User zugestimmt hat.
+    """
+    response = JsonResponse({"status": "ok"})
+    response.set_cookie(
+        "cookies_accepted", "true", max_age=60*60*24*365,  # 1 Jahr
+        samesite="Lax", secure=False  # evtl. secure=True in Produktion mit HTTPS
+    )
+    return response
