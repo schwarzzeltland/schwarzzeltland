@@ -5,7 +5,8 @@ from django.db.models import Q
 from django.forms import ModelForm, IntegerField, inlineformset_factory, Form, ModelChoiceField
 
 from buildings.models import Construction, Material
-from events.models import Trip, TripConstruction, Location, TripGroup, TripMaterial, ShoppingListItem, TripVacancy
+from events.models import Trip, TripConstruction, Location, TripGroup, TripMaterial, ShoppingListItem, TripVacancy, \
+    EventPlanningChecklistItem
 
 
 class TripForm(ModelForm):
@@ -233,4 +234,13 @@ class TripVacancyForm(forms.ModelForm):
             "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Name"}),
             "arrival": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
             "departure": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
+        }
+
+class EventPlanningChecklistItemForm(forms.ModelForm):
+    class Meta:
+        model = EventPlanningChecklistItem
+        fields = ["title", "due_date"]
+        widgets = {
+            "title": forms.TextInput(attrs={"class": "form-control", "placeholder": "Neuen Punkt hinzufügen..."}),
+            "due_date":forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
         }

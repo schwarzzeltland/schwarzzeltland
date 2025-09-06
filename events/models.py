@@ -1,6 +1,8 @@
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import CharField, BooleanField
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 from buildings.models import Construction, Material
 from main.models import Organization
@@ -119,3 +121,29 @@ class TripVacancy(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.arrival} - {self.departure})"
+
+class EventPlanningChecklistItem(models.Model):
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="checklist")
+    title = models.CharField(max_length=255)
+    done = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    due_date = models.DateTimeField(null=True, blank=True)
+
+    DEFAULT_CHECKLIST = [
+        "Anmeldung erstellen",
+        "Teilnehmerliste erstellen",
+        "Verpflegungsplanung",
+        "Programmplanung",
+        "Tranpsort (Material / Teilnehmer)",
+        "Tranpsort vor Ort",
+    ]
+
+    def __str__(self):
+        return f"{self.title} ({'✓' if self.done else '✗'})"
+
+
+@receiver(post_save, sender=Trip)
+def create_default_checklist(sender, instance, created, **kwargs):
+    if created:
+        for title in EventPlanningChecklistItem.DEFAULT_CHECKLIST:
+            EventPlanningChecklistItem.objects.create(trip=instance, title=title)

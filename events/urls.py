@@ -17,6 +17,11 @@ urlpatterns = [
     path("trip/<int:trip_id>/vacancies/add/", views.add_vacancy, name="add_vacancy"),
     path("vacancies/update/", views.update_vacancy, name="update_vacancy"),
     path("vacancies/<int:vacancy_id>/delete/", views.delete_vacancy, name="delete_vacancy"),
+    path("trips/<int:trip_id>/checklist/", views.checklist, name="checklist"),
+    path("trips/<int:trip_id>/checklist/add/", views.add_checklist_item, name="add_checklist_item"),
+    path("checklist/<int:item_id>/toggle/", views.toggle_checklist_item, name="toggle_checklist_item"),
+    path("checklist/<int:item_id>/delete/", views.delete_checklist_item, name="delete_checklist_item"),
+    path("checklist/update-due-date/", views.update_checklist_due_date, name="update_checklist_due_date"),
     path('trip/<int:trip_id>/vacancies/export/', views.export_vacancies_csv, name='export_vacancies_csv'),
     path("trips/<int:trip_id>/vacancies/import/", views.import_vacancies_csv, name="import_vacancies_csv"),
     path('trip/check_trip_material/<int:pk>/', views.check_trip_material, name='check_trip_material'),
@@ -34,4 +39,3 @@ urlpatterns = [
     path('change-packed-material/', views.change_packed_material, name="change_packed_material"),
     path('trip/<int:trip_id>/download_trip_ics/', views.download_trip_ics, name='download_trip_ics'),
 ]
-

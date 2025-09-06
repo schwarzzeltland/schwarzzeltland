@@ -29,13 +29,13 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
-from .models import Trip, TripVacancy
+from .models import Trip, TripVacancy, EventPlanningChecklistItem
 
 from decimal import Decimal, InvalidOperation
 
 from buildings.models import Construction, StockMaterial, ConstructionMaterial, Material
 from events.forms import TripForm, TripConstructionFormSet, LocationForm, ImportLocationForm, TripGroupFormSet, \
-    TripMaterialFormSet, ShoppingListItemForm, TripVacancyForm
+    TripMaterialFormSet, ShoppingListItemForm, TripVacancyForm, EventPlanningChecklistItemForm
 from events.models import Trip, TripConstruction, Location, PackedMaterial, TripGroup, TripMaterial, ShoppingListItem, \
     TripVacancy
 from main.decorators import organization_admin_required, event_manager_required, pro1_required
@@ -1586,3 +1586,88 @@ def import_vacancies_csv(request, trip_id):
         messages.error(request, "Bitte eine CSV-Datei hochladen.")
 
     return redirect("trip_vacancies", trip_id=trip_id)
+
+@login_required
+@pro1_required
+def checklist(request, trip_id):
+    trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
+    items = trip.checklist.all().order_by("due_date")
+    form = EventPlanningChecklistItemForm()
+    return render(request, "events/checklist.html", {
+        "title":f"To-Do's zur Veranstaltung: {trip.name}",
+        "trip": trip,
+        "items": items,
+        "form": form,
+    })
+
+@login_required
+@require_POST
+def add_checklist_item(request, trip_id):
+    trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
+    title = request.POST.get("title")
+    due_date = request.POST.get("due_date") or None
+    if due_date:
+        # Falls dein Input vom Frontend als "2025-09-06T14:30" kommt (datetime-local input)
+        try:
+            naive_dt = datetime.strptime(due_date, "%Y-%m-%dT%H:%M")
+        except ValueError:
+            # Falls nur Datum kommt ("2025-09-06"), setze 00:00 Uhr
+            naive_dt = datetime.strptime(due_date, "%Y-%m-%d")
+        due_date = timezone.make_aware(naive_dt)  # Zeitzone sicher machen
+
+    item = EventPlanningChecklistItem.objects.create(
+        trip=trip,
+        title=title,
+        due_date=due_date
+    )
+    return JsonResponse({
+        "success": True,
+        "item": {
+            "id": item.id,
+            "title": item.title,
+            "done": item.done,
+            "due_date": item.due_date.strftime("%Y-%m-%dT%H:%M") if item.due_date else "",
+            "delete_url": reverse("delete_checklist_item", args=[item.id])
+        }
+    })
+
+@login_required
+@require_POST
+def toggle_checklist_item(request, item_id):
+    item = get_object_or_404(EventPlanningChecklistItem, pk=item_id)
+    item.done = not item.done
+    item.save()
+    return JsonResponse({"success": True, "done": item.done})
+
+@login_required
+@require_POST
+def delete_checklist_item(request, item_id):
+    item = get_object_or_404(EventPlanningChecklistItem, pk=item_id)
+    item.delete()
+    return JsonResponse({"success": True})
+
+@login_required
+@require_POST
+@csrf_exempt
+def update_checklist_due_date(request):
+    import json
+    data = json.loads(request.body)
+    item_id = data.get("id")
+    value = data.get("value")  # ISO Format: "YYYY-MM-DDTHH:MM"
+
+    item = get_object_or_404(EventPlanningChecklistItem, pk=item_id)
+
+    if value:
+        try:
+            naive_dt = datetime.strptime(value, "%Y-%m-%dT%H:%M")
+        except ValueError:
+            naive_dt = datetime.strptime(value, "%Y-%m-%d")
+        item.due_date = timezone.make_aware(naive_dt)
+    else:
+        item.due_date = None
+
+    item.save()
+    return JsonResponse({
+        "success": True,
+        "due_date": item.due_date.strftime("%Y-%m-%dT%H:%M") if item.due_date else ""
+    })
