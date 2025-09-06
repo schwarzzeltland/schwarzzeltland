@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container text-center mt-5">
+  <h1 class="text-danger">CSRF-Fehler (403)</h1>
+  <p>Deine Anfrage konnte nicht verarbeitet werden.</p>
+
+  {% if reason %}
+    <p><small><em>{{ reason }}</em></small></p>
+  {% endif %}
+
+  <a href="/" class="btn btn-primary">Zurück zur Startseite</a>
+</div>
+{% endblock %}

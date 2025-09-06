@@ -361,3 +361,12 @@ def accept_cookies(request):
         samesite="Lax", secure=True  # evtl. secure=True in Produktion mit HTTPS
     )
     return response
+
+from django.shortcuts import render
+
+def custom_csrf_failure(request, reason=""):
+    """
+    Eigene CSRF-Fehlerseite
+    """
+    context = {"reason": reason}
+    return render(request, "403_csrf.html", context, status=403)
