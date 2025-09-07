@@ -1,40 +1,62 @@
 {% extends "base.html" %}
 {% block content %}
-    <div class="checklist-wrapper" style="overflow-x:auto;">
-        <ul class="list-group list-group-flush d-flex" style="min-width:600px;" id="checklist">
-            {% for item in items %}
-                <li class="list-group-item d-flex justify-content-between align-items-center" id="item-{{ item.id }}">
-                    <div class="form-check">
-                        <input class="form-check-input toggle-done" type="checkbox" data-id="{{ item.id }}"
-                               data-url="{% url 'toggle_checklist_item' item.id %}"
-                               {% if item.done %}checked{% endif %}>
-                        <label class="form-check-label">{{ item.title }} - Fällig am</label>
-                        <input type="datetime-local" class="inline-due-date" data-id="{{ item.id }}"
-                               value="{{ item.due_date|date:'Y-m-d\\TH:i' }}">
+    <div class="card shadow-sm rounded-3 mb-3">
+        <div class="card-header bg-light fw-bold">
+            Checkliste
+        </div>
+        <div class="card-body p-0">
+            <div class="checklist-wrapper" style="overflow-x: auto;">
+                <ul class="list-group list-group-flush d-flex flex-column" style="min-width: 600px;" id="checklist">
+                    {% for item in items %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center"
+                            id="item-{{ item.id }}">
+                            <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-2 w-100">
+                                <div class="form-check flex-grow-1">
+                                    <input class="form-check-input toggle-done me-2" type="checkbox"
+                                           data-id="{{ item.id }}"
+                                           data-url="{% url 'toggle_checklist_item' item.id %}"
+                                           {% if item.done %}checked{% endif %}>
+                                    <label class="form-check-label fw-semibold">{{ item.title }}</label>
+                                </div>
+                                <div>
+                                    <label class="text-muted small me-1">Fällig:</label>
+                                    <input type="datetime-local" class="form-control form-control-sm inline-due-date"
+                                           data-id="{{ item.id }}"
+                                           value="{{ item.due_date|date:'Y-m-d\\TH:i' }}">
+                                </div>
+                            </div>
+                            <button class="btn btn-outline-danger btn-sm ms-2 delete-btn"
+                                    data-id="{{ item.id }}"
+                                    data-url="{% url 'delete_checklist_item' item.id %}">
+                                ✖
+                            </button>
+                        </li>
+                    {% empty %}
+                        <li class="list-group-item text-muted">Noch keine Punkte.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="card-footer bg-light">
+            <div style="overflow-x: auto;">
+                <form id="add-item-form" class="d-flex gap-2 align-items-end flex-nowrap"
+                      style="min-width: max-content;">
+                    {% csrf_token %}
+                    <div style="flex: 2; min-width: 200px;">
+                        <input type="text" name="title" placeholder="Neuen Punkt hinzufügen"
+                               class="form-control" required>
                     </div>
-                    <button class="btn btn-danger btn-sm delete-btn" data-id="{{ item.id }}"
-                            data-url="{% url 'delete_checklist_item' item.id %}">✖
-                    </button>
-                </li>
-            {% empty %}
-                <li class="list-group-item">Noch keine Punkte.</li>
-            {% endfor %}
-        </ul>
+                    <div style="flex: 2; min-width: 200px;">
+                        <input type="datetime-local" name="due_date" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-success" style="min-width: 120px;">Hinzufügen</button>
+                </form>
+            </div>
+        </div>
     </div>
-    <div style="overflow-x: auto;">
-    <form id="add-item-form" class="d-flex gap-2 align-items-end" style="min-width: max-content;">
-        {% csrf_token %}
-        <div style="flex: 2; min-width: 150px;">
-            <input type="text" name="title" placeholder="Neuen Punkt hinzufügen" class="form-control" required>
-        </div>
-        <div style="flex: 2; min-width: 150px;">
-            <input type="datetime-local" name="due_date" class="form-control">
-        </div>
-        <button type="submit" class="btn btn-success" style="min-width: 100px;">Hinzufügen</button>
-    </form>
-</div>
+
     <div class="mb-3">
-        <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary me-2">Zurück</a>
+        <button type="button" class="btn btn-secondary" onclick="history.back()">Zurück</button>
     </div>
     <script>
         function getCookie(name) {
@@ -62,13 +84,23 @@
                         li.className = "list-group-item d-flex justify-content-between align-items-center";
                         li.id = "item-" + item.id;
                         li.innerHTML = `
-                    <div class="form-check d-flex align-items-center gap-2">
-                    <input class="form-check-input toggle-done" type="checkbox" data-id="${item.id}" ${item.done ? "checked" : ""}>
-                    <label class="form-check-label mb-0">${item.title}  - Fällig am</label>
-                    <input type="datetime-local" class="inline-due-date ms-2" data-id="${item.id}" value="${item.due_date ? item.due_date.replace(' ', 'T').slice(0, 16) : ''}">
-                </div>
-                    <button class="btn btn-danger btn-sm delete-btn" data-id="${item.id}" data-url="${item.delete_url}">✖</button>
-                `;
+                        <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-2 flex-grow-1">
+                        <div class="form-check flex-grow-1">
+                        <input class="form-check-input toggle-done me-2" type="checkbox" data-id="${item.id}" ${item.done ? "checked" : ""}>
+                        <label class="form-check-label fw-semibold mb-0">${item.title}</label>
+                        </div>
+                        <div class="d-flex flex-column">
+                        <label class="text-muted small mb-0">Fällig:</label>
+                        <input type="datetime-local" class="form-control form-control-sm inline-due-date"
+                        data-id="${item.id}"
+                        value="${item.due_date ? item.due_date.replace(' ', 'T').slice(0, 16) : ''}">
+                        </div>
+                        </div>
+                        <button class="btn btn-outline-danger btn-sm ms-2 delete-btn"
+                        data-id="${item.id}" data-url="${item.delete_url}">✖</button>
+                        </div>
+                        `;
                         checklist.appendChild(li);
                         attachHandlers(li);
                         form.reset();
