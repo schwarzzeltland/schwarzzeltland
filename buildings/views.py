@@ -376,7 +376,7 @@ def material(request):
         tm.material.delete()
         tm.delete()
 
-    update_trip_material_stock_for_org(request, request.org)
+
 
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
     # Suchlogik
@@ -530,6 +530,7 @@ def edit_material(request, pk=None):
                 form.save()
                 mat_form.save()
                 messages.success(request, f'Material {mat.material.name} gespeichert')
+                update_trip_material_stock_for_org(request, request.org)
                 return HttpResponseRedirect(reverse_lazy('material'))
             elif 'save-as-new' in request.POST:
                 form.instance.owner = request.org
@@ -545,6 +546,7 @@ def edit_material(request, pk=None):
                                                  'material_condition_description'])
                 stm = StockMaterial.objects.last()
                 messages.success(request, f'Material {stm.material.name} als neues Material gespeichert')
+                update_trip_material_stock_for_org(request, request.org)
             return HttpResponseRedirect(reverse_lazy('material'))
     else:
         form = StockMaterialForm(instance=mat)

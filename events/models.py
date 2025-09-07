@@ -4,7 +4,7 @@ from django.db.models import CharField, BooleanField
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from buildings.models import Construction, Material
+from buildings.models import Construction, Material, StockMaterial
 from main.models import Organization
 
 
@@ -102,7 +102,8 @@ class TripMaterial(models.Model):
 
 
 class ShoppingListItem(models.Model):
-    trip = models.ForeignKey("Trip", on_delete=models.CASCADE, related_name="shoppinglist")
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="shoppinglist")
+    stockmaterial = models.ForeignKey(StockMaterial,on_delete=models.CASCADE, related_name="shoppinglist", null=True, blank=True)
     name = models.CharField(max_length=200)
     amount = models.DecimalField(max_digits=8, decimal_places=2, default=1)
     unit = models.CharField(max_length=50, blank=True)

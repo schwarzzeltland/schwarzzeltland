@@ -2,7 +2,7 @@
 {% load bootstrap5 %}
 
 {% block content %}
-
+<div id="messages"></div>
     <!-- Suchfeld -->
     <form method="get" action="" class="mb-3">
         <div class="input-group">
@@ -36,10 +36,10 @@
                                value="{{ item.unit }}">
                     </td>
                     <td class="text-end">
-                        <button class="btn btn-danger btn-sm delete-item"
+                        <button class="btn btn-success btn-sm delete-item"
                                 data-id="{{ item.pk }}"
                                 data-url="{% url 'delete_shoppinglist_item' item.pk %}">
-                            Löschen
+                            ✔
                         </button>
                     </td>
                 </tr>
@@ -104,9 +104,9 @@
                                data-id="${data.item.id}" data-field="unit"
                                value="${data.item.unit}"></td>
                     <td class="text-end">
-                        <button class="btn btn-danger btn-sm delete-item"
+                        <button class="btn btn-success btn-sm delete-item"
                                 data-id="${data.item.id}"
-                                data-url="${data.item.delete_url}">Löschen</button>
+                                data-url="${data.item.delete_url}">✔</button>
                     </td>
                 </tr>
             `);
@@ -137,6 +137,16 @@
                                 if (document.querySelectorAll('#shoppinglist-table tbody tr').length === 0) {
                                     const tbody = document.querySelector('#shoppinglist-table tbody');
                                     tbody.innerHTML = '<tr id="no-items-row"><td colspan="4" class="text-center text-muted">Keine Artikel in der Einkaufsliste.</td></tr>';
+                                }
+                                if (data.message) {
+                                    const alert = document.createElement("div");
+                                    alert.className = "alert alert-success mt-2";
+                                    alert.innerText = data.message;
+
+                                    document.querySelector("#messages").appendChild(alert);
+
+                                    // Auto entfernen nach 3 Sekunden
+                                    setTimeout(() => alert.remove(), 5000);
                                 }
                             }
                         });

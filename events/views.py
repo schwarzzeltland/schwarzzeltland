@@ -29,6 +29,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
+
+from buildings.views import update_trip_material_stock_for_org
 from .models import Trip, TripVacancy, EventPlanningChecklistItem
 
 from decimal import Decimal, InvalidOperation
@@ -325,14 +327,16 @@ def edit_trip(request, pk=None):
 
                             if request.org.pro1:
                                 missing_amount = mat.count - mat.reduced_from_stock
-                                si,c = ShoppingListItem.objects.get_or_create(trip=trip_d, name=mat.material.name, unit="Stück")
-                                si.amount=missing_amount
+                                si, c = ShoppingListItem.objects.get_or_create(trip=trip_d, name=mat.material.name,
+                                                                               unit="Stück",
+                                                                               stockmaterial=mat_stock.first())
+                                si.amount = missing_amount
                                 si.save()
                                 messages.warning(request,
                                                  f"Das Verbaruchsmaterial '{mat.material.name}' ist nicht ausreichend im Lager vorhanden. Es wurde nur die verfügbare Menge abgezogen und die fehlende Menge auf die Einkaufsliste gesetzt.")
                             else:
                                 messages.warning(request,
-                                             f"Das Verbaruchsmaterial '{mat.material.name}' ist nicht ausreichend im Lager vorhanden. Es wurde nur die verfügbare Menge abgezogen.")
+                                                 f"Das Verbaruchsmaterial '{mat.material.name}' ist nicht ausreichend im Lager vorhanden. Es wurde nur die verfügbare Menge abgezogen.")
                         # Abzug durchführen
 
                         for stock in mat_stock:
@@ -531,8 +535,10 @@ def edit_trip(request, pk=None):
                             mat.previous_count = mat.count
                             if request.org.pro1:
                                 missing_amount = mat.count - mat.reduced_from_stock
-                                si,c = ShoppingListItem.objects.get_or_create(trip=trip_d, name=mat.material.name, unit="Stück")
-                                si.amount=missing_amount
+                                si, c = ShoppingListItem.objects.get_or_create(trip=trip_d, name=mat.material.name,
+                                                                               unit="Stück",
+                                                                               stockmaterial=mat_stock.first())
+                                si.amount = missing_amount
                                 si.save()
                                 messages.warning(request,
                                                  f"Das Verbaruchsmaterial '{mat.material.name}' ist nicht ausreichend im Lager vorhanden. Es wurde nur die verfügbare Menge abgezogen und die fehlende Menge auf die Einkaufsliste gesetzt.")
@@ -1403,8 +1409,14 @@ def update_shoppinglist_item(request):
 @require_POST
 def delete_shoppinglist_item(request, item_id):
     item = get_object_or_404(ShoppingListItem, pk=item_id)
+    msg=None
+    if item.stockmaterial is not None:
+        item.stockmaterial.count += item.amount
+        item.stockmaterial.save()
+        msg=f"{item.amount} × {item.name} wurde dem Lager hinzugefügt."
+        update_trip_material_stock_for_org(request, request.org)
     item.delete()
-    return JsonResponse({"success": True})
+    return JsonResponse({"success": True, "message":msg})
 
 
 @login_required
@@ -1604,6 +1616,7 @@ def import_vacancies_csv(request, trip_id):
 
     return redirect("trip_vacancies", trip_id=trip_id)
 
+
 @login_required
 @pro1_required
 def checklist(request, trip_id):
@@ -1611,11 +1624,12 @@ def checklist(request, trip_id):
     items = trip.checklist.all().order_by("due_date")
     form = EventPlanningChecklistItemForm()
     return render(request, "events/checklist.html", {
-        "title":f"To-Do's zur Veranstaltung: {trip.name}",
+        "title": f"To-Do's zur Veranstaltung: {trip.name}",
         "trip": trip,
         "items": items,
         "form": form,
     })
+
 
 @login_required
 @require_POST
@@ -1648,6 +1662,7 @@ def add_checklist_item(request, trip_id):
         }
     })
 
+
 @login_required
 @require_POST
 def toggle_checklist_item(request, item_id):
@@ -1656,12 +1671,14 @@ def toggle_checklist_item(request, item_id):
     item.save()
     return JsonResponse({"success": True, "done": item.done})
 
+
 @login_required
 @require_POST
 def delete_checklist_item(request, item_id):
     item = get_object_or_404(EventPlanningChecklistItem, pk=item_id)
     item.delete()
     return JsonResponse({"success": True})
+
 
 @login_required
 @require_POST
