@@ -1,4 +1,7 @@
+import datetime
+from audioop import reverse
 from builtins import str
+from datetime import datetime
 
 from django.contrib.auth.tokens import default_token_generator
 from django.conf import settings
@@ -13,16 +16,19 @@ from django.db.models import Q
 from django.shortcuts import render, get_object_or_404
 from django.contrib import messages
 from django.template.loader import render_to_string
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
 from buildings.models import Construction
 from django.shortcuts import redirect
 
-from main.decorators import organization_admin_required
+from events.forms import EventPlanningChecklistItemForm
+from events.models import EventPlanningChecklistItem
+from main.decorators import organization_admin_required, pro1_required, material_manager_required
 from main.forms import OrganizationForm, MembershipFormset, CustomUserCreationForm, UsernameReminderForm, \
     MessageSendForm, MessageShowForm
 from main.models import Organization, Membership, Message
@@ -40,6 +46,7 @@ def home_view(request):
 
 @login_required
 def organization_view(request):
+    m: Membership = request.user.membership_set.filter(organization=request.org).first()
     if request.method == 'POST' and request.membership.admin:
         form = OrganizationForm(request.POST, request.FILES, instance=request.org)
         if form.is_valid():
@@ -53,6 +60,7 @@ def organization_view(request):
         'form': form,
         'members': request.org.membership_set.all(),
         'organization': request.org,
+        'usermaterialmanager': m.material_manager,
     })
 
 
@@ -350,6 +358,7 @@ def messagesinbox_view(request, pk=None):
         'inbox_messages': inbox_messages,
     })
 
+
 @csrf_exempt
 def accept_cookies(request):
     """
@@ -362,7 +371,9 @@ def accept_cookies(request):
     )
     return response
 
+
 from django.shortcuts import render
+
 
 def custom_csrf_failure(request, reason=""):
     """
@@ -370,3 +381,48 @@ def custom_csrf_failure(request, reason=""):
     """
     context = {"reason": reason}
     return render(request, "403_csrf.html", context, status=403)
+
+
+@login_required
+@material_manager_required
+@pro1_required
+def organization_material_checklist(request):
+    items = EventPlanningChecklistItem.objects.filter(
+        organization=request.org, trip__isnull=True
+    ).order_by('due_date')
+    form = EventPlanningChecklistItemForm()
+    return render(request, 'main/organization_material_checklist.html', {
+        'title': f"To-Do-Liste der Organisation: {request.org.name}",
+        'items': items,
+        'form': form,
+    })
+
+
+@login_required
+@require_POST
+def add_organization_material_checklist_item(request):
+    title = request.POST.get("title")
+    due_date = request.POST.get("due_date") or None
+    if due_date:
+        # Falls dein Input vom Frontend als "2025-09-06T14:30" kommt (datetime-local input)
+        try:
+            naive_dt = datetime.strptime(due_date, "%Y-%m-%dT%H:%M")
+        except ValueError:
+            # Falls nur Datum kommt ("2025-09-06"), setze 00:00 Uhr
+            naive_dt = datetime.strptime(due_date, "%Y-%m-%d")
+        due_date = timezone.make_aware(naive_dt)  # Zeitzone sicher machen
+    item = EventPlanningChecklistItem.objects.create(
+        organization=request.org,
+        title=title,
+        due_date=due_date
+    )
+    return JsonResponse({
+        "success": True,
+        "item": {
+            "id": item.id,
+            "title": item.title,
+            "done": item.done,
+            "due_date": item.due_date.isoformat() if item.due_date else "",
+            "delete_url": reverse("delete_checklist_item", args=[item.id])
+        }
+    })

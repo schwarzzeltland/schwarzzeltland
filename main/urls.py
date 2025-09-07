@@ -42,4 +42,6 @@ urlpatterns = [
     path('messages/send/<int:pk>/', views.sendmessage_view, name='sendmessage'),
     path('messages/inbox/', views.messagesinbox_view, name='inboxmessages'),
     path("accept-cookies/", views.accept_cookies, name="accept_cookies"),
+    path("organization_material/checklist/", views.organization_material_checklist, name="organization_material_checklist"),
+    path("organization_material/checklist/add/", views.add_organization_material_checklist_item, name="add_organization_material_checklist_item"),
 ]

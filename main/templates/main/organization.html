@@ -2,6 +2,11 @@
 {% load bootstrap5 %}
 
 {% block content %}
+    {% if usermaterialmanager and organization.pro1 %}
+        <div class="mb-2">
+            <a href="{% url 'organization_material_checklist' %}" class="btn btn-warning">Materialwart To-Do's</a>
+        </div>
+    {% endif %}
     <form method="post" class="form" enctype="multipart/form-data">
         {% csrf_token %}
         {% if membership.admin %}
@@ -10,7 +15,8 @@
                 <button type="submit" class="btn btn-primary">
                     Speichern
                 </button>
-                <a href="{% url 'delete_organization' organization.pk%}" class="btn btn-danger">Organisation löschen</a>
+                <a href="{% url 'delete_organization' organization.pk %}" class="btn btn-danger">Organisation
+                    löschen</a>
             {% endbuttons %}
         {% else %}
             <table class="table">
