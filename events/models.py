@@ -28,7 +28,7 @@ class Location(models.Model):
     type = models.IntegerField(choices=TYPES, null=True, blank=True, verbose_name="Typ")
     description = CharField(max_length=1024, default="", blank=True, verbose_name="Beschreibung")
     latitude = models.FloatField(default=00.000000, verbose_name="Breitengrad")
-    longitude = models.FloatField(default=00.000000,  verbose_name="Längengrad")
+    longitude = models.FloatField(default=00.000000, verbose_name="Längengrad")
     owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
     public = BooleanField(default=False, verbose_name="Öffentlich")
 
@@ -56,7 +56,7 @@ class Trip(models.Model):
     type = models.IntegerField(choices=TYPES, null=True, blank=True, verbose_name="Typ")
     start_date = models.DateTimeField("Startdatum")
     end_date = models.DateTimeField("Enddatum")
-    location = models.ForeignKey(Location, on_delete=models.CASCADE, null=True, blank=True,verbose_name="Ort")
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Ort")
     recipient_org = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
@@ -69,11 +69,12 @@ class Trip(models.Model):
     def __str__(self):
         return self.name
 
+
 class TripConstruction(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE)
     construction = models.ForeignKey(Construction, on_delete=models.CASCADE)
-    count = models.IntegerField(default=0,verbose_name="Anzahl",validators=[MinValueValidator(0)])
-    description = CharField(max_length=1024, default="", blank=True,verbose_name="Beschreibung")
+    count = models.IntegerField(default=0, verbose_name="Anzahl", validators=[MinValueValidator(0)])
+    description = CharField(max_length=1024, default="", blank=True, verbose_name="Beschreibung")
 
 
 class PackedMaterial(models.Model):
@@ -84,18 +85,20 @@ class PackedMaterial(models.Model):
     def __str__(self):
         return f"{self.material_name} - {'Eingepackt' if self.packed else 'Nicht eingepackt'}"
 
+
 class TripGroup(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE)
-    count = models.IntegerField(default=0,verbose_name="Anzahl",validators=[MinValueValidator(0)])
-    name = CharField(max_length=1024, default="", blank=True,verbose_name="Gruppenname")
+    count = models.IntegerField(default=0, verbose_name="Anzahl", validators=[MinValueValidator(0)])
+    name = CharField(max_length=1024, default="", blank=True, verbose_name="Gruppenname")
+
 
 class TripMaterial(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE)
     material = models.ForeignKey(Material, on_delete=models.CASCADE)
-    count = models.IntegerField(default=0,verbose_name="Anzahl",validators=[MinValueValidator(0)])
-    description = CharField(max_length=1024, default="", blank=True,verbose_name="Beschreibung")
-    reduced_from_stock = models.IntegerField(validators=[MinValueValidator(0)],default=0)
-    previous_count = models.IntegerField(validators=[MinValueValidator(0)],default=0)
+    count = models.IntegerField(default=0, verbose_name="Anzahl", validators=[MinValueValidator(0)])
+    description = CharField(max_length=1024, default="", blank=True, verbose_name="Beschreibung")
+    reduced_from_stock = models.IntegerField(validators=[MinValueValidator(0)], default=0)
+    previous_count = models.IntegerField(validators=[MinValueValidator(0)], default=0)
 
 
 class ShoppingListItem(models.Model):
@@ -110,6 +113,7 @@ class ShoppingListItem(models.Model):
     def __str__(self):
         return f"{self.name} ({self.amount} {self.unit})"
 
+
 class TripVacancy(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="vacancies")
     name = models.CharField(max_length=200)
@@ -121,6 +125,7 @@ class TripVacancy(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.arrival} - {self.departure})"
+
 
 class EventPlanningChecklistItem(models.Model):
     trip = models.ForeignKey(
@@ -134,15 +139,6 @@ class EventPlanningChecklistItem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     due_date = models.DateTimeField(null=True, blank=True)
 
-    DEFAULT_CHECKLIST = [
-        "Anmeldung erstellen",
-        "Teilnehmerliste erstellen",
-        "Verpflegungsplanung",
-        "Programmplanung",
-        "Tranpsort (Material / Teilnehmer)",
-        "Tranpsort vor Ort",
-    ]
-
     def __str__(self):
         return f"{self.title} ({'✓' if self.done else '✗'})"
 
@@ -150,5 +146,6 @@ class EventPlanningChecklistItem(models.Model):
 @receiver(post_save, sender=Trip)
 def create_default_checklist(sender, instance, created, **kwargs):
     if created:
-        for title in EventPlanningChecklistItem.DEFAULT_CHECKLIST:
+        defaults = instance.organization.default_checklist or []
+        for title in defaults:
             EventPlanningChecklistItem.objects.create(trip=instance, title=title)

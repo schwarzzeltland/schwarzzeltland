@@ -8,18 +8,31 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 
+
 def generate_recipient_code():
     return get_random_string(length=20)
 
+
+def default_checklist_items():
+    return [
+        "Anmeldung erstellen",
+        "Teilnehmerliste erstellen",
+        "Verpflegungsplanung",
+        "Programmplanung",
+        "Transport (Material / Teilnehmer)",
+        "Transport vor Ort",
+    ]
 class Organization(models.Model):
     name = models.CharField(unique=True, max_length=254)
-    image = models.ImageField(upload_to="users/", blank=True, null=True,verbose_name="Bild")
-    recipientcode = models.CharField(default=generate_recipient_code, max_length=20,verbose_name="Empfängercode für den Materialverleih")
+    image = models.ImageField(upload_to="users/", blank=True, null=True, verbose_name="Bild")
+    recipientcode = models.CharField(default=generate_recipient_code, max_length=20,
+                                     verbose_name="Empfängercode für den Materialverleih")
     members = models.ManyToManyField(
         User,
         through='Membership',
     )
     pro1 = models.BooleanField(default=False)
+    default_checklist = models.JSONField(default=default_checklist_items, blank=True,verbose_name="""Standard To-Do\'s bei neuen Veranstaltungen (Format: ["To-Do1","To-Do2"])""")
 
     def get_owner(self) -> 'Membership':
         return self.membership_set.earliest("id")
@@ -31,7 +44,7 @@ class Organization(models.Model):
 class Membership(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
-    admin = models.BooleanField(default=False,verbose_name="Admin")
+    admin = models.BooleanField(default=False, verbose_name="Admin")
     material_manager = models.BooleanField(default=False)
     event_manager = models.BooleanField(default=False)
 
@@ -47,6 +60,7 @@ def user_created(sender, instance, created, **kwargs):
     if created:
         orga = Organization.objects.create(name=f"{instance.username}s Organisation")
         Membership.objects.create(user=instance, organization=orga, admin=True, material_manager=True)
+
 
 class Message(models.Model):
     recipient = models.ForeignKey(
@@ -65,4 +79,3 @@ class Message(models.Model):
     text = models.TextField(blank=True, verbose_name="Nachricht")
     created = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
-

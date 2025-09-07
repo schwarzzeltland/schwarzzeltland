@@ -11,7 +11,12 @@ from main.models import Organization, Message
 class OrganizationForm(ModelForm):
     class Meta:
         model = Organization
-        fields = ['name', 'image', 'recipientcode']
+        fields = ['name', 'image', 'recipientcode','default_checklist']
+        widgets = {
+            'default_checklist': forms.TextInput(attrs={
+                'class': 'form-control'
+            }),
+        }
 
 
 class MembershipForm(ModelForm):
