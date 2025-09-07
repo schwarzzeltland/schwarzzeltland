@@ -129,7 +129,7 @@ class EventPlanningChecklistItem(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="checklist", null=True, blank=True
     )
-    title = models.CharField(max_length=255)
+    title = models.CharField(max_length=2255)
     done = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     due_date = models.DateTimeField(null=True, blank=True)
