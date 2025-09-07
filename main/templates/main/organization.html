@@ -10,7 +10,12 @@
     <form method="post" class="form" enctype="multipart/form-data">
         {% csrf_token %}
         {% if membership.admin %}
-            {% bootstrap_form form %}
+            {% bootstrap_field form.name %}
+            {% bootstrap_field form.image %}
+            {% bootstrap_field form.recipientcode %}
+            {% if organization.pro1 %}
+                {% bootstrap_field form.default_checklist %}
+            {% endif %}
             {% buttons %}
                 <button type="submit" class="btn btn-primary">
                     Speichern
