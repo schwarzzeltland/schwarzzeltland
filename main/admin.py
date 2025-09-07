@@ -2,6 +2,7 @@ from django.contrib import admin
 from nested_admin.nested import NestedTabularInline, NestedModelAdmin
 
 from buildings.models import StockMaterial, Construction
+from events.models import EventPlanningChecklistItem
 from main.models import Organization, Membership, Message
 
 
@@ -34,3 +35,8 @@ class MembershipAdmin(admin.ModelAdmin):
 class MessageAdmin(admin.ModelAdmin):
     search_fields = ['recipient__name','sender__name','subject','text','created','is_read']
     list_display = ['recipient','sender','subject','text','created','is_read']
+
+@admin.register(EventPlanningChecklistItem)
+class EventPlanningChecklistAdmin(admin.ModelAdmin):
+    search_fields = ['title','trip__name','organization__name']
+    list_display = ['title','trip','organization']
