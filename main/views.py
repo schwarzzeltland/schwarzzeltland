@@ -392,7 +392,7 @@ def organization_material_checklist(request):
     ).order_by('due_date')
     form = EventPlanningChecklistItemForm()
     return render(request, 'main/organization_material_checklist.html', {
-        'title': f"To-Do-Liste der Organisation: {request.org.name}",
+        'title': f"Materialwart To-Do-Liste: {request.org.name}",
         'items': items,
         'form': form,
     })

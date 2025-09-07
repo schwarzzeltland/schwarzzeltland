@@ -16,6 +16,7 @@ from django.urls import reverse_lazy
 from buildings.forms import AddMaterialStockForm, MaterialForm, ConstructionForm, ImportConstructionForm, \
     ConstructionMaterialFormSet, StockMaterialForm, PlainMaterialForm
 from buildings.models import StockMaterial, Construction, ConstructionMaterial, Material
+from events.models import ShoppingListItem, Trip, TripMaterial
 from main.models import Membership
 from main.decorators import material_manager_required
 
@@ -193,7 +194,6 @@ def edit_construction(request, pk=None):
                                 condition_medium_healthy=0,
                                 condition_broke=0)
 
-
                 material_formset.save_m2m()
 
                 # Unterscheidung der Weiterleitungen basierend auf dem Button
@@ -300,12 +300,84 @@ def check_material(request, pk=None):
     })
 
 
+def update_trip_material_stock_for_org(request, organization):
+    """
+    Prüft alle offenen TripMaterialien vom Typ 6 der Organisation
+    und zieht verfügbares Material vom Lager ab.
+    Fehlende Mengen werden in ShoppingListItem gespeichert.
+    Zeigt Nachrichten über actions.
+    """
+    # Alle Trips der Organisation durchlaufen
+    trips = Trip.objects.filter(owner=organization,
+                                tripmaterial__material__type=6  # "materials" ist das related_name von TripMaterial
+                                ).distinct()  # ggf. filter auf relevante Trips
+    for trip in trips:
+        trip_materials = TripMaterial.objects.filter(trip=trip, material__type=6)
+        for mat in trip_materials:
+            needed = mat.count - mat.reduced_from_stock
+            if needed <= 0:
+                continue  # schon komplett abgezogen
+
+            mat_stock = StockMaterial.objects.filter(material__name=mat.material.name)
+            av_stock = sum(stock.count for stock in mat_stock)
+
+            if av_stock >= needed:
+                # genug Material verfügbar
+                remaining = needed
+                mat.reduced_from_stock += remaining
+                mat.previous_count = mat.count
+                sl_item = ShoppingListItem.objects.filter(trip=trip, name=mat.material.name).first()
+                if sl_item:
+                    sl_item.delete()
+                messages.success(request,
+                                 f"'{mat.material.name}' wurde für Trip '{trip}' vollständig aus dem Lager abgezogen.")
+            else:
+                # nicht genug Material
+                remaining = av_stock
+                mat.reduced_from_stock += remaining
+                mat.previous_count = mat.count
+                missing_amount = mat.count - mat.reduced_from_stock
+                if remaining > 0 and organization.pro1:
+                    sl_item, created = ShoppingListItem.objects.get_or_create(
+                        trip=trip,
+                        name=mat.material.name,
+                        defaults={"unit": "Stück", "amount": missing_amount}
+                    )
+                    if not created:
+                        sl_item.amount = missing_amount
+                    sl_item.save()
+                    messages.warning(request,
+                                     f"'{mat.material.name}' für Trip '{trip}' ist nicht ausreichend im Lager. "
+                                     f"{remaining} vom Lager abgezogen, {missing_amount} auf Einkaufsliste aktualisiert.")
+                elif remaining > 0:
+                    messages.warning(request,
+                                     f"'{mat.material.name}' für Trip '{trip}' ist nicht ausreichend im Lager. "
+                                     f"{remaining} vom Lager abgezogen.")
+
+            # Lagerbestand abziehen
+            rem = remaining
+            for stock in mat_stock:
+                if stock.count >= rem:
+                    stock.count -= rem
+                    stock.save()
+                    break
+                else:
+                    rem -= stock.count
+                    stock.count = 0
+                    stock.save()
+            mat.save()
+
+
 @login_required
 def material(request):
-    temp_stock=StockMaterial.objects.filter(temporary=True, valid_until__lt=now().date()) #ausgeliehens material löschen, wenn es abgelaufen ist
+    temp_stock = StockMaterial.objects.filter(temporary=True,
+                                              valid_until__lt=now().date())  # ausgeliehens material löschen, wenn es abgelaufen ist
     for tm in temp_stock:
         tm.material.delete()
         tm.delete()
+
+    update_trip_material_stock_for_org(request, request.org)
+
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
     # Suchlogik
     search_query = request.GET.get('search', '')

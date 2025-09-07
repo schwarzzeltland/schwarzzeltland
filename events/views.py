@@ -322,7 +322,16 @@ def edit_trip(request, pk=None):
                             remaining = av_stock
                             mat.reduced_from_stock += av_stock
                             mat.previous_count = mat.count
-                            messages.warning(request,
+
+                            if request.org.pro1:
+                                missing_amount = mat.count - mat.reduced_from_stock
+                                si,c = ShoppingListItem.objects.get_or_create(trip=trip_d, name=mat.material.name, unit="Stück")
+                                si.amount=missing_amount
+                                si.save()
+                                messages.warning(request,
+                                                 f"Das Verbaruchsmaterial '{mat.material.name}' ist nicht ausreichend im Lager vorhanden. Es wurde nur die verfügbare Menge abgezogen und die fehlende Menge auf die Einkaufsliste gesetzt.")
+                            else:
+                                messages.warning(request,
                                              f"Das Verbaruchsmaterial '{mat.material.name}' ist nicht ausreichend im Lager vorhanden. Es wurde nur die verfügbare Menge abgezogen.")
                         # Abzug durchführen
 
@@ -520,9 +529,17 @@ def edit_trip(request, pk=None):
                             remaining = av_stock
                             mat.reduced_from_stock += av_stock
                             mat.previous_count = mat.count
-                            messages.warning(request,
-                                             f"Das Verbaruchsmaterial '{mat.material.name}' ist nicht ausreichend im Lager vorhanden. Es wurde nur die verfügbare Menge abgezogen.")
-                        # Abzug durchführen
+                            if request.org.pro1:
+                                missing_amount = mat.count - mat.reduced_from_stock
+                                si,c = ShoppingListItem.objects.get_or_create(trip=trip_d, name=mat.material.name, unit="Stück")
+                                si.amount=missing_amount
+                                si.save()
+                                messages.warning(request,
+                                                 f"Das Verbaruchsmaterial '{mat.material.name}' ist nicht ausreichend im Lager vorhanden. Es wurde nur die verfügbare Menge abgezogen und die fehlende Menge auf die Einkaufsliste gesetzt.")
+                            else:
+                                messages.warning(request,
+                                                 f"Das Verbaruchsmaterial '{mat.material.name}' ist nicht ausreichend im Lager vorhanden. Es wurde nur die verfügbare Menge abgezogen.")
+                                # Abzug durchführen
 
                         for stock in mat_stock:
                             if stock.count >= remaining:
