@@ -3,9 +3,14 @@
 
 {% block content %}
     {% if usermaterialmanager and organization.pro1 %}
-        <div class="mb-2">
-            <a href="{% url 'organization_material_checklist' %}" class="btn btn-warning">Materialwart To-Do's</a>
+        <div class="card mb-3">
+        <div class="card-body">
+                <a href="{% url 'organization_material_checklist' %}" class="btn btn-warning w-100">
+                    Materialwart To-Do's
+                </a>
         </div>
+        </div>
+         <hr>
     {% endif %}
     <form method="post" class="form" enctype="multipart/form-data">
         {% csrf_token %}
