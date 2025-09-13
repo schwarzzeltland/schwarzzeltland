@@ -289,6 +289,7 @@ def edit_trip(request, pk=None):
                 trip_d.pk = None
             trip_d.owner = request.org
             trip_d.save()
+            trip_form.save_m2m()
             #  Wenn "Speichern als neu" => Alle Formset-Objekte kopieren
             if save_a_n:
                 # 1. Konstruktionen duplizieren
@@ -1301,8 +1302,10 @@ def change_packed_material(request):
     return JsonResponse({"status": "success", "packed": packed})
 
 
+@event_manager_required
+@login_required
 def download_trip_ics(request, trip_id):
-    trip = get_object_or_404(Trip, id=trip_id)
+    trip = get_object_or_404(Trip, id=trip_id, owner=request.org)
 
     cal = Calendar()
     event = Event()
@@ -1321,6 +1324,7 @@ def download_trip_ics(request, trip_id):
 
 @login_required
 @pro1_required
+@event_manager_required
 def shoppinglist(request, pk=None):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
     trip = get_object_or_404(Trip, pk=pk, owner=request.org)
@@ -1341,8 +1345,11 @@ def shoppinglist(request, pk=None):
 
 
 @require_POST
+@login_required
+@pro1_required
+@event_manager_required
 def add_shoppinglist_item(request, trip_id):
-    trip = get_object_or_404(Trip, pk=trip_id)
+    trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
     form = ShoppingListItemForm(request.POST)
     if form.is_valid():
         item = form.save(commit=False)
@@ -1371,6 +1378,9 @@ def add_shoppinglist_item(request, trip_id):
 
 
 @require_POST
+@login_required
+@pro1_required
+@event_manager_required
 def update_shoppinglist_item(request):
     if not request.user.is_authenticated:
         return HttpResponseForbidden()
@@ -1407,8 +1417,11 @@ def update_shoppinglist_item(request):
 
 
 @require_POST
+@login_required
+@pro1_required
+@event_manager_required
 def delete_shoppinglist_item(request, item_id):
-    item = get_object_or_404(ShoppingListItem, pk=item_id)
+    item = get_object_or_404(ShoppingListItem, pk=item_id, trip__owner=request.org)
     msg=None
     if item.stockmaterial is not None:
         item.stockmaterial.count += item.amount
@@ -1421,6 +1434,7 @@ def delete_shoppinglist_item(request, item_id):
 
 @login_required
 @pro1_required
+@event_manager_required
 def trip_vacancies(request, trip_id):
     trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
     form = TripVacancyForm()
@@ -1438,11 +1452,14 @@ def trip_vacancies(request, trip_id):
 
 
 @require_POST
+@login_required
+@event_manager_required
+@pro1_required
 def add_vacancy(request, trip_id):
     if not request.user.is_authenticated:
         return HttpResponseForbidden()
 
-    trip = get_object_or_404(Trip, pk=trip_id)
+    trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
 
     # FormData aus request.POST
     name = request.POST.get("name", "").strip()
@@ -1490,6 +1507,9 @@ def add_vacancy(request, trip_id):
 
 
 @require_POST
+@login_required
+@pro1_required
+@event_manager_required
 def update_vacancy(request):
     if not request.user.is_authenticated:
         return HttpResponseForbidden()
@@ -1542,14 +1562,19 @@ def update_vacancy(request):
 
 
 @require_POST
+@login_required
+@pro1_required
+@event_manager_required
 def delete_vacancy(request, vacancy_id):
-    item = get_object_or_404(TripVacancy, pk=vacancy_id)
+    item = get_object_or_404(TripVacancy, pk=vacancy_id, trip__owner=request.org)
     item.delete()
     return JsonResponse({"success": True})
 
-
+@login_required
+@pro1_required
+@event_manager_required
 def export_vacancies_csv(request, trip_id):
-    trip = get_object_or_404(Trip, pk=trip_id)
+    trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
     vacancies = trip.vacancies.all()
 
     # CSV Response vorbereiten (UTF-8)
@@ -1572,7 +1597,9 @@ def export_vacancies_csv(request, trip_id):
         ])
     return response
 
-
+@login_required
+@pro1_required
+@event_manager_required
 def import_vacancies_csv(request, trip_id):
     if request.method == "POST" and request.FILES.get("csv_file"):
         csv_file = request.FILES["csv_file"].read().decode("utf-8-sig").splitlines()
@@ -1619,6 +1646,7 @@ def import_vacancies_csv(request, trip_id):
 
 @login_required
 @pro1_required
+@event_manager_required
 def checklist(request, trip_id):
     trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
     items = trip.checklist.all().order_by("due_date")
@@ -1632,7 +1660,9 @@ def checklist(request, trip_id):
 
 
 @login_required
+@pro1_required
 @require_POST
+@event_manager_required
 def add_checklist_item(request, trip_id):
     trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
     title = request.POST.get("title")
@@ -1665,8 +1695,10 @@ def add_checklist_item(request, trip_id):
 
 @login_required
 @require_POST
+@pro1_required
+@event_manager_required
 def toggle_checklist_item(request, item_id):
-    item = get_object_or_404(EventPlanningChecklistItem, pk=item_id)
+    item = get_object_or_404(EventPlanningChecklistItem,Q(pk=item_id) & (Q(trip__owner=request.org) | Q(organization=request.org)))
     item.done = not item.done
     item.save()
     return JsonResponse({"success": True, "done": item.done})
@@ -1674,8 +1706,10 @@ def toggle_checklist_item(request, item_id):
 
 @login_required
 @require_POST
+@pro1_required
+@event_manager_required
 def delete_checklist_item(request, item_id):
-    item = get_object_or_404(EventPlanningChecklistItem, pk=item_id)
+    item = get_object_or_404(EventPlanningChecklistItem,Q(pk=item_id) & (Q(trip__owner=request.org) | Q(organization=request.org)))
     item.delete()
     return JsonResponse({"success": True})
 
@@ -1683,13 +1717,15 @@ def delete_checklist_item(request, item_id):
 @login_required
 @require_POST
 @csrf_exempt
+@pro1_required
+@event_manager_required
 def update_checklist_due_date(request):
     import json
     data = json.loads(request.body)
     item_id = data.get("id")
     value = data.get("value")  # ISO Format: "YYYY-MM-DDTHH:MM"
 
-    item = get_object_or_404(EventPlanningChecklistItem, pk=item_id)
+    item = get_object_or_404(EventPlanningChecklistItem,Q(pk=item_id) & (Q(trip__owner=request.org) | Q(organization=request.org)))
 
     if value:
         try:

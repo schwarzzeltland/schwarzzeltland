@@ -1,6 +1,7 @@
 from time import timezone
 
 from django import forms
+from django.contrib.auth.models import User
 from django.db.models import Q
 from django.forms import ModelForm, IntegerField, inlineformset_factory, Form, ModelChoiceField
 
@@ -26,7 +27,21 @@ class TripForm(ModelForm):
             ("Eigene Orte", [(c.id, c.name) for c in org_locations]),
         ]
         self.fields['location'].choices = choices
+        # Falls Trip schon gespeichert ist → Owner aus der Instanz nehmen
+        if not organization and self.instance and self.instance.owner_id:
+            organization = self.instance.owner
 
+        if organization:
+            # Alle Eventmanager der Organisation + schon ausgewählte Planner
+            qs = User.objects.filter(
+                membership__organization=organization,
+                membership__event_manager=True
+            )
+            if self.instance.pk:
+                qs = (qs | self.instance.planners.all()).distinct()
+            self.fields['planners'].queryset = qs
+        else:
+            self.fields['planners'].queryset = User.objects.none()
     class Meta:
         model = Trip
         fields = '__all__'
@@ -76,6 +91,7 @@ class TripForm(ModelForm):
 
         if commit:
             trip.save()
+            self.save_m2m()
         return trip
 
 class TripConstructionForm(ModelForm):

@@ -161,7 +161,7 @@
 
                     </div>
                     <div id="rental-wrapper2">
-                    <h5>Konstruktionen:</h5>
+                        <h5>Konstruktionen:</h5>
                         <div class="mb-2">
                             <button type="submit" name="construction_summary"
                                     class="btn btn-outline-success btn-green btn-equal">
@@ -196,13 +196,13 @@
 
                         </div>
                         {% if trip.owner.pro1 %}
-                        <h5>Zusatzfunktionen:</h5>
+                            <h5>Zusatzfunktionen:</h5>
                             <div class="d-flex flex-wrap gap-1 mb-2">
                                 <a href="{% url 'shoppinglist' trip.id %}" class="btn btn-primary btn-equal">
                                     Einkaufsliste</a>
                                 <a href="{% url 'trip_vacancies' trip.id %}" class="btn btn-primary btn-equal">
                                     Vakanzenliste</a>
-                            <a href="{% url 'checklist' trip.id %}" class="btn btn-primary btn-equal">
+                                <a href="{% url 'checklist' trip.id %}" class="btn btn-primary btn-equal">
                                     To-Do's</a>
                             </div>
                         {% endif %}
@@ -456,6 +456,10 @@
             });
 
             function initializeSelect2() {
+                $('#id_planners').select2({
+                    placeholder: "Wähle Planer aus",
+                    allowClear: true
+                });
                 $('#id_location').each(function () {
                     const $select = $(this);
                     $select.select2({

@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import CharField, BooleanField
@@ -65,7 +66,12 @@ class Trip(models.Model):
     )
     recipientcode = models.CharField(blank=True, max_length=20,
                                      verbose_name="Empfängercode der empfangenden Organisation")
-
+    planners = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name="planned_trips",
+        verbose_name="Planer"
+    )
     def __str__(self):
         return self.name
 
