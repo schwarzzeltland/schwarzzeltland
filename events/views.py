@@ -77,7 +77,7 @@ def trip(request):
     if search_query:
         trips_query = trips_query.filter(
             Q(name__icontains=search_query) | Q(owner__name__icontains=search_query)
-        ).order_by('name')
+        ).order_by('start_date')
     if selected_trip_type:
         trips_query = trips_query.filter(type=selected_trip_type).order_by('name')
     TYPES = (
