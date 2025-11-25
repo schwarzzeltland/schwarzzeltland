@@ -73,13 +73,13 @@ def trip(request):
     request.session['trip_type'] = selected_trip_type
     request.session['previous_url'] = request.build_absolute_uri()
     # Filtere Konstruktionen basierend auf der Suchanfrage
-    trips_query = Trip.objects.filter(owner=request.org).order_by('start_date')
+    trips_query = Trip.objects.filter(owner=request.org).order_by('-start_date')
     if search_query:
         trips_query = trips_query.filter(
             Q(name__icontains=search_query) | Q(owner__name__icontains=search_query)
-        ).order_by('start_date')
+        ).order_by('-start_date')
     if selected_trip_type:
-        trips_query = trips_query.filter(type=selected_trip_type).order_by('start_date')
+        trips_query = trips_query.filter(type=selected_trip_type).order_by('-start_date')
     TYPES = (
         (0, "Lager"),
         (1, "Fahrt"),
