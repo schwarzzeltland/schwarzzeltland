@@ -1649,7 +1649,7 @@ def import_vacancies_csv(request, trip_id):
 @event_manager_required
 def checklist(request, trip_id):
     trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
-    items = trip.checklist.all().order_by("due_date")
+    items = trip.checklist.all().order_by("done","due_date")
     form = EventPlanningChecklistItemForm()
     return render(request, "events/checklist.html", {
         "title": f"To-Do's zur Veranstaltung: {trip.name}",

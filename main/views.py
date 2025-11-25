@@ -389,7 +389,7 @@ def custom_csrf_failure(request, reason=""):
 def organization_material_checklist(request):
     items = EventPlanningChecklistItem.objects.filter(
         organization=request.org, trip__isnull=True
-    ).order_by('due_date')
+    ).order_by("done",'due_date')
     form = EventPlanningChecklistItemForm()
     return render(request, 'main/organization_material_checklist.html', {
         'title': f"Materialwart To-Do-Liste: {request.org.name}",
