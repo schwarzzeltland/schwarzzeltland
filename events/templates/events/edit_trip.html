@@ -26,178 +26,221 @@
                     </div>
 
                     <!-- Fach: Gruppen -->
-                    <h4>
-                        <a class="collapse-toggle" data-bs-toggle="collapse" href="#collapse_groups" role="button">
-                            Gruppen ↕
-                        </a>
-                    </h4>
-
-                    <div class="collapse" id="collapse_groups">
-
-                        <h4>Unterteile deine Teilnehmer in Gruppen, z.B. nach Alter oder nach Sippen.</h4>
-                        <p>Gesamt TN-Anzahl: {{ total_tn_count }}</p>
-
-                        <div class="table-responsive" id="rental-wrapper">
-                            <table>
-                                <thead>
-                                <tr>
-                                    <th>Gruppe</th>
-                                    <th>TN-Anzahl</th>
-                                    <th></th>
-                                </tr>
-                                </thead>
-                                <tbody id="form-container-group">
-                                {{ group_formset.management_form }}
-                                {% for form in group_formset %}
-                                    {% for hidden in form.hidden_fields %}
-                                        {{ hidden }}
-                                    {% endfor %}
-                                    <tr>
-                                        <td>{% bootstrap_field form.name show_label=False %}</td>
-                                        <td>{% bootstrap_field form.count show_label=False %}</td>
-                                        <td>
-                                            <input type="checkbox" name="{{ form.prefix }}-DELETE"
-                                                   id="{{ form.prefix }}-DELETE"
-                                                   class="delete-checkbox d-none">
-                                            <div class="mb-3">
-                                                <button type="button" class="btn btn-outline-danger remove-row">
-                                                    Löschen
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                                </tbody>
-                            </table>
+                    <div class="card mb-4 shadow-sm border-0">
+                        <div class="card-header d-flex justify-content-between align-items-center bg-light">
+        <span class="fw-bold">
+            <i class="bi bi-people-fill me-2"></i>
+            Gruppen
+        </span>
+                            <a class="collapse-toggle text-decoration-none small" data-bs-toggle="collapse"
+                               href="#collapse_groups" role="button">
+                                ein-/ausklappen
+                            </a>
                         </div>
 
-                        <div class="mb-3">
-                            <button type="button" id="add-row-group" class="btn btn-outline-primary">
-                                Zeile hinzufügen
-                            </button>
-                        </div>
+                        <div class="collapse" id="collapse_groups">
+                            <div class="card-body">
 
+                                <div class="section-hint mb-2 text-muted">
+                                    Unterteile deine Teilnehmer in Gruppen, z.B. nach Alter oder Sippen.
+                                </div>
+
+                                <span class="badge bg-primary mb-3">
+                Gesamt TN-Anzahl: {{ total_tn_count }}
+            </span>
+
+                                <div class="table-responsive" id="rental-wrapper">
+                                    <table class="table table-sm align-middle">
+                                        <thead class="table-light">
+                                        <tr>
+                                            <th>Gruppe</th>
+                                            <th>TN-Anzahl</th>
+                                            <th></th>
+                                        </tr>
+                                        </thead>
+                                        <tbody id="form-container-group">
+                                        {{ group_formset.management_form }}
+                                        {% for form in group_formset %}
+                                            {% for hidden in form.hidden_fields %}
+                                                {{ hidden }}
+                                            {% endfor %}
+                                            <tr>
+                                                <td>{% bootstrap_field form.name show_label=False %}</td>
+                                                <td>{% bootstrap_field form.count show_label=False %}</td>
+                                                <td class="text-end">
+                                                    <input type="checkbox" name="{{ form.prefix }}-DELETE"
+                                                           id="{{ form.prefix }}-DELETE"
+                                                           class="delete-checkbox d-none">
+                                                    <button type="button"
+                                                            class="btn btn-outline-danger btn-sm remove-row">
+                                                        Löschen
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="text-end mt-2">
+                                    <button type="button" id="add-row-group" class="btn btn-primary">
+                                        + Zeile hinzufügen
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
 
-                    <!-- Fach: Konstruktionen -->
+                    <!-- ========================= -->
+                    <!--      KONSTRUKTIONEN       -->
+                    <!-- ========================= -->
+                    <div class="card mb-4 shadow-sm border-0">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <span class="fw-bold">
+                <i class="bi bi-hammer me-2"></i>
+                Konstruktionen
+            </span>
 
-                    <h4>
-                        <a class="collapse-toggle" data-bs-toggle="collapse" href="#collapse_constructions"
-                           role="button">
-                            Konstruktionen ↕
-                        </a>
-                    </h4>
-                    <div class="collapse" id="collapse_constructions">
-
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                <tr>
-                                    <th>Konstruktion</th>
-                                    <th>Anzahl</th>
-                                    <th>Beschreibung</th>
-                                    <th></th>
-                                </tr>
-                                </thead>
-                                <tbody id="form-container">
-                                {{ construction_formset.management_form }}
-                                {% for form in construction_formset %}
-                                    {% for hidden in form.hidden_fields %}
-                                        {{ hidden }}
-                                    {% endfor %}
-                                    <tr>
-                                        <td>{% bootstrap_field form.construction show_label=False %}</td>
-                                        <td>{% bootstrap_field form.count show_label=False %}</td>
-                                        <td>{% bootstrap_field form.description show_label=False %}</td>
-                                        <td>
-                                            <input type="checkbox" name="{{ form.prefix }}-DELETE"
-                                                   id="{{ form.prefix }}-DELETE"
-                                                   class="delete-checkbox d-none">
-                                            <div class="mb-3">
-                                                <button type="button" class="btn btn-outline-danger remove-row">
-                                                    Löschen
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                                </tbody>
-                            </table>
+                            <a data-bs-toggle="collapse" href="#collapse_constructions" role="button"
+                               class="small text-decoration-none">
+                                ein-/ausklappen
+                            </a>
                         </div>
 
-                        <div class="mb-3 mb-4">
-                            <button type="button" id="add-row" class="btn btn-outline-primary">
-                                Zeile hinzufügen
-                            </button>
-                        </div>
+                        <div class="collapse" id="collapse_constructions">
+                            <div class="card-body">
 
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle">
+                                        <thead class="table-light">
+                                        <tr>
+                                            <th>Konstruktion</th>
+                                            <th>Anzahl</th>
+                                            <th>Beschreibung</th>
+                                            <th></th>
+                                        </tr>
+                                        </thead>
+
+                                        <tbody id="form-container">
+                                        {{ construction_formset.management_form }}
+                                        {% for form in construction_formset %}
+                                            {% for hidden in form.hidden_fields %}
+                                                {{ hidden }}
+                                            {% endfor %}
+
+                                            <tr>
+                                                <td>{% bootstrap_field form.construction show_label=False %}</td>
+                                                <td>{% bootstrap_field form.count show_label=False %}</td>
+                                                <td>{% bootstrap_field form.description show_label=False %}</td>
+
+                                                <td class="text-end">
+                                                    <input type="checkbox"
+                                                           name="{{ form.prefix }}-DELETE"
+                                                           id="{{ form.prefix }}-DELETE"
+                                                           class="delete-checkbox d-none">
+
+                                                    <button type="button"
+                                                            class="btn btn-outline-danger btn-sm remove-row">
+                                                        Löschen
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="card-footer bg-white text-end">
+                                <button type="button" id="add-row" class="btn btn-primary">
+                                    + Konstruktion hinzufügen
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
-                <h4>
-                    <a class="collapse-toggle" data-bs-toggle="collapse" href="#collapse_material" role="button">
-                        Sonstiges Material ↕
-                    </a>
-                </h4>
+                <!-- ========================= -->
+                <!--         MATERIAL           -->
+                <!-- ========================= -->
+                <div class="card mb-4 shadow-sm border-0">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <span class="fw-bold">
+            <i class="bi bi-box-seam me-2"></i>
+            Sonstiges Material
+        </span>
 
-                <div class="collapse" id="collapse_material">
-
-                    <div id="recipient-wrapper1" class="alert alert-secondary small mt-3" style="display: none;">
-                        <p class="mb-0"><strong>Hinweis:</strong> Bitte jedes Material nur einmal aufführen!</p>
+                        <a data-bs-toggle="collapse" href="#collapse_material" role="button"
+                           class="small text-decoration-none">
+                            ein-/ausklappen
+                        </a>
                     </div>
 
-                    <div class="table-responsive">
-                        <table>
-                            <thead>
-                            <tr>
-                                <th>Material</th>
-                                <th>Anzahl</th>
-                                <th>Beschreibung</th>
-                                <th></th>
-                                <th></th>
-                            </tr>
-                            </thead>
-                            <tbody id="form-container-material">
-                            {{ material_formset.management_form }}
-                            {% for form in material_formset %}
-                                {% for hidden in form.hidden_fields %}
-                                    {{ hidden }}
-                                {% endfor %}
-                                <tr>
-                                    <td>{% bootstrap_field form.material show_label=False %}</td>
-                                    <td>{% bootstrap_field form.count show_label=False %}</td>
-                                    <td>{% bootstrap_field form.description show_label=False %}</td>
-                                    <td>
-                                        <input type="checkbox" name="{{ form.prefix }}-DELETE"
-                                               id="{{ form.prefix }}-DELETE"
-                                               class="delete-checkbox d-none">
-                                        <div class="mb-3">
-                                            <button type="button" class="btn btn-outline-danger remove-row">
-                                                Löschen
-                                            </button>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        {% if form.instance.material.type == 6 %}
-                                            <div class="alert alert-warning mb-3 p-2 small" role="alert">
-                                                <i class="bi bi-exclamation-circle me-1"></i>
-                                                Verbrauchsmaterial wird automatisch vom Materiallager abgezogen!
-                                            </div>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                    <div class="collapse" id="collapse_material">
+                        <div class="card-body">
 
-                    <div class="mb-3 mb-4">
-                        <button type="button" id="add-row-material" class="btn btn-outline-primary">
-                            Zeile hinzufügen
-                        </button>
-                    </div>
+                            <div id="recipient-wrapper1" class="alert alert-secondary small" style="display: none;">
+                                <strong>Hinweis:</strong> Bitte jedes Material nur einmal aufführen!
+                            </div>
 
+                            <div class="table-responsive mt-2">
+                                <table class="table table-sm align-middle">
+                                    <thead class="table-light">
+                                    <tr>
+                                        <th>Material</th>
+                                        <th>Anzahl</th>
+                                        <th>Beschreibung</th>
+                                        <th></th>
+                                        <th></th>
+                                    </tr>
+                                    </thead>
+
+                                    <tbody id="form-container-material">
+                                    {{ material_formset.management_form }}
+
+                                    {% for form in material_formset %}
+                                        {% for hidden in form.hidden_fields %}
+                                            {{ hidden }}
+                                        {% endfor %}
+
+                                        <tr>
+                                            <td>{% bootstrap_field form.material show_label=False %}</td>
+                                            <td>{% bootstrap_field form.count show_label=False %}</td>
+                                            <td>{% bootstrap_field form.description show_label=False %}</td>
+
+                                            <td class="text-end">
+                                                <input type="checkbox"
+                                                       name="{{ form.prefix }}-DELETE"
+                                                       id="{{ form.prefix }}-DELETE"
+                                                       class="delete-checkbox d-none">
+
+                                                <button type="button"
+                                                        class="btn btn-outline-danger btn-sm remove-row">
+                                                    Löschen
+                                                </button>
+                                            </td>
+
+                                            <td>
+                                                {% if form.instance.material.type == 6 %}
+                                                    <span class="badge bg-warning text-dark warning-chip">
+                                        Verbrauchsmaterial wird automatisch abgebucht
+                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="card-footer bg-white text-end">
+                            <button type="button" id="add-row-material" class="btn btn-primary">
+                                + Material hinzufügen
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 {% if trip.pk != None %}
                     <h4>Funktionen:</h4>
@@ -366,9 +409,9 @@
                                id="id_{{ formset_prefix }}-__prefix__-description">
                     </div>
                 </td>
-                <td>
+                <td class="text-end">
                     <div class="mb-3">
-                        <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm remove-row">Löschen</button>
                     </div>
                 </td>
             </tr>
@@ -388,9 +431,9 @@
                                id="id_{{ formset_prefix_group }}-__prefix__-count">
                     </div>
                 </td>
-                <td>
+                <td class="text-end">
                     <div class="mb-3">
-                        <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm remove-row">Löschen</button>
                     </div>
                 </td>
             </tr>
@@ -433,9 +476,9 @@
                                id="id_{{ formset_prefix_material }}-__prefix__-description">
                     </div>
                 </td>
-                <td>
+                <td class="text-end">
                     <div class="mb-3">
-                        <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm remove-row">Löschen</button>
                     </div>
                 </td>
             </tr>
