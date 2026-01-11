@@ -20,212 +20,308 @@
                 {% bootstrap_form trip_form exclude='name,recipient_org_name, recipient_org,recipientcode,description, type,location' %}
                 <div id="rental-wrapper1" style="display: none;">
                     {% bootstrap_field trip_form.location %}
-                    <h4>Unterteile deine Teilmnehmer in Gruppen, z.B. nach Alter oder nach Sippen.</h4>
-                    <p>Gesamt TN-Anzahl: {{ total_tn_count }}</p>
+                    <div class="mb-2">
+                        <button type="button" id="open-all" class="btn btn-outline-primary">Alles aufklappen</button>
+                        <button type="button" id="close-all" class="btn btn-outline-secondary">Alles zuklappen</button>
+                    </div>
 
-                    <div class="table-responsive" id="rental-wrapper">
+                    <!-- Fach: Gruppen -->
+                    <h4>
+                        <a class="collapse-toggle" data-bs-toggle="collapse" href="#collapse_groups" role="button">
+                            Gruppen
+                        </a>
+                    </h4>
+
+                    <div class="collapse" id="collapse_groups">
+
+                        <h4>Unterteile deine Teilnehmer in Gruppen, z.B. nach Alter oder nach Sippen.</h4>
+                        <p>Gesamt TN-Anzahl: {{ total_tn_count }}</p>
+
+                        <div class="table-responsive" id="rental-wrapper">
+                            <table>
+                                <thead>
+                                <tr>
+                                    <th>Gruppe</th>
+                                    <th>TN-Anzahl</th>
+                                    <th></th>
+                                </tr>
+                                </thead>
+                                <tbody id="form-container-group">
+                                {{ group_formset.management_form }}
+                                {% for form in group_formset %}
+                                    {% for hidden in form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
+                                    <tr>
+                                        <td>{% bootstrap_field form.name show_label=False %}</td>
+                                        <td>{% bootstrap_field form.count show_label=False %}</td>
+                                        <td>
+                                            <input type="checkbox" name="{{ form.prefix }}-DELETE"
+                                                   id="{{ form.prefix }}-DELETE"
+                                                   class="delete-checkbox d-none">
+                                            <div class="mb-3">
+                                                <button type="button" class="btn btn-outline-danger remove-row">
+                                                    Löschen
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mb-3">
+                            <button type="button" id="add-row-group" class="btn btn-outline-primary">
+                                Zeile hinzufügen
+                            </button>
+                        </div>
+
+                    </div>
+
+
+                    <!-- Fach: Konstruktionen -->
+
+                    <h4>
+                        <a class="collapse-toggle" data-bs-toggle="collapse" href="#collapse_constructions"
+                           role="button">
+                            Konstruktionen
+                        </a>
+                    </h4>
+                    <div class="collapse" id="collapse_constructions">
+
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                <tr>
+                                    <th>Konstruktion</th>
+                                    <th>Anzahl</th>
+                                    <th>Beschreibung</th>
+                                    <th></th>
+                                </tr>
+                                </thead>
+                                <tbody id="form-container">
+                                {{ construction_formset.management_form }}
+                                {% for form in construction_formset %}
+                                    {% for hidden in form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
+                                    <tr>
+                                        <td>{% bootstrap_field form.construction show_label=False %}</td>
+                                        <td>{% bootstrap_field form.count show_label=False %}</td>
+                                        <td>{% bootstrap_field form.description show_label=False %}</td>
+                                        <td>
+                                            <input type="checkbox" name="{{ form.prefix }}-DELETE"
+                                                   id="{{ form.prefix }}-DELETE"
+                                                   class="delete-checkbox d-none">
+                                            <div class="mb-3">
+                                                <button type="button" class="btn btn-outline-danger remove-row">
+                                                    Löschen
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mb-3 mb-4">
+                            <button type="button" id="add-row" class="btn btn-outline-primary">
+                                Zeile hinzufügen
+                            </button>
+                        </div>
+
+                    </div>
+
+                </div>
+                <h4>
+                    <a class="collapse-toggle" data-bs-toggle="collapse" href="#collapse_material" role="button">
+                        Sonstiges Material
+                    </a>
+                </h4>
+
+                <div class="collapse" id="collapse_material">
+
+                    <div id="recipient-wrapper1" class="alert alert-secondary small mt-3" style="display: none;">
+                        <p class="mb-0"><strong>Hinweis:</strong> Bitte jedes Material nur einmal aufführen!</p>
+                    </div>
+
+                    <div class="table-responsive">
                         <table>
                             <thead>
                             <tr>
-                                <th>Gruppe</th>
-                                <th>TN-Anzahl</th>
+                                <th>Material</th>
+                                <th>Anzahl</th>
+                                <th>Beschreibung</th>
+                                <th></th>
                                 <th></th>
                             </tr>
                             </thead>
-                            <tbody id="form-container-group">
-                            {{ group_formset.management_form }}
-                            {% for form in group_formset %}
+                            <tbody id="form-container-material">
+                            {{ material_formset.management_form }}
+                            {% for form in material_formset %}
                                 {% for hidden in form.hidden_fields %}
                                     {{ hidden }}
                                 {% endfor %}
                                 <tr>
-                                    <td>{% bootstrap_field form.name show_label=False %} </td>
+                                    <td>{% bootstrap_field form.material show_label=False %}</td>
                                     <td>{% bootstrap_field form.count show_label=False %}</td>
+                                    <td>{% bootstrap_field form.description show_label=False %}</td>
                                     <td>
                                         <input type="checkbox" name="{{ form.prefix }}-DELETE"
                                                id="{{ form.prefix }}-DELETE"
                                                class="delete-checkbox d-none">
                                         <div class="mb-3">
-                                            <button type="button" class="btn btn-outline-danger remove-row">Löschen
+                                            <button type="button" class="btn btn-outline-danger remove-row">
+                                                Löschen
                                             </button>
                                         </div>
+                                    </td>
+                                    <td>
+                                        {% if form.instance.material.type == 6 %}
+                                            <div class="alert alert-warning mb-3 p-2 small" role="alert">
+                                                <i class="bi bi-exclamation-circle me-1"></i>
+                                                Verbrauchsmaterial wird automatisch vom Materiallager abgezogen!
+                                            </div>
+                                        {% endif %}
                                     </td>
                                 </tr>
                             {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                    <div class="mb-3">
-                        <button type="button" id="add-row-group" class="btn btn-outline-primary">Zeile hinzufügen
+
+                    <div class="mb-3 mb-4">
+                        <button type="button" id="add-row-material" class="btn btn-outline-primary">
+                            Zeile hinzufügen
                         </button>
                     </div>
 
-                    <h4>Konstruktionen:</h4>
-                    <div class="table-responsive">
-                        <table>
-                            <thead>
-                            <tr>
-                                <th>Konstruktion</th>
-                                <th>Anzahl</th>
-                                <th>Beschreibung</th>
-                                <th></th>
-                            </tr>
-                            </thead>
-                            <tbody id="form-container">
-                            {{ construction_formset.management_form }}
-                            {% for form in construction_formset %}
-                                {% for hidden in form.hidden_fields %}
-                                    {{ hidden }}
-                                {% endfor %}
-                                <td>{% bootstrap_field form.construction show_label=False %} </td>
-                                <td>{% bootstrap_field form.count show_label=False %}</td>
-                                <td>{% bootstrap_field form.description show_label=False %}</td>
-                                <td>
-                                    <input type="checkbox" name="{{ form.prefix }}-DELETE" id="{{ form.prefix }}-DELETE"
-                                           class="delete-checkbox d-none">
-                                    <div class="mb-3">
-                                        <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
-                                    </div>
-                                </td>
-                                </tr>
-                            {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="mb-3">
-
-                        <div class="mb-4">
-                            <button type="button" id="add-row" class="btn btn-outline-primary">Zeile hinzufügen</button>
-                        </div>
-
-                    </div>
                 </div>
-                <h4>Sonstiges Material:</h4>
-                <div id="recipient-wrapper1" class="alert alert-secondary small mt-3" style="display: none;">
-                    <p class="mb-0"><strong>Hinweis:</strong> Bitte jedes Material nur einmal aufführen!</p>
-                </div>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                        <tr>
-                            <th>Material</th>
-                            <th>Anzahl</th>
-                            <th>Beschreibung</th>
-                            <th></th>
-                            <th></th>
-                        </tr>
-                        </thead>
-                        <tbody id="form-container-material">
-                        {{ material_formset.management_form }}
-                        {% for form in material_formset %}
-                            {% for hidden in form.hidden_fields %}
-                                {{ hidden }}
-                            {% endfor %}
-                            <tr>
-                                <td>{% bootstrap_field form.material show_label=False %} </td>
-                                <td>{% bootstrap_field form.count show_label=False %}</td>
-                                <td>{% bootstrap_field form.description show_label=False %}</td>
-                                <td>
-                                    <input type="checkbox" name="{{ form.prefix }}-DELETE" id="{{ form.prefix }}-DELETE"
-                                           class="delete-checkbox d-none">
-                                    <div class="mb-3">
-                                        <button type="button" class="btn btn-outline-danger remove-row">Löschen</button>
-                                    </div>
-                                </td>
-                                <td> {% if form.instance.material.type == 6 %}
-                                    <div class="alert alert-warning mb-3 p-2 small" role="alert">
-                                        <i class="bi bi-exclamation-circle me-1"></i>
-                                        Verbrauchsmaterial wird automatisch vom Materiallager abgezogen!
-                                    </div>
-                                {% endif %}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                <div class="mb-3">
-                    <div class="mb-4">
-                        <button type="button" id="add-row-material" class="btn btn-outline-primary">Zeile hinzufügen
-                        </button>
-                    </div>
-                </div>
-
                 {% if trip.pk != None %}
-                    <h5>Lager:</h5>
-                    <div class="mb-2">
-                        <button type="submit" name="check_material" class="btn btn-outline-success btn-green btn-equal">
-                            Materialverfügbarkeit im Lager prüfen
-                        </button>
+                    <h4>Funktionen:</h4>
+                    <!-- Fach: Lager -->
+                    <h5>
+                        <a class="collapse-toggle" data-bs-toggle="collapse" href="#collapse_lager" role="button">
+                            Lager
+                        </a>
+                    </h5>
 
-                    </div>
-                    <div id="rental-wrapper2">
-                        <h5>Konstruktionen:</h5>
+                    <div class="collapse" id="collapse_lager">
                         <div class="mb-2">
-                            <button type="submit" name="construction_summary"
+                            <button type="submit" name="check_material"
                                     class="btn btn-outline-success btn-green btn-equal">
-                                Konstruktions-Zusammenfassung
+                                Materialverfügbarkeit im Lager prüfen
                             </button>
-
                         </div>
-                        <div class="table-responsive">
-                            <div class="mb-2 p-2 border rounded d-inline-flex align-items-center ">
-                                <button type="submit" name="find_construction_combination"
-                                        class="btn btn-outline-success btn-green mb-0 me-2 btn-equal2">
-                                    Optimale Konstruktions-Kombination finden (ohne Materialverfügbarkeitsprüfung)
+                    </div>
+
+                    <div id="rental-wrapper2">
+
+                        <!-- Fach: Konstruktionen -->
+                        <h5>
+                            <a class="collapse-toggle" data-bs-toggle="collapse" href="#collapse_konstruktionen"
+                               role="button">
+                                Konstruktionen
+                            </a>
+                        </h5>
+
+                        <div class="collapse" id="collapse_konstruktionen">
+
+                            <div class="mb-2">
+                                <button type="submit" name="construction_summary"
+                                        class="btn btn-outline-success btn-green btn-equal">
+                                    Konstruktions-Zusammenfassung
                                 </button>
-                                <p class="mb-0 me-2"> Konstruktionen mit weniger als</p>
-                                <input type="number" name="min_sleeping_places_o_mp" class="form-control me-2 "
-                                       value="1" min="1" required style="width: 70px;">
-                                <p class="mb-0 me-2">Schlafplätzen ignorieren!</p>
                             </div>
 
-                            <div class="mb-2 p-2 border rounded d-inline-flex align-items-center ">
+                            <div class="table-responsive">
 
-                                <button type="submit" name="find_construction_combination_w_check_material"
-                                        class="btn btn-outline-success btn-green mb-0 me-2 btn-equal2">
-                                    Optimale Konstruktions-Kombination finden (mit Materialverfügbarkeitsprüfung)
-                                </button>
+                                <div class="mb-2 p-2 border rounded d-inline-flex align-items-center ">
+                                    <button type="submit" name="find_construction_combination"
+                                            class="btn btn-outline-success btn-green mb-0 me-2 btn-equal2">
+                                        Optimale Konstruktions-Kombination finden (ohne Materialverfügbarkeitsprüfung)
+                                    </button>
 
-                                <p class="mb-0 me-2"> Konstruktionen mit weniger als</p>
-                                <input type="number" name="min_sleeping_places_m_mp" class="form-control me-2 "
-                                       value="1" min="1" required style="width: 70px;">
-                                <p class="mb-0 me-2">Schlafplätzen ignorieren!</p>
+                                    <p class="mb-0 me-2"> Konstruktionen mit weniger als</p>
+
+                                    <input type="number" name="min_sleeping_places_o_mp" class="form-control me-2 "
+                                           value="1" min="1" required style="width: 70px;">
+
+                                    <p class="mb-0 me-2">Schlafplätzen ignorieren!</p>
+                                </div>
+
+                                <div class="mb-2 p-2 border rounded d-inline-flex align-items-center ">
+                                    <button type="submit" name="find_construction_combination_w_check_material"
+                                            class="btn btn-outline-success btn-green mb-0 me-2 btn-equal2">
+                                        Optimale Konstruktions-Kombination finden (mit Materialverfügbarkeitsprüfung)
+                                    </button>
+
+                                    <p class="mb-0 me-2"> Konstruktionen mit weniger als</p>
+
+                                    <input type="number" name="min_sleeping_places_m_mp" class="form-control me-2 "
+                                           value="1" min="1" required style="width: 70px;">
+
+                                    <p class="mb-0 me-2">Schlafplätzen ignorieren!</p>
+                                </div>
+
                             </div>
-
                         </div>
+
                         {% if trip.owner.pro1 %}
-                            <h5>Zusatzfunktionen:</h5>
-                            <div class="d-flex flex-wrap gap-1 mb-2">
-                                <a href="{% url 'shoppinglist' trip.id %}" class="btn btn-primary btn-equal">
-                                    Einkaufsliste</a>
-                                <a href="{% url 'trip_vacancies' trip.id %}" class="btn btn-primary btn-equal">
-                                    Vakanzenliste</a>
-                                <a href="{% url 'checklist' trip.id %}" class="btn btn-primary btn-equal">
-                                    To-Do's</a>
+                            <!-- Fach: Zusatzfunktionen -->
+                            <h5>
+                                <a class="collapse-toggle" data-bs-toggle="collapse" href="#collapse_zusatz"
+                                   role="button">
+                                    Zusatzfunktionen
+                                </a>
+                            </h5>
+
+                            <div class="collapse show" id="collapse_zusatz">
+                                <div class="d-flex flex-wrap gap-1 mb-2">
+                                    <a href="{% url 'shoppinglist' trip.id %}" class="btn btn-primary btn-equal">
+                                        Einkaufsliste</a>
+                                    <a href="{% url 'trip_vacancies' trip.id %}" class="btn btn-primary btn-equal">
+                                        Vakanzenliste</a>
+                                    <a href="{% url 'checklist' trip.id %}" class="btn btn-primary btn-equal">
+                                        To-Do's</a>
+                                </div>
                             </div>
                         {% endif %}
+
                     </div>
-                    <h5>Kalenderdownload:</h5>
-                    <div class="mb-2">
-                        <button id="download-ics-btn" type="button" class="btn btn-outline-primary btn-equal"
-                                data-url="{% url 'download_trip_ics' trip.id %}">
-                            Als iCalendar-Datei herunterladen
-                        </button>
+
+                    <!-- Fach: Kalender -->
+                    <h5>
+                        <a class="collapse-toggle" data-bs-toggle="collapse" href="#collapse_kalender" role="button">
+                            Kalenderdownload
+                        </a>
+                    </h5>
+
+                    <div class="collapse" id="collapse_kalender">
+                        <div class="mb-2">
+                            <button id="download-ics-btn" type="button" class="btn btn-outline-primary btn-equal"
+                                    data-url="{% url 'download_trip_ics' trip.id %}">
+                                Als iCalendar-Datei herunterladen
+                            </button>
+                        </div>
                     </div>
+
                 {% endif %}
-                <h5>Speichern&Abbrechen:</h5>
+
                 <div class="mb-2">
-                    <button type="submit" name="save" class="btn btn-success btn-green btn-equal">Veranstaltung
-                        speichern
+                    <button type="submit" name="save" class="btn btn-success btn-green btn-equal">
+                        Veranstaltung speichern
                     </button>
+
                     {% if trip %}
-                        <button type="submit" name="save_as_new" class="btn btn-primary btn-green btn-equal">als neue
-                            Veranstaltung speichern
+                        <button type="submit" name="save_as_new" class="btn btn-primary btn-green btn-equal">
+                            als neue Veranstaltung speichern
                         </button>
                     {% endif %}
                 </div>
+
                 <div class="mb-2">
                     <a href="{% url 'trip' %}" class="btn btn-secondary">Abbrechen</a>
                 </div>
@@ -453,6 +549,34 @@
 
                 // Beim Ändern des Typs
                 typeField.addEventListener('change', togglerecipient);
+                const collapses = document.querySelectorAll('.collapse');
+// Erstelle alle Collapse-Instanzen einmal
+                document.querySelectorAll('.collapse').forEach(el => {
+                    bootstrap.Collapse.getOrCreateInstance(el, {toggle: false});
+                });
+                // Open-All
+                document.getElementById('open-all')?.addEventListener('click', () => {
+                    document.querySelectorAll('.collapse').forEach(el => {
+                        const bs = bootstrap.Collapse.getOrCreateInstance(el) || new bootstrap.Collapse(el, {toggle: false});
+                        bs.show();
+                    });
+                });
+
+// Close-All
+                document.getElementById('close-all')?.addEventListener('click', () => {
+                    document.querySelectorAll('.collapse').forEach(el => {
+                        const bs = bootstrap.Collapse.getOrCreateInstance(el) || new bootstrap.Collapse(el, {toggle: false});
+                        bs.hide();
+                    });
+                });
+
+                // Auto-Open bei Validierungsfehlern
+                document.querySelectorAll('.is-invalid, .invalid-feedback, ul.errorlist').forEach(errEl => {
+                    const collapseParent = errEl.closest('.collapse');
+                    if (collapseParent) {
+                        bootstrap.Collapse.getOrCreateInstance(collapseParent).show();
+                    }
+                });
             });
 
             function initializeSelect2() {
@@ -485,7 +609,9 @@
                     });
                 });
 
+
             }
+
 
             document.getElementById('download-ics-btn')?.addEventListener('click', function () {
                 const url = this.dataset.url;
@@ -498,6 +624,8 @@
                         a.click();
                     });
             });
+
+
         </script>
         <style>
             .btn-equal {
