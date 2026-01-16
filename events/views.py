@@ -1121,26 +1121,29 @@ def find_optimal_construction_combination_w_check_material(teilnehmergruppen, ko
     max_sleep_places = max(teilnehmergruppen)
     print(max(c.sleep_place_count for c in konstruktionen))
     max_sleep_place_count = max(c.sleep_place_count for c in konstruktionen)
-
+    valid_konstruktionen = [
+        k for k in konstruktionen
+        if k.sleep_place_count > min_sleep_place_count_construction
+    ]
+    print(valid_konstruktionen)
     dp = [Decimal('Infinity')] * (max_sleep_places + max_sleep_place_count + 1)
     dp[0] = Decimal(0)
     backtrace = defaultdict(list)
 
     # Iteriere über alle möglichen Kombinationen von Konstruktionen
-    for count in range(1, len(konstruktionen) + 1):
-        for konstruktion_combination in combinations(konstruktionen, count):
+    for count in range(1, len(valid_konstruktionen) + 1):
+        for konstruktion_combination in combinations(valid_konstruktionen, count):
             total_sleep_places = sum(k.sleep_place_count for k in konstruktion_combination)
             total_weight = sum(
                 calculate_construction_weight(ConstructionMaterial.objects.filter(construction=k)) for k in
                 konstruktion_combination)
-
-            if total_sleep_places >= min_sleep_place_count_construction:
-                for sleep_places in range(total_sleep_places, max_sleep_places + max_sleep_place_count + 1):
-                    new_weight = dp[sleep_places - total_sleep_places] + total_weight
-                    if new_weight < dp[sleep_places]:
-                        dp[sleep_places] = new_weight
-                        backtrace[sleep_places] = backtrace[sleep_places - total_sleep_places] + list(
-                            konstruktion_combination)
+            print(total_sleep_places, min_sleep_place_count_construction)
+            for sleep_places in range(total_sleep_places, max_sleep_places + max_sleep_place_count + 1):
+                new_weight = dp[sleep_places - total_sleep_places] + total_weight
+                if new_weight < dp[sleep_places]:
+                    dp[sleep_places] = new_weight
+                backtrace[sleep_places] = backtrace[sleep_places - total_sleep_places] + list(
+                    konstruktion_combination)
 
     result = []
     total_material_usage = defaultdict(int)
@@ -1422,14 +1425,14 @@ def update_shoppinglist_item(request):
 @event_manager_required
 def delete_shoppinglist_item(request, item_id):
     item = get_object_or_404(ShoppingListItem, pk=item_id, trip__owner=request.org)
-    msg=None
+    msg = None
     if item.stockmaterial is not None:
         item.stockmaterial.count += item.amount
         item.stockmaterial.save()
-        msg=f"{item.amount} × {item.name} wurde dem Lager hinzugefügt."
+        msg = f"{item.amount} × {item.name} wurde dem Lager hinzugefügt."
         update_trip_material_stock_for_org(request, request.org)
     item.delete()
-    return JsonResponse({"success": True, "message":msg})
+    return JsonResponse({"success": True, "message": msg})
 
 
 @login_required
@@ -1570,6 +1573,7 @@ def delete_vacancy(request, vacancy_id):
     item.delete()
     return JsonResponse({"success": True})
 
+
 @login_required
 @pro1_required
 @event_manager_required
@@ -1596,6 +1600,7 @@ def export_vacancies_csv(request, trip_id):
             presence_text
         ])
     return response
+
 
 @login_required
 @pro1_required
@@ -1649,7 +1654,7 @@ def import_vacancies_csv(request, trip_id):
 @event_manager_required
 def checklist(request, trip_id):
     trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
-    items = trip.checklist.all().order_by("done","due_date")
+    items = trip.checklist.all().order_by("done", "due_date")
     form = EventPlanningChecklistItemForm()
     return render(request, "events/checklist.html", {
         "title": f"To-Do's zur Veranstaltung: {trip.name}",
@@ -1698,7 +1703,8 @@ def add_checklist_item(request, trip_id):
 @pro1_required
 @event_manager_required
 def toggle_checklist_item(request, item_id):
-    item = get_object_or_404(EventPlanningChecklistItem,Q(pk=item_id) & (Q(trip__owner=request.org) | Q(organization=request.org)))
+    item = get_object_or_404(EventPlanningChecklistItem,
+                             Q(pk=item_id) & (Q(trip__owner=request.org) | Q(organization=request.org)))
     item.done = not item.done
     item.save()
     return JsonResponse({"success": True, "done": item.done})
@@ -1709,7 +1715,8 @@ def toggle_checklist_item(request, item_id):
 @pro1_required
 @event_manager_required
 def delete_checklist_item(request, item_id):
-    item = get_object_or_404(EventPlanningChecklistItem,Q(pk=item_id) & (Q(trip__owner=request.org) | Q(organization=request.org)))
+    item = get_object_or_404(EventPlanningChecklistItem,
+                             Q(pk=item_id) & (Q(trip__owner=request.org) | Q(organization=request.org)))
     item.delete()
     return JsonResponse({"success": True})
 
@@ -1725,7 +1732,8 @@ def update_checklist_due_date(request):
     item_id = data.get("id")
     value = data.get("value")  # ISO Format: "YYYY-MM-DDTHH:MM"
 
-    item = get_object_or_404(EventPlanningChecklistItem,Q(pk=item_id) & (Q(trip__owner=request.org) | Q(organization=request.org)))
+    item = get_object_or_404(EventPlanningChecklistItem,
+                             Q(pk=item_id) & (Q(trip__owner=request.org) | Q(organization=request.org)))
 
     if value:
         try:
