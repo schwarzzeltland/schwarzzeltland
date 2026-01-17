@@ -1223,19 +1223,19 @@ def find_best_construction_for_group(
 
     dp = [Decimal('Infinity')] * (max_sleep + 1)
     dp[0] = Decimal(0)
-    backtrace = [[] for _ in range(max_sleep + 1)]
+    backtrace = [[] for _ in range(max_sleep + 1)]  # für jede s-Wert: aktuelle beste Kombination
 
-    # Unbounded Knapsack
     for c in constructions:
         sleep = c.sleep_place_count
         weight = weight_cache[c.id]
 
-        for s in range(sleep, len(dp)):  # aufsteigend, damit mehrfach nutzbar
+        for s in range(sleep, len(dp)):
             new_weight = dp[s - sleep] + weight
-            # nur update, wenn Gewicht kleiner oder gleich,
-            # dadurch große Konstruktionen werden bevorzugt
+
+            # Wenn neue Kombination besser ist
             if new_weight < dp[s]:
                 dp[s] = new_weight
+                # flache Liste, keine verschachtelten Listen
                 backtrace[s] = backtrace[s - sleep] + [c]
 
     valid_solutions = []
