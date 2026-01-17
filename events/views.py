@@ -1138,11 +1138,8 @@ def save_constructions_for_trip(request, pk=None):
 
 
 ##NEUER ALGO
-# Hilfsfunktionen
+
 def preload_construction_data(constructions):
-    """
-    Berechne Gewicht und Materialmengen für alle Konstruktionen vor.
-    """
     weight_cache = {}
     material_cache = {}
     materials = (
@@ -1150,7 +1147,6 @@ def preload_construction_data(constructions):
         .filter(construction__in=constructions)
         .select_related("material", "construction")
     )
-
     for cm in materials:
         cid = cm.construction_id
         if cid not in weight_cache:
@@ -1158,25 +1154,16 @@ def preload_construction_data(constructions):
             material_cache[cid] = defaultdict(int)
         weight_cache[cid] += (cm.material.weight or 0) * cm.count
         material_cache[cid][cm.material.name] += cm.count
-
     return weight_cache, material_cache
 
-
 def calculate_material_usage_from_cache(combination, material_cache):
-    """
-    Berechne Materialverbrauch aus einem Konstruktionstupel.
-    """
     usage = defaultdict(int)
     for c in combination:
         for mat, cnt in material_cache.get(c.id, {}).items():
             usage[mat] += cnt
     return usage
 
-
 def check_material_availability(total_material_counts, request, trip):
-    """
-    Prüfe, ob die Materialien für die Kombination verfügbar sind.
-    """
     material_lager = defaultdict(int)
     for mat in StockMaterial.objects.filter(organization=request.org):
         material_lager[mat.material.name] += mat.count - mat.condition_broke
@@ -1208,23 +1195,21 @@ def check_material_availability(total_material_counts, request, trip):
             return False
     return True
 
-
 def find_best_construction_for_group(constructions, group_size, used_materials_global,
                                      request, trip, weight_cache, material_cache):
     """
-    Unbounded Knapsack für eine einzelne Gruppe.
-    Große Konstruktionen zuerst.
+    Unbounded Knapsack für eine Gruppe, speichert alle Kombinationen für jedes Gewicht.
     """
     if not constructions:
         return None
 
-    # Konstruktionen von groß nach klein sortieren
     constructions = sorted(constructions, key=lambda c: c.sleep_place_count, reverse=True)
-
     max_sleep = group_size + max(c.sleep_place_count for c in constructions) * 2
+
     dp = [Decimal('Infinity')] * (max_sleep + 1)
     dp[0] = Decimal(0)
-    backtrace = [[] for _ in range(max_sleep + 1)]  # flach halten
+    backtrace = [[] for _ in range(max_sleep + 1)]
+    backtrace[0] = [[]]  # Liste von Kombinationen für s=0
 
     # Unbounded Knapsack
     for c in constructions:
@@ -1234,12 +1219,15 @@ def find_best_construction_for_group(constructions, group_size, used_materials_g
             new_weight = dp[s - sleep] + weight
             if new_weight < dp[s]:
                 dp[s] = new_weight
-                backtrace[s] = backtrace[s - sleep] + [c]
+                backtrace[s] = [comb + [c] for comb in backtrace[s - sleep]]
+            elif new_weight == dp[s]:
+                backtrace[s].extend([comb + [c] for comb in backtrace[s - sleep]])
 
-    # Suche die kleinste s >= group_size mit gültiger Materialprüfung
+    # Prüfe jede Kombination für die Gruppengröße
     for s in range(group_size, len(dp)):
-        if dp[s] != Decimal('Infinity'):
-            combination = backtrace[s]
+        if dp[s] == Decimal('Infinity'):
+            continue
+        for combination in backtrace[s]:
             temp_usage = used_materials_global.copy()
             for mat, cnt in calculate_material_usage_from_cache(combination, material_cache).items():
                 temp_usage[mat] += cnt
@@ -1247,14 +1235,9 @@ def find_best_construction_for_group(constructions, group_size, used_materials_g
                 return dp[s], combination
     return None
 
-
 def find_optimal_construction_combination_w_check_material(teilnehmergruppen, konstruktionen, request, trip):
-    """
-    Hauptfunktion: iteriere über Gruppen absteigend und finde optimale Konstruktionen.
-    """
     weight_cache, material_cache = preload_construction_data(konstruktionen)
 
-    # Gruppen absteigend sortieren (große Gruppen zuerst)
     original_order = list(enumerate(teilnehmergruppen))
     teilnehmergruppen_sorted = sorted(original_order, key=lambda x: x[1], reverse=True)
 
@@ -1272,25 +1255,20 @@ def find_optimal_construction_combination_w_check_material(teilnehmergruppen, ko
             material_cache
         )
         if solution is None:
-            messages.warning(request,
-                             f"Größe {group_size} kann mit den verfügbaren Konstruktionen nicht abgedeckt werden!")
+            messages.warning(request, f"Größe {group_size} kann nicht abgedeckt werden!")
             result.append((idx, []))
             continue
 
         weight, combination = solution
         for mat, cnt in calculate_material_usage_from_cache(combination, material_cache).items():
             used_materials_global[mat] += cnt
-
         result.append((idx, combination))
 
-    # Originalreihenfolge wiederherstellen
     result.sort(key=lambda x: x[0])
     final_result = [comb for _, comb in result]
 
-    # Gesamtgewicht berechnen
     total_weight = sum(weight_cache[c.id] for group in final_result for c in group)
     return final_result, total_weight
-
 
 def find_construction_combination_w_check_material(request, pk=None):
     trip = get_object_or_404(Trip, pk=pk, owner=request.org)
@@ -1300,7 +1278,6 @@ def find_construction_combination_w_check_material(request, pk=None):
         return redirect('edit_trip', pk=pk)
 
     teilnehmergruppen = [g.count for g in trip_groups]
-
     min_sleep = int(request.session.get("min_sleeping_places", 1))
     konstruktionen = Construction.objects.filter(owner=request.org)
     valid_konstruktionen = [k for k in konstruktionen if k.sleep_place_count >= min_sleep]
@@ -1315,7 +1292,6 @@ def find_construction_combination_w_check_material(request, pk=None):
         trip
     )
 
-    # Daten für Template vorbereiten
     group_data = []
     for group, combo in zip(trip_groups, optimal):
         group_data.append({
