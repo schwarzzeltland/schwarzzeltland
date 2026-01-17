@@ -1219,9 +1219,10 @@ def find_best_construction_for_group(
     # Maximal DP-Array groß genug für große Gruppen
     max_sleep = max(required_sleep_places, max(c.sleep_place_count for c in constructions) * 2)
     dp = [Decimal('Infinity')] * (max_sleep + 1)
+    print(max_sleep)
     dp[0] = Decimal(0)
     backtrace = [[] for _ in range(max_sleep + 1)]
-
+    constructions = sorted(constructions, key=lambda c: c.sleep_place_count, reverse=True)
     # Unbounded Knapsack: Konstruktionen mehrfach nutzbar
     for c in constructions:
         sleep = c.sleep_place_count
