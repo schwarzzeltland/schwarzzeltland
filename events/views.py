@@ -1115,7 +1115,7 @@ def save_constructions_for_trip(request, pk=None):
     elif vorherige_seite == 'find_construction_combination_w_check_material':
         # Finde die optimale Kombination der Konstruktionen und das minimalste Gesamtgewicht
         optimal_combination, min_total_weight = find_optimal_construction_combination_w_check_material(
-            teilnehmergruppen, konstruktionen, request, min_sleeping_places_c, trip)
+            teilnehmergruppen, konstruktionen, request, trip)
 
     # Alte TripConstruction-Einträge für diesen Trip löschen
     TripConstruction.objects.filter(trip=trip).delete()
