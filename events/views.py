@@ -1198,20 +1198,21 @@ def check_material_availability(total_material_counts, request, trip):
 def find_best_construction_for_group(constructions, group_size, used_materials_global,
                                      request, trip, weight_cache, material_cache):
     """
-    Unbounded Knapsack für eine Gruppe, speichert alle Kombinationen für jedes Gewicht.
+    Unbounded Knapsack für eine Gruppe. Flache DP, iterative Materialprüfung.
     """
     if not constructions:
         return None
 
+    # Große Konstruktionen zuerst
     constructions = sorted(constructions, key=lambda c: c.sleep_place_count, reverse=True)
-    max_sleep = group_size + max(c.sleep_place_count for c in constructions) * 2
 
+    # DP Array: minimalgewicht für s Schlafplätze
+    max_sleep = group_size + max(c.sleep_place_count for c in constructions) * 2
     dp = [Decimal('Infinity')] * (max_sleep + 1)
     dp[0] = Decimal(0)
     backtrace = [[] for _ in range(max_sleep + 1)]
-    backtrace[0] = [[]]  # Liste von Kombinationen für s=0
 
-    # Unbounded Knapsack
+    # Unbounded Knapsack (flach)
     for c in constructions:
         sleep = c.sleep_place_count
         weight = weight_cache[c.id]
@@ -1219,25 +1220,43 @@ def find_best_construction_for_group(constructions, group_size, used_materials_g
             new_weight = dp[s - sleep] + weight
             if new_weight < dp[s]:
                 dp[s] = new_weight
-                backtrace[s] = [comb + [c] for comb in backtrace[s - sleep]]
-            elif new_weight == dp[s]:
-                backtrace[s].extend([comb + [c] for comb in backtrace[s - sleep]])
+                backtrace[s] = backtrace[s - sleep] + [c]
 
-    # Prüfe jede Kombination für die Gruppengröße
+    # Suche erste Kombination >= group_size, die Material erfüllt
     for s in range(group_size, len(dp)):
         if dp[s] == Decimal('Infinity'):
             continue
-        for combination in backtrace[s]:
-            temp_usage = used_materials_global.copy()
-            for mat, cnt in calculate_material_usage_from_cache(combination, material_cache).items():
+        combination = backtrace[s]
+        temp_usage = used_materials_global.copy()
+        for mat, cnt in calculate_material_usage_from_cache(combination, material_cache).items():
+            temp_usage[mat] += cnt
+        if check_material_availability(temp_usage, request, trip):
+            return dp[s], combination
+
+    # Fallback: Greedy – fülle mit großen Konstruktionen bis Group_Size
+    combination = []
+    remaining = group_size
+    temp_usage = used_materials_global.copy()
+    for c in constructions:
+        while remaining > 0:
+            temp_usage_try = temp_usage.copy()
+            for mat, cnt in material_cache[c.id].items():
+                temp_usage_try[mat] += cnt
+            if not check_material_availability(temp_usage_try, request, trip):
+                break
+            combination.append(c)
+            for mat, cnt in material_cache[c.id].items():
                 temp_usage[mat] += cnt
-            if check_material_availability(temp_usage, request, trip):
-                return dp[s], combination
+            remaining -= c.sleep_place_count
+    if sum(c.sleep_place_count for c in combination) >= group_size:
+        return sum(weight_cache[c.id] for c in combination), combination
+
     return None
 
 def find_optimal_construction_combination_w_check_material(teilnehmergruppen, konstruktionen, request, trip):
     weight_cache, material_cache = preload_construction_data(konstruktionen)
 
+    # Große Gruppen zuerst
     original_order = list(enumerate(teilnehmergruppen))
     teilnehmergruppen_sorted = sorted(original_order, key=lambda x: x[1], reverse=True)
 
