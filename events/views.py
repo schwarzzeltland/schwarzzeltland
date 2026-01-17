@@ -1255,7 +1255,11 @@ def find_best_construction_for_group(constructions, group_size, used_materials_g
 
 def find_optimal_construction_combination_w_check_material(teilnehmergruppen, konstruktionen, request, trip):
     weight_cache, material_cache = preload_construction_data(konstruktionen)
-
+    min_sleep = int(request.session.get("min_sleeping_places", 1))
+    valid_konstruktionen = [k for k in konstruktionen if k.sleep_place_count >= min_sleep]
+    if not valid_konstruktionen:
+        messages.warning(request, "Keine Konstruktionen mit ausreichender Schlafplatzanzahl verfügbar.")
+        return redirect('edit_trip', pk=trip.pk)
     # Große Gruppen zuerst
     original_order = list(enumerate(teilnehmergruppen))
     teilnehmergruppen_sorted = sorted(original_order, key=lambda x: x[1], reverse=True)
@@ -1265,7 +1269,7 @@ def find_optimal_construction_combination_w_check_material(teilnehmergruppen, ko
 
     for idx, group_size in teilnehmergruppen_sorted:
         solution = find_best_construction_for_group(
-            konstruktionen,
+            valid_konstruktionen,
             group_size,
             used_materials_global,
             request,
