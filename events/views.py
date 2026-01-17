@@ -1139,22 +1139,23 @@ def save_constructions_for_trip(request, pk=None):
 
 ##NEUER ALGO
 def preload_construction_data(constructions):
+    """
+    Lädt Konstruktionen einmal mit Gewicht und Materialbedarf
+    """
     weight_cache = {}
     material_cache = {}
-
     materials = (
         ConstructionMaterial.objects
         .filter(construction__in=constructions)
         .select_related("material", "construction")
     )
 
+    for c in constructions:
+        weight_cache[c.id] = Decimal(0)
+        material_cache[c.id] = defaultdict(int)
+
     for cm in materials:
         cid = cm.construction_id
-
-        if cid not in weight_cache:
-            weight_cache[cid] = Decimal(0)
-            material_cache[cid] = defaultdict(int)
-
         weight_cache[cid] += (cm.material.weight or 0) * cm.count
         material_cache[cid][cm.material.name] += cm.count
 
@@ -1171,7 +1172,6 @@ def calculate_material_usage_from_cache(combination, material_cache):
 
 def check_material_availability(total_material_counts, request, trip):
     material_lager = defaultdict(int)
-
     for mat in StockMaterial.objects.filter(organization=request.org):
         material_lager[mat.material.name] += mat.count - mat.condition_broke
 
@@ -1216,25 +1216,25 @@ def find_best_construction_for_group(
         weight_cache,
         material_cache
 ):
-    max_sleep = max(required_sleep_places, sum(c.sleep_place_count for c in constructions))
-    if max_sleep == 0:
-        return None
+    # Maximal DP-Array groß genug für große Gruppen
+    max_sleep = max(required_sleep_places, max(c.sleep_place_count for c in constructions) * 2)
     dp = [Decimal('Infinity')] * (max_sleep + 1)
     dp[0] = Decimal(0)
     backtrace = [[] for _ in range(max_sleep + 1)]
 
+    # Unbounded Knapsack: Konstruktionen mehrfach nutzbar
     for c in constructions:
         sleep = c.sleep_place_count
         weight = weight_cache[c.id]
-
-        for s in range(sleep, max_sleep + 1):
-            if dp[s - sleep] + weight < dp[s]:
-                dp[s] = dp[s - sleep] + weight
+        for s in range(sleep, len(dp)):
+            new_weight = dp[s - sleep] + weight
+            if new_weight < dp[s]:
+                dp[s] = new_weight
                 backtrace[s] = backtrace[s - sleep] + [c]
 
     valid_solutions = []
 
-    for s in range(required_sleep_places, max_sleep + 1):
+    for s in range(required_sleep_places, len(dp)):
         if dp[s] == Decimal('Infinity'):
             continue
 
@@ -1279,7 +1279,6 @@ def find_optimal_construction_combination_w_check_material(
         )
 
         if solution is None:
-            result.append((idx, []))
             messages.warning(request,
                              f"Größe {group_size} kann mit den verfügbaren Konstruktionen nicht abgedeckt werden!")
             result.append((idx, []))
