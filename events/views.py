@@ -1116,167 +1116,220 @@ def save_constructions_for_trip(request, pk=None):
     return redirect('edit_trip', pk=pk)
 
 
-def find_optimal_construction_combination_w_check_material(teilnehmergruppen, konstruktionen, request,
-                                                           min_sleep_place_count_construction, trip):
-    max_sleep_places = max(teilnehmergruppen)
-    print(max(c.sleep_place_count for c in konstruktionen))
-    max_sleep_place_count = max(c.sleep_place_count for c in konstruktionen)
-    valid_konstruktionen = [
-        k for k in konstruktionen
-        if k.sleep_place_count > min_sleep_place_count_construction
-    ]
-    print(valid_konstruktionen)
-    dp = [Decimal('Infinity')] * (max_sleep_places + max_sleep_place_count + 1)
-    dp[0] = Decimal(0)
-    backtrace = defaultdict(list)
+##NEUER ALGO
+def preload_construction_data(constructions):
+    weight_cache = {}
+    material_cache = {}
 
-    # Iteriere über alle möglichen Kombinationen von Konstruktionen
-    for count in range(1, len(valid_konstruktionen) + 1):
-        for konstruktion_combination in combinations(valid_konstruktionen, count):
-            total_sleep_places = sum(k.sleep_place_count for k in konstruktion_combination)
-            total_weight = sum(
-                calculate_construction_weight(ConstructionMaterial.objects.filter(construction=k)) for k in
-                konstruktion_combination)
-            print(total_sleep_places, min_sleep_place_count_construction)
-            for sleep_places in range(total_sleep_places, max_sleep_places + max_sleep_place_count + 1):
-                new_weight = dp[sleep_places - total_sleep_places] + total_weight
-                if new_weight < dp[sleep_places]:
-                    dp[sleep_places] = new_weight
-                backtrace[sleep_places] = backtrace[sleep_places - total_sleep_places] + list(
-                    konstruktion_combination)
+    materials = (
+        ConstructionMaterial.objects
+        .filter(construction__in=constructions)
+        .select_related("material", "construction")
+    )
 
-    result = []
-    total_material_usage = defaultdict(int)
-    # Ursprüngliche Reihenfolge speichern
-    original_order = list(enumerate(teilnehmergruppen))
-    # Sortiere absteigend nach Gruppengröße
-    teilnehmergruppen.sort(reverse=True)
-    result = []
-    total_material_usage = defaultdict(int)
+    for cm in materials:
+        cid = cm.construction_id
 
-    for idx, group_size in original_order:
-        valid_combinations = []
+        if cid not in weight_cache:
+            weight_cache[cid] = Decimal(0)
+            material_cache[cid] = defaultdict(int)
 
-        for sleep_places in range(group_size, max_sleep_places + max_sleep_place_count + 1):
-            if dp[sleep_places] != Decimal('Infinity') and sleep_places >= group_size:
-                current_combination = backtrace[sleep_places]
-                current_weight = calculate_total_weight_for_group(current_combination)
-                material_counts = calculate_material_usage(current_combination)
-                temp_material_usage = total_material_usage.copy()
+        weight_cache[cid] += cm.material.weight * cm.count
+        material_cache[cid][cm.material.name] += cm.count
 
-                for material, count in material_counts.items():
-                    temp_material_usage[material] += count
-
-                if check_material_availability(temp_material_usage, request, trip):
-                    valid_combinations.append((current_weight, current_combination))
-
-        if not valid_combinations:
-            messages.warning(request,
-                             f"Größe {group_size} kann mit den verfügbaren Konstruktionen nicht abgedeckt werden!")
-            result.append((idx, []))
-        else:
-            best_combination = min(valid_combinations, key=lambda x: x[0])[1]
-            for material, count in calculate_material_usage(best_combination).items():
-                total_material_usage[material] += count
-            result.append((idx, best_combination))
-
-    # Wiederherstellung der ursprünglichen Reihenfolge
-    result.sort(key=lambda x: x[0])
-    result = [combination for _, combination in result]
-
-    group_weights = [calculate_total_weight_for_group(group_combination) for group_combination in result]
-    min_total_weight = sum(group_weights) if group_weights else 0
-    return result, min_total_weight
+    return weight_cache, material_cache
 
 
-def calculate_material_usage(combination):
-    material_counts = defaultdict(int)
-    for konstruktion in combination:
-        for material in ConstructionMaterial.objects.filter(construction=konstruktion):
-            material_counts[material.material.name] += material.count
-    return material_counts
+def calculate_material_usage_from_cache(combination, material_cache):
+    usage = defaultdict(int)
+    for c in combination:
+        for mat, cnt in material_cache[c.id].items():
+            usage[mat] += cnt
+    return usage
 
 
 def check_material_availability(total_material_counts, request, trip):
     material_lager = defaultdict(int)
+
     for mat in StockMaterial.objects.filter(organization=request.org):
         material_lager[mat.material.name] += mat.count - mat.condition_broke
 
     conflicting_trips = Trip.objects.filter(
         start_date__lt=trip.end_date,
-        end_date__gt=trip.start_date, owner=request.org
+        end_date__gt=trip.start_date,
+        owner=request.org
     ).exclude(pk=trip.pk)
 
     material_used_parallel = defaultdict(int)
 
-    used_materials_trip = conflicting_trips.values('tripmaterial__material__name').annotate(
-        total_used=Sum('tripmaterial__count')
-    )
-    used_materials_construction = conflicting_trips.values(
+    used_trip_materials = conflicting_trips.values(
+        'tripmaterial__material__name'
+    ).annotate(total=Sum('tripmaterial__count'))
+
+    used_construction_materials = conflicting_trips.values(
         'tripconstruction__construction__constructionmaterial__material__name'
-    ).annotate(total_used=Sum('tripconstruction__construction__constructionmaterial__count'))
+    ).annotate(total=Sum('tripconstruction__construction__constructionmaterial__count'))
 
-    for entry in used_materials_trip:
-        material_used_parallel[entry['tripmaterial__material__name']] += entry['total_used'] or 0
-    for entry in used_materials_construction:
-        material_used_parallel[entry['tripconstruction__construction__constructionmaterial__material__name']] += \
-            entry['total_used'] or 0
+    for e in used_trip_materials:
+        material_used_parallel[e['tripmaterial__material__name']] += e['total'] or 0
 
-    for material_type, required_amount in total_material_counts.items():
-        available_amount = material_lager.get(material_type, 0) - material_used_parallel.get(material_type, 0)
-        if required_amount > available_amount:
+    for e in used_construction_materials:
+        material_used_parallel[
+            e['tripconstruction__construction__constructionmaterial__material__name']
+        ] += e['total'] or 0
+
+    for material, required in total_material_counts.items():
+        available = material_lager.get(material, 0) - material_used_parallel.get(material, 0)
+        if required > available:
             return False
+
     return True
 
 
+def find_best_construction_for_group(
+        constructions,
+        required_sleep_places,
+        used_materials_global,
+        request,
+        trip,
+        weight_cache,
+        material_cache
+):
+    max_sleep = sum(c.sleep_place_count for c in constructions)
+
+    dp = [Decimal('Infinity')] * (max_sleep + 1)
+    dp[0] = Decimal(0)
+    backtrace = [[] for _ in range(max_sleep + 1)]
+
+    for c in constructions:
+        sleep = c.sleep_place_count
+        weight = weight_cache[c.id]
+
+        for s in range(max_sleep, sleep - 1, -1):
+            if dp[s - sleep] + weight < dp[s]:
+                dp[s] = dp[s - sleep] + weight
+                backtrace[s] = backtrace[s - sleep] + [c]
+
+    valid_solutions = []
+
+    for s in range(required_sleep_places, max_sleep + 1):
+        if dp[s] == Decimal('Infinity'):
+            continue
+
+        combination = backtrace[s]
+        temp_usage = used_materials_global.copy()
+
+        for mat, cnt in calculate_material_usage_from_cache(
+                combination, material_cache
+        ).items():
+            temp_usage[mat] += cnt
+
+        if check_material_availability(temp_usage, request, trip):
+            valid_solutions.append((dp[s], combination))
+
+    return min(valid_solutions, key=lambda x: x[0]) if valid_solutions else None
+
+
+def find_optimal_construction_combination_w_check_material(
+        teilnehmergruppen,
+        konstruktionen,
+        request,
+        min_sleep_place_count_construction,
+        trip
+):
+    valid_konstruktionen = [
+        k for k in konstruktionen
+        if k.sleep_place_count > min_sleep_place_count_construction
+    ]
+
+    if not valid_konstruktionen:
+        return [], 0
+
+    weight_cache, material_cache = preload_construction_data(valid_konstruktionen)
+
+    original_order = list(enumerate(teilnehmergruppen))
+    teilnehmergruppen.sort(reverse=True)
+
+    used_materials_global = defaultdict(int)
+    result = []
+
+    for idx, group_size in original_order:
+        solution = find_best_construction_for_group(
+            valid_konstruktionen,
+            group_size,
+            used_materials_global,
+            request,
+            trip,
+            weight_cache,
+            material_cache
+        )
+
+        if solution is None:
+            result.append((idx, []))
+            continue
+
+        weight, combination = solution
+
+        for mat, cnt in calculate_material_usage_from_cache(
+                combination, material_cache
+        ).items():
+            used_materials_global[mat] += cnt
+
+        result.append((idx, combination))
+
+    result.sort(key=lambda x: x[0])
+    final_result = [comb for _, comb in result]
+
+    total_weight = sum(
+        weight_cache[c.id]
+        for group in final_result
+        for c in group
+    )
+
+    return final_result, total_weight
+
 def find_construction_combination_w_check_material(request, pk=None):
-    # Hole die Reise-Daten basierend auf der ID
     trip = get_object_or_404(Trip, pk=pk, owner=request.org)
-    # Teilnehmergruppen dynamisch aus TripGroups berechnen
+
     trip_groups = TripGroup.objects.filter(trip=trip)
     if not trip_groups.exists():
-        messages.warning(request, "Es sind keine Teilnehmergruppen vorhanden.")
+        messages.warning(request, "Keine Teilnehmergruppen vorhanden.")
         return redirect('edit_trip', pk=pk)
 
-    teilnehmergruppen = [group.count for group in trip_groups]
+    teilnehmergruppen = [g.count for g in trip_groups]
 
     konstruktionen = Construction.objects.filter(owner=request.org)
     if not konstruktionen.exists():
-        messages.warning(request, "Du hast keine Konstruktionen.")
+        messages.warning(request, "Keine Konstruktionen vorhanden.")
         return redirect('edit_trip', pk=pk)
 
-    min_sleeping_places_c = request.session.get("min_sleeping_places")  # Wert aus Session holen
-    if min_sleeping_places_c:
-        min_sleeping_places_c = int(min_sleeping_places_c)
-    else:
-        min_sleeping_places_c = 1
-    optimal_combination, min_total_weight = find_optimal_construction_combination_w_check_material(teilnehmergruppen,
-                                                                                                   konstruktionen,
-                                                                                                   request,
-                                                                                                   min_sleeping_places_c,
-                                                                                                   trip)
+    min_sleep = int(request.session.get("min_sleeping_places", 1))
 
-    group_construction_data = []
-    for group, group_combination in zip(trip_groups, optimal_combination):
-        group_data = {
-            'group_name': group.name,  # Falls Gruppen Namen haben
-            'constructs': [],
-            'total_weight': calculate_total_weight_for_group(group_combination),
-            'required_sleep_place_count': group.count
-        }
+    optimal, total_weight = find_optimal_construction_combination_w_check_material(
+        teilnehmergruppen,
+        konstruktionen,
+        request,
+        min_sleep,
+        trip
+    )
 
-        for konstruktion in group_combination:
-            group_data['constructs'].append({
-                'name': konstruktion.name,
-                'sleep_places': konstruktion.sleep_place_count
-            })
+    group_data = []
+    for group, combo in zip(trip_groups, optimal):
+        group_data.append({
+            "group_name": group.name,
+            "required_sleep_place_count": group.count,
+            "total_weight": sum(c.sleep_place_count for c in combo),
+            "constructs": [
+                {"name": c.name, "sleep_places": c.sleep_place_count}
+                for c in combo
+            ]
+        })
 
-        group_construction_data.append(group_data)
-    return render(request, 'events/find_construction_combination.html', {
-        'title': 'Optimale Konstruktions-Kombination finden mit Materialverfügbarkeits-Prüfung',
-        'trip': trip,
-        'group_construction_data': group_construction_data,
-        'min_total_weight': min_total_weight,
+    return render(request, "events/find_construction_combination.html", {
+        "trip": trip,
+        "group_construction_data": group_data,
+        "min_total_weight": total_weight,
+        "title": "Optimale Konstruktionen mit Materialprüfung"
     })
 
 
