@@ -936,75 +936,96 @@ def calculate_total_weight_for_group(group_combination):
         total_weight += konstruktion_weight
     return total_weight
 
-
 def find_optimal_construction_combination(teilnehmergruppen, konstruktionen, request,
                                           min_sleep_place_count_construction):
-    # Maximal mögliche Schlafplätze (Summe aller Gruppengrößen)
-    max_sleep_places = max(teilnehmergruppen)
-    max_sleep_place_count = max(c.sleep_place_count for c in konstruktionen)
+    """
+    Effizienter Algorithmus ohne Materialprüfung.
+    Berechnet die optimale Konstruktion je Gruppe (minimales Gewicht),
+    unter Beachtung der Mindest-Schlafplätze pro Einzelkonstruktion.
+    """
 
-    # DP-Array initialisieren: dp[x] speichert das minimale Gewicht für genau x Schlafplätze (oder mehr)
-    dp = [Decimal('Infinity')] * (max_sleep_places + max_sleep_place_count + 1)  # Ein hoher Wert für "Unendlich"
-    dp[0] = Decimal(0)  # 0 Schlafplätze brauchen 0 Gewicht
+    # Filtere Konstruktionen nach Mindest-Schlafplatzanzahl
+    valid_konstruktionen = [
+        k for k in konstruktionen
+        if k.sleep_place_count >= min_sleep_place_count_construction
+    ]
 
-    # Rückverfolgung für die Kombinationen der Konstruktionen
-    backtrace = defaultdict(list)
+    if not valid_konstruktionen:
+        # Keine gültigen Konstruktionen vorhanden
+        for g in teilnehmergruppen:
+            messages.warning(
+                request,
+                f"Größe {g} kann mit den verfügbaren Konstruktionen nicht abgedeckt werden!"
+            )
+        return [[] for _ in teilnehmergruppen], Decimal(0)
 
-    # Iteration durch alle Konstruktionen und alle möglichen Schlafplatzzahlen
-    for konstruktion in konstruktionen:
-        if konstruktion.sleep_place_count < min_sleep_place_count_construction:
-            continue
+    # Preload der Gewichte und Schlafplätze, um DB-Abfragen zu minimieren
+    preloaded_data = {}
+    for k in valid_konstruktionen:
+        materials = ConstructionMaterial.objects.filter(construction=k)
+        preloaded_data[k.id] = {
+            "obj": k,
+            "sleep": k.sleep_place_count,
+            "weight": calculate_construction_weight(materials),
+        }
 
-        materials = ConstructionMaterial.objects.filter(construction=konstruktion)
-        konstruktion_weight = calculate_construction_weight(materials)
+    # DP-Array vorbereiten
+    max_sleep = max(teilnehmergruppen)
+    max_konstruktion_sleep = max(d["sleep"] for d in preloaded_data.values())
+    max_dp = max_sleep + max_konstruktion_sleep
 
-        # Iteration durch alle möglichen Schlafplätze und auch die mit mehr Schlafplätzen
-        for sleep_places in range(konstruktion.sleep_place_count, max_sleep_places + max_sleep_place_count):
-            # Berechnung des neuen Gewichts, wenn wir diese Konstruktion zu einer bestehenden Gruppe hinzufügen
-            new_weight = dp[sleep_places - konstruktion.sleep_place_count] + konstruktion_weight
-            # Wenn das neue Gewicht besser (geringer) ist als das aktuelle Gewicht für diese Anzahl Schlafplätze
-            if new_weight < dp[sleep_places]:
-                dp[sleep_places] = new_weight
-                backtrace[sleep_places] = backtrace[sleep_places - konstruktion.sleep_place_count] + [konstruktion]
-    # Ergebnis für jede Gruppe berechnen
+    INF = Decimal("1000000000")
+    dp = [INF] * (max_dp + 1)
+    dp[0] = Decimal(0)
+
+    # Parent-Array für Backtracking
+    parent = [-1] * (max_dp + 1)
+
+    # Dynamic Programming
+    for k_id, d in preloaded_data.items():
+        sleep = d["sleep"]
+        weight = d["weight"]
+        for s in range(len(dp)-1, sleep-1, -1):
+            if dp[s - sleep] + weight < dp[s]:
+                dp[s] = dp[s - sleep] + weight
+                parent[s] = k_id
+
+    # Rekonstruktion je Gruppe
     result = []
     for group_size in teilnehmergruppen:
-        best_combination = None
-        min_weight = Decimal('Infinity')  # Setze das Anfangsgewicht auf "Unendlich"
+        best_s = None
+        best_weight = INF
+        for s in range(group_size, len(dp)):
+            if dp[s] < best_weight:
+                best_weight = dp[s]
+                best_s = s
 
-        # Iteriere durch alle möglichen Schlafplätze für diese Gruppe
-        for sleep_places in range(group_size, max_sleep_places + max_sleep_place_count):
-            if dp[sleep_places] != Decimal('Infinity'):
-                current_combination = backtrace[sleep_places]
-                current_weight = calculate_total_weight_for_group(current_combination)
+        if best_s is None:
+            # Keine Kombination für diese Gruppe
+            messages.warning(
+                request,
+                f"Größe {group_size} kann mit den verfügbaren Konstruktionen nicht abgedeckt werden!"
+            )
+            result.append([])
+            continue
 
-                # Wenn das aktuelle Gewicht geringer ist, als das bisher beste Gewicht
-                if current_weight < min_weight:
-                    best_combination = current_combination
-                    min_weight = current_weight
+        # Backtracking für die beste Kombination
+        combo = []
+        s = best_s
+        while s > 0 and parent[s] != -1:
+            k_id = parent[s]
+            combo.append(preloaded_data[k_id]["obj"])
+            s -= preloaded_data[k_id]["sleep"]
 
-        # Falls keine Kombination gefunden wird, warnen wir den Benutzer
-        if best_combination is None:
-            messages.warning(request,
-                             f"Größe {group_size} kann mit den verfügbaren Konstruktionen nicht abgedeckt werden!")
-            result.append([])  # Keine gültige Kombination für diese Gruppe
-        else:
-            result.append(best_combination)
+        result.append(combo)
 
-    # Berechne das Gesamtgewicht für jede Gruppe
-    group_weights = []
-    for group_combination in result:
-        group_weight = calculate_total_weight_for_group(group_combination)
-        group_weights.append(group_weight)
-
-    # Berechne das minimale Gesamtgewicht
-    if group_weights:
-        min_total_weight = sum(group_weights)
-    else:
-        min_total_weight = 0
+    # Gesamtgewicht berechnen
+    min_total_weight = sum(
+        sum(preloaded_data[k.id]["weight"] for k in combo)
+        for combo in result
+    )
 
     return result, min_total_weight
-
 
 def find_construction_combination(request, pk=None):
     # Hole die Reise-Daten basierend auf der ID
@@ -1299,7 +1320,7 @@ def find_construction_combination_w_check_material(request, pk=None):
     konstruktionen = Construction.objects.filter(owner=request.org)
     valid_konstruktionen = [
         k for k in konstruktionen
-        if k.sleep_place_count > min_sleep
+        if k.sleep_place_count >= min_sleep
     ]
     if not konstruktionen.exists():
         messages.warning(request, "Keine Konstruktionen vorhanden.")
