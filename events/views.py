@@ -1134,7 +1134,7 @@ def preload_construction_data(constructions):
             weight_cache[cid] = Decimal(0)
             material_cache[cid] = defaultdict(int)
 
-        weight_cache[cid] += cm.material.weight * cm.count
+        weight_cache[cid] += (cm.material.weight or 0) * cm.count
         material_cache[cid][cm.material.name] += cm.count
 
     return weight_cache, material_cache
@@ -1196,7 +1196,8 @@ def find_best_construction_for_group(
         material_cache
 ):
     max_sleep = sum(c.sleep_place_count for c in constructions)
-
+    if max_sleep == 0:
+        return None
     dp = [Decimal('Infinity')] * (max_sleep + 1)
     dp[0] = Decimal(0)
     backtrace = [[] for _ in range(max_sleep + 1)]
@@ -1234,18 +1235,10 @@ def find_optimal_construction_combination_w_check_material(
         teilnehmergruppen,
         konstruktionen,
         request,
-        min_sleep_place_count_construction,
         trip
 ):
-    valid_konstruktionen = [
-        k for k in konstruktionen
-        if k.sleep_place_count > min_sleep_place_count_construction
-    ]
 
-    if not valid_konstruktionen:
-        return [], 0
-
-    weight_cache, material_cache = preload_construction_data(valid_konstruktionen)
+    weight_cache, material_cache = preload_construction_data(konstruktionen)
 
     original_order = list(enumerate(teilnehmergruppen))
     teilnehmergruppen.sort(reverse=True)
@@ -1255,7 +1248,7 @@ def find_optimal_construction_combination_w_check_material(
 
     for idx, group_size in original_order:
         solution = find_best_construction_for_group(
-            valid_konstruktionen,
+            konstruktionen,
             group_size,
             used_materials_global,
             request,
@@ -1265,6 +1258,9 @@ def find_optimal_construction_combination_w_check_material(
         )
 
         if solution is None:
+            result.append((idx, []))
+            messages.warning(request,
+                             f"Größe {group_size} kann mit den verfügbaren Konstruktionen nicht abgedeckt werden!")
             result.append((idx, []))
             continue
 
@@ -1288,6 +1284,7 @@ def find_optimal_construction_combination_w_check_material(
 
     return final_result, total_weight
 
+
 def find_construction_combination_w_check_material(request, pk=None):
     trip = get_object_or_404(Trip, pk=pk, owner=request.org)
 
@@ -1298,21 +1295,23 @@ def find_construction_combination_w_check_material(request, pk=None):
 
     teilnehmergruppen = [g.count for g in trip_groups]
 
+    min_sleep = int(request.session.get("min_sleeping_places", 1))
     konstruktionen = Construction.objects.filter(owner=request.org)
+    valid_konstruktionen = [
+        k for k in konstruktionen
+        if k.sleep_place_count > min_sleep
+    ]
     if not konstruktionen.exists():
         messages.warning(request, "Keine Konstruktionen vorhanden.")
         return redirect('edit_trip', pk=pk)
 
-    min_sleep = int(request.session.get("min_sleeping_places", 1))
 
     optimal, total_weight = find_optimal_construction_combination_w_check_material(
         teilnehmergruppen,
-        konstruktionen,
+        valid_konstruktionen,
         request,
-        min_sleep,
         trip
     )
-
     group_data = []
     for group, combo in zip(trip_groups, optimal):
         group_data.append({
