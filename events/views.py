@@ -985,7 +985,7 @@ def find_optimal_construction_combination(teilnehmergruppen, konstruktionen, req
     for k_id, d in preloaded_data.items():
         sleep = d["sleep"]
         weight = d["weight"]
-        for s in range(len(dp)-1, sleep-1, -1):
+        for s in range(sleep, len(dp)):  # aufsteigend
             if dp[s - sleep] + weight < dp[s]:
                 dp[s] = dp[s - sleep] + weight
                 parent[s] = k_id
@@ -1216,7 +1216,7 @@ def find_best_construction_for_group(
         weight_cache,
         material_cache
 ):
-    max_sleep = sum(c.sleep_place_count for c in constructions)
+    max_sleep = max(required_sleep_places, sum(c.sleep_place_count for c in constructions))
     if max_sleep == 0:
         return None
     dp = [Decimal('Infinity')] * (max_sleep + 1)
@@ -1227,7 +1227,7 @@ def find_best_construction_for_group(
         sleep = c.sleep_place_count
         weight = weight_cache[c.id]
 
-        for s in range(max_sleep, sleep - 1, -1):
+        for s in range(sleep, max_sleep + 1):
             if dp[s - sleep] + weight < dp[s]:
                 dp[s] = dp[s - sleep] + weight
                 backtrace[s] = backtrace[s - sleep] + [c]
