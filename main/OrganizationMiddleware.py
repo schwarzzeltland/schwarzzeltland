@@ -15,7 +15,13 @@ class OrganizationMiddleware:
         org: Organization | None = None
         membership = None
         if request.user.is_authenticated:
-            if "org" in request.POST:
+            if "org" in request.GET:
+                org_candidate = request.user.organization_set.filter(id=request.GET["org"]).first()
+                if org_candidate:
+                    org = org_candidate
+                    request.session["org"] = org.id
+            # Session aktualisieren
+            elif "org" in request.POST:
                 org = request.user.organization_set.filter(id=request.POST["org"]).first()
                 request.session["org"] = org.id
                 return HttpResponseRedirect(request.get_full_path())
