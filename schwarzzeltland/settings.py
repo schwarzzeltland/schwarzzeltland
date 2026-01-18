@@ -40,7 +40,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "send_due_checklist_items_daily": {
         "task": "main.tasks.send_due_checklist_items_today",
-        "schedule": crontab(hour=17, minute=16),  # 08:00 Uhr
+        "schedule": crontab(hour=17, minute=40),  # 08:00 Uhr
     },
 
 }
@@ -171,3 +171,4 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
 
 CSRF_FAILURE_VIEW = "main.views.custom_csrf_failure"
+SITE_URL = "https://schwarzzeltland.de"

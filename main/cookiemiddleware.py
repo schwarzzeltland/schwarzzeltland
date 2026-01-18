@@ -12,10 +12,10 @@ class CookieConsentMiddleware:
         response = self.get_response(request)
 
         consent = request.COOKIES.get("cookies_accepted")
-        if consent != "true":
+        #if consent != "true":
             # CSRF-Cookie löschen
-            response.delete_cookie("csrftoken", path="/")
+            #response.delete_cookie("csrftoken", path="/")
             # Session-Cookie löschen
-            response.delete_cookie(getattr(settings, "SESSION_COOKIE_NAME", "sessionid"), path="/")
+            #response.delete_cookie(getattr(settings, "SESSION_COOKIE_NAME", "sessionid"), path="/")
 
         return response
