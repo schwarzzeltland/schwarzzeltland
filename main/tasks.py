@@ -68,9 +68,8 @@ def send_due_checklist_items_today():
                 "checklist", args=[item.trip.id]
             )
         elif item.organization:
-            url = settings.SITE_URL + reverse(
-                "organization_material_checklist", args=[item.organization.id]
-            )
+            url = f"https://schwarzzeltland.de/main/organization_material/checklist/?org={item.organization.id}"
+
         else:
             url = settings.SITE_URL
         logger.info(f"E-Mail wird an {recipients} mit dem Titel {item.title} gesendet!")
@@ -130,7 +129,7 @@ def send_due_checklist_items_today():
                         </div>
 
                         <p style="color:#666; font-size:13px;">
-                          Schwarzzeltland – Organisation & Planung
+                          Schwarzzeltland
                         </p>
                       </td>
                     </tr>
