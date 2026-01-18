@@ -28,6 +28,16 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 ALLOWED_HOSTS = ['127.0.0.1', '0.0.0.0', 'localhost', 'schwarzzeltland.de']
 CSRF_TRUSTED_ORIGINS = ["https://schwarzzeltland.de"]
 
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = CELERY_BROKER_URL # Optional: stores task results in Redis
+
+CELERY_BEAT_SCHEDULE = {
+    'run-heartbeat-every-minute': {
+        'task': 'main.tasks.heartbeat_task',
+        'schedule': 60.0,  # Run every 60 seconds
+    },
+}
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -43,7 +53,10 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "imagekit",
+    "django_celery_beat",
 ]
+
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

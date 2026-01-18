@@ -9,9 +9,10 @@ services:
       - media_volume:/app/uploads
     expose:
       - 8000
-    environment:
+    environment: &django_env  # Anchor to avoid repeating env vars
       DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY}"
       DJANGO_DEBUG: "${DJANGO_DEBUG}"
+      CELERY_BROKER_URL: redis://redis:6379/0
       GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY}"
       EMAIL_HOST: "${EMAIL_HOST}"
       EMAIL_HOST_USER: "${EMAIL_HOST_USER}"
@@ -26,6 +27,8 @@ services:
       DATABASE: postgres
     depends_on:
       - db
+      - redis
+
   db:
     image: postgres:15
     restart: unless-stopped
@@ -35,6 +38,28 @@ services:
       POSTGRES_DB: schwarzzeltland
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  celery_worker:
+    build: .
+    command: celery -A schwarzzeltland worker --loglevel=info
+    volumes:
+      - media_volume:/app/uploads
+    environment: *django_env
+    depends_on:
+      - db
+      - redis
+
+  celery_beat:
+    build: .
+    command: celery -A schwarzzeltland beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment: *django_env
+    depends_on:
+      - db
+      - redis
   nginx:
     image: ghcr.io/schwarzzeltland/schwarzzeltland/nginx:main
     restart: unless-stopped
