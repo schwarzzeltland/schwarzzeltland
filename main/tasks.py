@@ -66,7 +66,7 @@ def send_due_checklist_items_today():
         if item.trip:
             url = settings.SITE_URL + reverse(
                 "checklist", args=[item.trip.id]
-            )
+            )+f"?org={item.trip.owner.id}"
         elif item.organization:
             url = f"https://schwarzzeltland.de/main/organization_material/checklist/?org={item.organization.id}"
 
@@ -98,7 +98,7 @@ def send_due_checklist_items_today():
                         <p>Hallo,</p>
 
                         <p>
-                          der folgende <strong>Checklistenpunkt</strong> ist heute fällig:
+                          der folgende <strong>To-Do-Eintrag</strong> ist heute fällig:
                         </p>
 
                         <p style="font-size:16px; font-weight:bold;">
@@ -110,13 +110,13 @@ def send_due_checklist_items_today():
                           {item.due_date.strftime('%d.%m.%Y %H:%M')}
                         </p>
 
-                        {"<p><strong>Trip:</strong><br>" + str(item.trip) + "</p>" if item.trip else ""}
+                        {"<p><strong>Veranstaltung:</strong><br>" + str(item.trip) + "</p>" if item.trip else ""}
                         {"<p><strong>Organisation:</strong><br>" + str(item.organization) + "</p>" if item.organization else ""}
 
                         <div style="text-align:center; margin:32px 0;">
                           <a href="{url}"
                              style="
-                               background-color:#1f6feb;
+                               background-color:#ffc451;
                                color:#ffffff;
                                padding:14px 24px;
                                text-decoration:none;
