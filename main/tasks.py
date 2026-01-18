@@ -152,6 +152,6 @@ def send_due_checklist_items_today():
             message=text_message,
             recipient_list=recipients,
             html_message=html_message,
-            from_email= f"{sender_name} – Schwarzzeltland <no-reply@schwarzzeltland.de>",
+            from_email= f"{sender_name} – Schwarzzeltland <{settings.EMAIL_HOST_USER}>",
             fail_silently=False,
         )
