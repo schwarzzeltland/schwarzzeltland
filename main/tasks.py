@@ -60,7 +60,7 @@ def send_due_checklist_items_today():
         # ❌ Keine Empfänger → keine Mail
         if not recipients:
             continue
-
+        logger.info(f"E-Mail wird an {recipients} mit dem Titel {item.title} gesendet!")
         send_mail(
             subject=f"⏰ Heute fällig: {item.title}",
             message=(
