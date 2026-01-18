@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 import os
 from pathlib import Path
 
+from celery.schedules import crontab
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -29,13 +31,18 @@ ALLOWED_HOSTS = ['127.0.0.1', '0.0.0.0', 'localhost', 'schwarzzeltland.de']
 CSRF_TRUSTED_ORIGINS = ["https://schwarzzeltland.de"]
 
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = CELERY_BROKER_URL # Optional: stores task results in Redis
+CELERY_RESULT_BACKEND = CELERY_BROKER_URL  # Optional: stores task results in Redis
 
 CELERY_BEAT_SCHEDULE = {
     'run-heartbeat-every-minute': {
         'task': 'main.tasks.heartbeat_task',
         'schedule': 60.0,  # Run every 60 seconds
     },
+    "send_due_checklist_items_daily": {
+        "task": "main.tasks.send_due_checklist_items_today",
+        "schedule": crontab(hour=17, minute=10),  # 08:00 Uhr
+    },
+
 }
 
 # Application definition
@@ -130,8 +137,6 @@ LANGUAGE_CODE = "de-de"
 
 TIME_ZONE = 'Europe/Berlin'  # Stelle sicher, dass die richtige Zeitzone eingestellt ist
 USE_TZ = True
-
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
