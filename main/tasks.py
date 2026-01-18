@@ -141,12 +141,17 @@ def send_due_checklist_items_today():
           </body>
         </html>
         """
+        if item.organization:
+            sender_name = item.organization.name
+        elif item.trip:
+            sender_name = item.trip.owner.name
+
 
         send_mail(
             subject=subject,
             message=text_message,
             recipient_list=recipients,
             html_message=html_message,
-            from_email=f"{item.organization.name} – Schwarzzeltland {settings.DEFAULT_FROM_EMAIL}",
+            from_email= f"{sender_name} – Schwarzzeltland <no-reply@schwarzzeltland.de>",
             fail_silently=False,
         )
