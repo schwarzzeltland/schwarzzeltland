@@ -53,20 +53,20 @@
 </div>
 
 <!-- Formular zum Hinzufügen -->
-<div class="table-responsive mb-3">
-    <form id="vacancy-form" method="post" class="d-flex gap-2 align-items-end mb-3">
+<div class="card p-3 mb-3">
+    <form id="vacancy-form" method="post" class="row g-2 align-items-end">
         {% csrf_token %}
-        <div style="flex: 2;">
+        <div class="col-md-3 col-sm-6">
             {{ form.name }}
         </div>
-        <div style="flex: 1;">
+        <div class="col-md-3 col-sm-6">
             {{ form.arrival }}
         </div>
-        <div style="flex: 1;">
+        <div class="col-md-3 col-sm-6">
             {{ form.departure }}
         </div>
-        <div>
-            <button type="submit" class="btn btn-success">Teilnehmer hinzufügen</button>
+        <div class="col-md-3 col-sm-6">
+            <button type="submit" class="btn btn-success w-100">Teilnehmer hinzufügen</button>
         </div>
     </form>
 </div>
@@ -181,9 +181,8 @@ attachInlineEditHandlers();
 </script>
 
 <style>
-/* Einheitliches Design wie bei Einkaufsliste */
 #vacancy-form input {
-    min-width: 120px;
+    min-width: 100px;
 }
 #vacancies-table input.form-control-sm {
     min-width: 100px;

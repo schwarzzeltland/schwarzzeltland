@@ -115,23 +115,29 @@ class ShoppingListItem(models.Model):
     unit = models.CharField(max_length=50, blank=True)
     # Warengruppen
     GROUP_DRINKS = 0
-    GROUP_CANNED = 1
-    GROUP_BAKED = 2
-    GROUP_TOPPING = 3
+    GROUP_CEREALS_BAKED= 1
+    GROUP_FRUITS_VEGETABLES = 2
+    GROUP_COOLED = 3
     GROUP_GRILL = 4
-    GROUP_TOOLS = 5
-    GROUP_MATERIAL = 6
+    GROUP_CANNED = 5
+    GROUP_SNACKS = 6
     GROUP_HYGIENE = 7
+    GROUP_TOOLS = 8
+    GROUP_MATERIAL = 9
+    GROUP_OTHER = 99
 
     GROUPS = (
         (GROUP_DRINKS, "Getränke"),
-        (GROUP_CANNED, "Konserven"),
-        (GROUP_BAKED, "Backwaren"),
-        (GROUP_TOPPING, "Aufschnitt"),
+        (GROUP_CEREALS_BAKED, "Brot / Cerealien"),
+        (GROUP_FRUITS_VEGETABLES, "Obst / Gemüse"),
+        (GROUP_COOLED, "Kühlung"),
         (GROUP_GRILL, "Grillgut"),
+        (GROUP_CANNED, "Konserven"),
+        (GROUP_SNACKS, "Snacks"),
+        (GROUP_HYGIENE, "Hygiene"),
         (GROUP_TOOLS, "Werkzeug"),
         (GROUP_MATERIAL, "Material"),
-        (GROUP_HYGIENE, "Hygiene"),
+        (GROUP_OTHER, "Sonstiges"),
     )
     product_group = models.IntegerField(choices=GROUPS, null=True, blank=True, verbose_name="Warengruppe")
     created_at = models.DateTimeField(auto_now_add=True)
