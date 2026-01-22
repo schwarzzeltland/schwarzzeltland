@@ -3,13 +3,13 @@
 
 {% block content %}
     <div id="messages"></div>
+
+    <!-- Such- und Filterbereich als Input-Group -->
     <form method="get" action="" class="mb-3">
         <div class="input-group">
-            <!-- Suchfeld -->
-            <input type="text" class="form-control"
-                   name="search"
-                   value="{{ search_query|default:'' }}"
-                   placeholder="Suchen nach Artikel">
+            <!-- Textfeld Suche -->
+            <input type="text" class="form-control" name="search"
+                   value="{{ search_query|default:'' }}" placeholder="Suchen nach Artikel">
 
             <!-- Dropdown Warengruppe -->
             <select class="form-select" name="product_group">
@@ -26,21 +26,24 @@
             <button class="btn btn-outline-secondary" type="submit">Suchen</button>
         </div>
     </form>
+
+
+    <!-- Tabelle -->
     <div class="table-responsive mb-3">
-        <table class="table" id="shoppinglist-table">
-            <thead>
+        <table class="table table-hover align-middle" id="shoppinglist-table">
+            <thead class="table-light">
             <tr>
                 <th>Artikel</th>
-                <th>Menge</th>
-                <th>Einheit</th>
-                <th>Warengruppe</th>
-                <th></th>
+                <th style="width: 120px;">Menge</th>
+                <th style="width: 120px;">Einheit</th>
+                <th style="width: 150px;">Warengruppe</th>
+                <th class="text-end" style="width: 50px;"></th>
             </tr>
             </thead>
             <tbody>
             {% for item in shoppinglist %}
                 <tr id="item-{{ item.pk }}">
-                    <td>{{ item.name }}</td>
+                    <td class="fw-semibold">{{ item.name }}</td>
                     <td>
                         <input type="number" step="0.01" class="form-control form-control-sm inline-edit"
                                data-id="{{ item.pk }}" data-field="amount"
@@ -53,8 +56,7 @@
                     </td>
                     <td>
                         <select class="form-select form-select-sm inline-edit"
-                                data-id="{{ item.pk }}"
-                                data-field="product_group">
+                                data-id="{{ item.pk }}" data-field="product_group">
                             <option value="">---------</option>
                             {% for value, label in item.GROUPS %}
                                 <option value="{{ value }}"
@@ -67,50 +69,60 @@
                     <td class="text-end">
                         <button class="btn btn-success btn-sm delete-item"
                                 data-id="{{ item.pk }}"
-                                data-url="{% url 'delete_shoppinglist_item' item.pk %}">
-                            ✔
+                                data-url="{% url 'delete_shoppinglist_item' item.pk %}">✔
                         </button>
                     </td>
                 </tr>
             {% empty %}
                 <tr id="no-items-row">
-                    <td colspan="4" class="text-center text-muted">Keine Artikel in der Einkaufsliste.</td>
+                    <td colspan="5" class="text-center text-muted">Keine Artikel in der Einkaufsliste.</td>
                 </tr>
             {% endfor %}
             </tbody>
         </table>
     </div>
-    <div class="table-responsive mb-3">
-        <form id="shoppinglist-form" method="post" class="d-flex gap-2 align-items-end">
+
+    <!-- Formular zum Hinzufügen -->
+    <div class="card p-3 mb-3">
+        <form id="shoppinglist-form" method="post" class="row g-2 align-items-end">
             {% csrf_token %}
-            <div style="flex: 2;">
+            <div class="col-md-4">
                 {{ form.name }}
             </div>
-            <div style="flex: 1;">
+            <div class="col-md-2">
                 {{ form.amount }}
             </div>
-            <div style="flex: 1;">
+            <div class="col-md-2">
                 {{ form.unit }}
             </div>
-            <div style="flex: 1;">
+            <div class="col-md-2">
                 {{ form.product_group }}
             </div>
-            <div>
-                <button type="submit" class="btn btn-success">Artikel hinzufügen</button>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-success w-100">Artikel hinzufügen</button>
             </div>
         </form>
     </div>
-    <div class="mt-2">
-        <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary">Zurück</a>
-    </div>
 
+    <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary">Zurück</a>
+
+    <!-- Options für JS vorbereiten -->
+    <script>
+        const productGroupOptions = `
+    <option value="">---------</option>
+    {% for value, label in shoppinglist.model.GROUPS %}
+        <option value="{{ value }}">{{ label }}</option>
+    {% endfor %}
+`;
+    </script>
+
+    <!-- Inline-Edit & Delete JS -->
     <script>
         const form = document.getElementById("shoppinglist-form");
 
-        // --- Hinzufügen ---
+        // Hinzufügen
         form.addEventListener("submit", function (e) {
             e.preventDefault();
-
             const formData = new FormData(this);
             const csrftoken = this.querySelector('input[name="csrfmiddlewaretoken"]').value;
 
@@ -127,33 +139,27 @@
 
                         const tbody = document.querySelector("#shoppinglist-table tbody");
                         tbody.insertAdjacentHTML("beforeend", `
-                <tr id="item-${data.item.id}">
-                    <td>${data.item.name}</td>
-                    <td><input type="number" class="form-control form-control-sm inline-edit"
-                               data-id="${data.item.id}" data-field="amount"
-                               value="${data.item.amount}"></td>
-                    <td><input type="text" class="form-control form-control-sm inline-edit"
-                               data-id="${data.item.id}" data-field="unit"
-                               value="${data.item.unit}"></td>
-
-                    <td>
+<tr id="item-${data.item.id}">
+    <td class="fw-semibold">${data.item.name}</td>
+    <td><input type="number" class="form-control form-control-sm inline-edit"
+               data-id="${data.item.id}" data-field="amount"
+               value="${data.item.amount}"></td>
+    <td><input type="text" class="form-control form-control-sm inline-edit"
+               data-id="${data.item.id}" data-field="unit"
+               value="${data.item.unit}"></td>
+    <td>
         <select class="form-select form-select-sm inline-edit"
-        data-id="${data.item.id}"
-        data-field="product_group">
-    <option value="" selected>---------</option>
-    {% for value, label in shoppinglist.model.GROUPS %}
-        <option value="{{ value }}">{{ label }}</option>
-    {% endfor %}
-</select>
+                data-id="${data.item.id}" data-field="product_group">
+            ${productGroupOptions}
+        </select>
     </td>
-                    <td class="text-end">
-                        <button class="btn btn-success btn-sm delete-item"
-                                data-id="${data.item.id}"
-                                data-url="${data.item.delete_url}">✔</button>
-                    </td>
-                </tr>
+    <td class="text-end">
+        <button class="btn btn-success btn-sm delete-item"
+                data-id="${data.item.id}"
+                data-url="${data.item.delete_url}">✔</button>
+    </td>
+</tr>
             `);
-
                         attachDeleteHandlers();
                         attachInlineEditHandlers();
                         form.reset();
@@ -163,7 +169,7 @@
                 });
         });
 
-        // --- Löschen ---
+        // Delete & Inline-Edit bleiben unverändert
         function attachDeleteHandlers() {
             document.querySelectorAll('.delete-item').forEach(btn => {
                 btn.onclick = function (e) {
@@ -179,16 +185,13 @@
                                 document.getElementById(`item-${itemId}`).remove();
                                 if (document.querySelectorAll('#shoppinglist-table tbody tr').length === 0) {
                                     const tbody = document.querySelector('#shoppinglist-table tbody');
-                                    tbody.innerHTML = '<tr id="no-items-row"><td colspan="4" class="text-center text-muted">Keine Artikel in der Einkaufsliste.</td></tr>';
+                                    tbody.innerHTML = '<tr id="no-items-row"><td colspan="5" class="text-center text-muted">Keine Artikel in der Einkaufsliste.</td></tr>';
                                 }
                                 if (data.message) {
                                     const alert = document.createElement("div");
                                     alert.className = "alert alert-success mt-2";
                                     alert.innerText = data.message;
-
                                     document.querySelector("#messages").appendChild(alert);
-
-                                    // Auto entfernen nach 3 Sekunden
                                     setTimeout(() => alert.remove(), 5000);
                                 }
                             }
@@ -197,7 +200,6 @@
             });
         }
 
-        // --- Inline-Änderungen ---
         function attachInlineEditHandlers() {
             document.querySelectorAll('.inline-edit').forEach(input => {
                 input.onchange = function () {
@@ -226,28 +228,29 @@
         attachDeleteHandlers();
         attachInlineEditHandlers();
     </script>
+
+    <!-- CSS -->
     <style>
-        #shoppinglist-form input {
-            width: 100%;
+        #shoppinglist-table input.form-control-sm,
+        #shoppinglist-table select.form-select-sm {
             min-width: 120px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
-        #shoppinglist-form select {
-            min-width: 120px;
+        #shoppinglist-table {
+            table-layout: auto;
+            width: 100%;
         }
 
         #shoppinglist-table td,
         #shoppinglist-table th {
-            white-space: nowrap; /* verhindert Zeilenumbruch */
+            white-space: nowrap;
         }
 
-        #shoppinglist-table input.form-control-sm,
-        #shoppinglist-table select.form-select-sm {
-            min-width: 75px; /* Mindestbreite */
-        }
-
-        #shoppinglist-table {
-            table-layout: auto; /* flexible Spaltenbreite je nach Inhalt */
+        #shoppinglist-form .form-control,
+        #shoppinglist-form .form-select {
+            min-width: 120px;
         }
     </style>
 {% endblock %}
