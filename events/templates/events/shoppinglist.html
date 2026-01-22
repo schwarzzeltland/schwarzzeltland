@@ -235,5 +235,19 @@
         #shoppinglist-form select {
             min-width: 120px;
         }
+
+        #shoppinglist-table td,
+        #shoppinglist-table th {
+            white-space: nowrap; /* verhindert Zeilenumbruch */
+        }
+
+        #shoppinglist-table input.form-control-sm,
+        #shoppinglist-table select.form-select-sm {
+            min-width: 75px; /* Mindestbreite */
+        }
+
+        #shoppinglist-table {
+            table-layout: auto; /* flexible Spaltenbreite je nach Inhalt */
+        }
     </style>
 {% endblock %}
