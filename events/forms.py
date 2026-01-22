@@ -12,6 +12,7 @@ from events.models import Trip, TripConstruction, Location, TripGroup, TripMater
 
 class TripForm(ModelForm):
     recipient_org_name = forms.CharField(label="Empfänger", max_length=255, required=False)
+
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop('organization', None)
         super(TripForm, self).__init__(*args, **kwargs)
@@ -42,6 +43,7 @@ class TripForm(ModelForm):
             self.fields['planners'].queryset = qs
         else:
             self.fields['planners'].queryset = User.objects.none()
+
     class Meta:
         model = Trip
         fields = '__all__'
@@ -67,6 +69,7 @@ class TripForm(ModelForm):
             return Organization.objects.get(name__iexact=name)
         except Organization.DoesNotExist:
             raise forms.ValidationError("Organisation mit diesem Namen nicht gefunden.")
+
     def clean(self):
         cleaned_data = super().clean()
         trip_type = cleaned_data.get('type')
@@ -93,6 +96,7 @@ class TripForm(ModelForm):
             trip.save()
             self.save_m2m()
         return trip
+
 
 class TripConstructionForm(ModelForm):
     def __init__(self, *args, **kwargs):
@@ -224,23 +228,30 @@ class TripMaterialForm(ModelForm):
     class Meta:
         model = TripMaterial
         fields = '__all__'
-        exclude = ['owner','reduced_from_stock','previous_count']
+        exclude = ['owner', 'reduced_from_stock', 'previous_count']
+
 
 TripMaterialFormSet = inlineformset_factory(
-        Trip, TripMaterial, form=TripMaterialForm,
-        fields=("material", "count", "description"),
-        extra=1, can_delete=True
-    )
+    Trip, TripMaterial, form=TripMaterialForm,
+    fields=("material", "count", "description"),
+    extra=1, can_delete=True
+)
+
 
 class ShoppingListItemForm(forms.ModelForm):
     class Meta:
         model = ShoppingListItem
-        fields = ["name", "amount", "unit"]
+        fields = ["name", "amount", "unit", "product_group"]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Artikel"}),
             "amount": forms.NumberInput(attrs={"class": "form-control", "placeholder": "Menge"}),
             "unit": forms.TextInput(attrs={"class": "form-control", "placeholder": "Einheit"}),
+            "product_group": forms.Select(attrs={"class": "form-select"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["product_group"].required = False
 
 class TripVacancyForm(forms.ModelForm):
     class Meta:
@@ -252,11 +263,12 @@ class TripVacancyForm(forms.ModelForm):
             "departure": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
         }
 
+
 class EventPlanningChecklistItemForm(forms.ModelForm):
     class Meta:
         model = EventPlanningChecklistItem
         fields = ["title", "due_date"]
         widgets = {
             "title": forms.TextInput(attrs={"class": "form-control", "placeholder": "Neuen Punkt hinzufügen..."}),
-            "due_date":forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
+            "due_date": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
         }

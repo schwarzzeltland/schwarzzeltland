@@ -936,6 +936,7 @@ def calculate_total_weight_for_group(group_combination):
         total_weight += konstruktion_weight
     return total_weight
 
+
 def find_optimal_construction_combination(teilnehmergruppen, konstruktionen, request,
                                           min_sleep_place_count_construction):
     """
@@ -1026,6 +1027,7 @@ def find_optimal_construction_combination(teilnehmergruppen, konstruktionen, req
     )
 
     return result, min_total_weight
+
 
 def find_construction_combination(request, pk=None):
     # Hole die Reise-Daten basierend auf der ID
@@ -1156,12 +1158,14 @@ def preload_construction_data(constructions):
         material_cache[cid][cm.material.name] += cm.count
     return weight_cache, material_cache
 
+
 def calculate_material_usage_from_cache(combination, material_cache):
     usage = defaultdict(int)
     for c in combination:
         for mat, cnt in material_cache.get(c.id, {}).items():
             usage[mat] += cnt
     return usage
+
 
 def check_material_availability(total_material_counts, request, trip):
     material_lager = defaultdict(int)
@@ -1187,13 +1191,15 @@ def check_material_availability(total_material_counts, request, trip):
     for e in used_trip_materials:
         material_used_parallel[e['tripmaterial__material__name']] += e['total'] or 0
     for e in used_construction_materials:
-        material_used_parallel[e['tripconstruction__construction__constructionmaterial__material__name']] += e['total'] or 0
+        material_used_parallel[e['tripconstruction__construction__constructionmaterial__material__name']] += e[
+                                                                                                                 'total'] or 0
 
     for material, required in total_material_counts.items():
         available = material_lager.get(material, 0) - material_used_parallel.get(material, 0)
         if required > available:
             return False
     return True
+
 
 def find_best_construction_for_group(constructions, group_size, used_materials_global,
                                      request, trip, weight_cache, material_cache):
@@ -1253,6 +1259,7 @@ def find_best_construction_for_group(constructions, group_size, used_materials_g
 
     return None
 
+
 def find_optimal_construction_combination_w_check_material(teilnehmergruppen, konstruktionen, request, trip):
     weight_cache, material_cache = preload_construction_data(konstruktionen)
     min_sleep = int(request.session.get("min_sleeping_places", 1))
@@ -1292,6 +1299,7 @@ def find_optimal_construction_combination_w_check_material(teilnehmergruppen, ko
 
     total_weight = sum(weight_cache[c.id] for group in final_result for c in group)
     return final_result, total_weight
+
 
 def find_construction_combination_w_check_material(request, pk=None):
     trip = get_object_or_404(Trip, pk=pk, owner=request.org)
@@ -1384,10 +1392,15 @@ def shoppinglist(request, pk=None):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
     trip = get_object_or_404(Trip, pk=pk, owner=request.org)
     items = trip.shoppinglist.all()
-    search_query = request.GET.get('search', '')
+    search_query = request.GET.get('search', '').strip()
+    selected_product_group = request.GET.get('product_group', '')
     if search_query:
-        items = items.filter(
-            Q(name__icontains=search_query)).order_by('name')
+        items = items.filter(name__icontains=search_query)
+
+    if selected_product_group != "":
+        items = items.filter(product_group=selected_product_group)
+
+    items = items.order_by('product_group', 'name')
     for item in items:
         item.amount_str = "{0:.2f}".format(item.amount)
     form = ShoppingListItemForm()  # <-- Form muss erstellt werden
@@ -1396,6 +1409,9 @@ def shoppinglist(request, pk=None):
         'trip': trip,
         'shoppinglist': items,
         'form': form,
+        'search_query': search_query,
+        'product_groups': ShoppingListItem.GROUPS,
+        'selected_product_group': selected_product_group,
     })
 
 
@@ -1425,6 +1441,7 @@ def add_shoppinglist_item(request, trip_id):
                 "name": item.name,
                 "amount": str(item.amount),
                 "unit": item.unit,
+                "product_group": item.product_group,
                 "delete_url": reverse("delete_shoppinglist_item", args=[item.pk])
             }
         })
@@ -1446,7 +1463,7 @@ def update_shoppinglist_item(request):
         field = data.get("field")
         value = data.get("value")
 
-        if field not in ["amount", "unit"]:
+        if field not in ["amount", "unit", "product_group"]:
             return JsonResponse({"success": False, "error": "Ungültiges Feld"})
 
         if field == "amount":
@@ -1454,6 +1471,17 @@ def update_shoppinglist_item(request):
                 value = Decimal(str(value).replace(",", "."))
             except (InvalidOperation, TypeError):
                 return JsonResponse({"success": False, "error": "Ungültige Zahl"})
+        if field == "product_group":
+            if value == "":
+                item.product_group = None
+            else:
+                try:
+                    item.product_group = int(value)
+                except (TypeError, ValueError):
+                    return JsonResponse({"success": False, "error": "Ungültige Warengruppe"})
+
+            item.save()
+            return JsonResponse({"success": True})
 
         setattr(item, field, value)
         item.save()

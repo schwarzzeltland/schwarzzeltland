@@ -2,12 +2,27 @@
 {% load bootstrap5 %}
 
 {% block content %}
-<div id="messages"></div>
-    <!-- Suchfeld -->
+    <div id="messages"></div>
     <form method="get" action="" class="mb-3">
         <div class="input-group">
-            <input type="text" class="form-control" name="search" value="{{ search_query }}"
+            <!-- Suchfeld -->
+            <input type="text" class="form-control"
+                   name="search"
+                   value="{{ search_query|default:'' }}"
                    placeholder="Suchen nach Artikel">
+
+            <!-- Dropdown Warengruppe -->
+            <select class="form-select" name="product_group">
+                <option value="">Alle Warengruppen</option>
+                {% for value, label in product_groups %}
+                    <option value="{{ value }}"
+                            {% if value|stringformat:"s" == selected_product_group %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <!-- Button -->
             <button class="btn btn-outline-secondary" type="submit">Suchen</button>
         </div>
     </form>
@@ -18,6 +33,7 @@
                 <th>Artikel</th>
                 <th>Menge</th>
                 <th>Einheit</th>
+                <th>Warengruppe</th>
                 <th></th>
             </tr>
             </thead>
@@ -34,6 +50,19 @@
                         <input type="text" class="form-control form-control-sm inline-edit"
                                data-id="{{ item.pk }}" data-field="unit"
                                value="{{ item.unit }}">
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm inline-edit"
+                                data-id="{{ item.pk }}"
+                                data-field="product_group">
+                            <option value="">---------</option>
+                            {% for value, label in item.GROUPS %}
+                                <option value="{{ value }}"
+                                        {% if item.product_group == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
                     </td>
                     <td class="text-end">
                         <button class="btn btn-success btn-sm delete-item"
@@ -62,6 +91,9 @@
             </div>
             <div style="flex: 1;">
                 {{ form.unit }}
+            </div>
+            <div style="flex: 1;">
+                {{ form.product_group }}
             </div>
             <div>
                 <button type="submit" class="btn btn-success">Artikel hinzufügen</button>
@@ -103,6 +135,17 @@
                     <td><input type="text" class="form-control form-control-sm inline-edit"
                                data-id="${data.item.id}" data-field="unit"
                                value="${data.item.unit}"></td>
+
+                    <td>
+        <select class="form-select form-select-sm inline-edit"
+        data-id="${data.item.id}"
+        data-field="product_group">
+    <option value="" selected>---------</option>
+    {% for value, label in shoppinglist.model.GROUPS %}
+        <option value="{{ value }}">{{ label }}</option>
+    {% endfor %}
+</select>
+    </td>
                     <td class="text-end">
                         <button class="btn btn-success btn-sm delete-item"
                                 data-id="${data.item.id}"
@@ -186,6 +229,10 @@
     <style>
         #shoppinglist-form input {
             width: 100%;
+            min-width: 120px;
+        }
+
+        #shoppinglist-form select {
             min-width: 120px;
         }
     </style>
