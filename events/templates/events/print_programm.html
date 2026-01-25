@@ -1,0 +1,137 @@
+
+<div id="programm-wrapper" style="display: block;">
+    {% for day, items in grouped_by_day %}
+        <div class="day-column" style="width: 100%; border: 1px solid #ccc; page-break-before: always; page-break-inside: avoid;">
+            <h2 style="text-align:center; margin-bottom:10px;">{{ day|date:"D, d.m.Y" }}</h2>
+            <div style="position: relative; height: {{ container_height }}px;">
+                <!-- Stundenlinien -->
+                {% for hour, position in hours %}
+                    <div class="hour-line" style="top: {{ position }}px;">
+                        {{ hour }}:00
+                    </div>
+                {% endfor %}
+                <!-- Programmkarten -->
+                {% for item in items %}
+                    <div class="card {{ item.type_class }} {% if not is_event_manager and not item.visible_for_members %}restricted{% endif %}"
+                         style="top: {{ item.offset|floatformat:0 }}px;
+                                height: {{ item.duration|floatformat:0 }}px;
+                                left: {{ item.left|floatformat:0 }}px;
+                                width: {{ item.width|floatformat:0 }}px;">
+                        <strong>{{ item.name }}</strong><br>
+                        <small>{{ item.get_type_display }}</small><br>
+                        <small>{{ item.start_time|date:"H:i" }} - {{ item.end_time|date:"H:i" }}</small><br>
+                        <small>{{ item.short_description }}</small>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<style>
+@page {
+    size: A4 portrait;
+    margin: 15mm;
+}
+
+@media print {
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    html, body {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    body * {
+        visibility: hidden;
+        font-size: 17pt;
+        font-family: "Segoe UI", "Roboto", "Arial", sans-serif;
+    }
+
+    #programm-wrapper,
+    #programm-wrapper * {
+        visibility: visible;
+    }
+
+    #programm-wrapper {
+        position: static !important;
+        overflow: visible !important;
+        display: block !important;
+        white-space: normal !important;
+
+        zoom: 0.5; /* oder mit transform: scale() */
+
+
+    }
+
+    .day-column {
+        display: block !important;
+        width: 100% !important;
+        page-break-before: always;
+        page-break-inside: avoid;
+        margin-bottom: 20mm;
+    }
+
+    .hour-line {
+        position: absolute;
+        width: 100%;
+        border-top: 1px dashed #ddd;
+        font-size: 10px;
+        color: #666;
+        z-index: 0;
+    }
+
+    .card {
+        position: absolute;
+        z-index: 1;
+        color: #fff;
+        box-shadow: none;
+        border-radius: 6px;
+        padding: 10px;
+        display: block;
+    }
+
+    /* Typ-Farben */
+    .type-meal { background-color: #4caf50; }
+    .type-workshop { background-color: #2196f3; }
+    .type-service { background-color: #ff9800; }
+    .type-evening { background-color: #673ab7; }
+    .type-other { background-color: #607d8b; }
+    .type-meal-service {
+            background-color: #29602b;
+        }
+
+    .card.restricted {
+        background-color: #999 !important;
+        color: transparent;
+        text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+        cursor: not-allowed;
+    }
+
+    .card.restricted * {
+        visibility: hidden;
+    }
+
+    .card.restricted::after {
+        content: "Nicht sichtbar";
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-weight: bold;
+        font-size: 0.9rem;
+        visibility: visible;
+    }
+}
+</style>
+
+<script>
+    window.onload = function () {
+        window.print();
+    };
+</script>

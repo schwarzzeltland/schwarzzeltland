@@ -2,7 +2,7 @@
 {% load bootstrap5 %}
 
 {% block content %}
-    {% if usermaterialmanager and organization.pro1 %}
+    {% if usermaterialmanager and organization.pro3 %}
         <div class="card mb-3">
         <div class="card-body">
                 <a href="{% url 'organization_material_checklist' %}" class="btn btn-warning w-100">
@@ -18,7 +18,7 @@
             {% bootstrap_field form.name %}
             {% bootstrap_field form.image %}
             {% bootstrap_field form.recipientcode %}
-            {% if organization.pro1 %}
+            {% if organization.pro3 %}
                 {% bootstrap_field form.default_checklist %}
             {% endif %}
             {% buttons %}

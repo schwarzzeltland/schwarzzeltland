@@ -7,41 +7,41 @@
         <div class="container mt-5">
             <form method="post" enctype='multipart/form-data'>
                 {% csrf_token %}
-                <h4>Tripdaten:</h4>
-            <div class="table-responsive">
-                <table class="table" >
-                    <tbody>
-                    <tr>
-                        <td><strong>Name:</strong></td>
-                        <td>{{ trip.name }}</td>
-                    </tr>
+                <div class="table-responsive">
+                    <table class="table">
+                        <tbody>
+                        <tr>
+                            <td><strong>Name:</strong></td>
+                            <td>{{ trip.name }}</td>
+                        </tr>
 
-                    <tr>
-                        <td><strong>Beschreibung:</strong></td>
-                        <td>{{ trip.description }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Typ:</strong></td>
-                        <td>{{ trip.type }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Startdatum:</strong></td>
-                        <td>{{ trip.start_date|date:"d.m.Y H:i" }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Enddatum:</strong></td>
-                        <td>{{ trip.end_date|date:"d.m.Y H:i" }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Ort:</strong></td>
-                        <td>{{ trip.location }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>TN-Gesamt-Anzahl:</strong></td>
-                        <td>{{ total_tn_count }}</td>
-                    </tr>
-                    </tbody>
-                </table></div>
+                        <tr>
+                            <td><strong>Beschreibung:</strong></td>
+                            <td>{{ trip.description }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Typ:</strong></td>
+                            <td>{{ trip.type }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Startdatum:</strong></td>
+                            <td>{{ trip.start_date|date:"d.m.Y H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Enddatum:</strong></td>
+                            <td>{{ trip.end_date|date:"d.m.Y H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ort:</strong></td>
+                            <td>{{ trip.location }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>TN-Gesamt-Anzahl:</strong></td>
+                            <td>{{ total_tn_count }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
                 <h4>Gruppen:</h4>
                 <table class="table">
                     <tbody>
@@ -107,7 +107,9 @@
                     <a href="{% url 'check_trip_material' trip.pk %}" class="btn btn-outline-success">Materialverfügbarkeit
                         im Lager prüfen</a>
                     <a href="{% url 'construction_summary' trip.pk %}" class="btn btn-outline-success">Konstruktions-Zusammenfassung</a>
-
+                    {% if trip.owner.pro4 %}
+                        <a href="{% url 'programm' trip.pk %}" class="btn btn-primary">Programm</a>
+                {% endif %}
                 </div>
                 <div class="mb-2">
                     <button id="download-ics-btn" type="button" class="btn btn-outline-primary"

@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+
+{% block content %}
+    <div id="messages"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Such- und Filterbereich -->
+    <form method="get" action="" class="mb-3">
+        <div class="input-group">
+            <input type="text" class="form-control" name="search"
+                   value="{{ search_query|default:'' }}" placeholder="Suche nach Programmpunkt">
+            <select class="form-select" name="type">
+                <option value="">Alle Typen</option>
+                {% for value, label in types %}
+                    <option value="{{ value }}" {% if value|stringformat:"s" == selected_type %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-outline-secondary" type="submit">Suchen</button>
+        </div>
+    </form>
+
+
+    <div id="programm-wrapper"
+         style="display: flex; overflow-x: auto; overflow-y: hidden; gap: 20px; max-width: 1200px; margin: auto;">
+        {% for day, items in grouped_by_day %}
+            <div class="day-column" style="flex-shrink: 0; width: {{ day_width }}px; border: 1px solid #ccc;">
+                <h3 style="text-align:center; margin-bottom:10px;">{{ day|date:"D, d.m." }}</h3>
+                <div style="position: relative; height: {{ container_height }}px;">
+                    <!-- Stundenlinien -->
+                    {% for hour, position in hours %}
+                        <div class="hour-line" style="top: {{ position }}px;">
+                            {{ hour }}:00
+                        </div>
+                    {% endfor %}
+                    <!-- Programmkarten -->
+                    {% for item in items %}
+                        {% if is_event_manager %}
+                            <a href="{% url 'edit_programm_item' item.pk %}"
+                               style="text-decoration:none; color:inherit;">
+                        {% endif %}
+                    <div class="card {{ item.type_class }}  {% if not is_event_manager and not item.visible_for_members %}
+                            restricted
+                        {% endif %}"
+                         style="top: {{ item.offset|floatformat:0 }}px;
+                                 height: {{ item.duration|floatformat:0 }}px;
+                                 left: {{ item.left|floatformat:0 }}px;
+                                 width: {{ item.width|floatformat:0 }}px;">
+                        <strong>{{ item.name }}</strong><br>
+                        <small>{{ item.get_type_display }}</small><br>
+                        <small>{{ item.start_time|date:"H:i" }} - {{ item.end_time|date:"H:i" }}</small><br>
+                        <p>{{ item.short_description }}</p>
+                    </div>
+                    {% if is_event_manager %}
+                        </a>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    {% if is_event_manager %}
+        <div class="mt-2">
+            <a href="{% url 'add_programm_item' trip.id %}" class="btn btn-success">Programmpunkt hinzufügen</a>
+
+            <a href="{% url 'print_programm' trip.pk %}?{% if search_query %}search={{ search_query }}&{% endif %}{% if selected_type %}type={{ selected_type }}{% endif %}"
+               target="_blank"
+               class="btn btn-outline-primary">
+                🖨 Programm drucken
+            </a>
+
+        </div>
+        <div class="mt-2">
+            <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary">Zurück</a>
+        </div>
+    {% else %}
+        <div class="mt-2">
+            <a href="{% url 'show_trip' trip.pk %}" class="btn btn-secondary">Zurück</a>
+        </div>
+    {% endif %}
+    <style>
+        .day-column {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .hour-line {
+            position: absolute;
+            width: 100%;
+            border-top: 1px dashed #ddd;
+            font-size: 10px;
+            color: #666;
+            z-index: 0;
+        }
+
+        .card {
+            position: absolute;
+            z-index: 1;
+            color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+            padding: 10px;
+            display: block;
+        }
+
+        .type-meal {
+            background-color: #4caf50;
+        }
+
+        .type-workshop {
+            background-color: #2196f3;
+        }
+
+        .type-service {
+            background-color: #ff9800;
+        }
+
+        .type-meal-service {
+            background-color: #29602b;
+        }
+
+        .type-evening {
+            background-color: #673ab7;
+        }
+
+        .type-other {
+            background-color: #607d8b;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            cursor: pointer;
+        }
+
+        .card {
+            position: absolute;
+            box-sizing: border-box;
+        }
+
+        .card.restricted {
+            background-color: #999 !important;
+            color: transparent;
+            text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+            cursor: not-allowed;
+        }
+
+        .card.restricted * {
+            visibility: hidden;
+        }
+
+        .card.restricted::after {
+            content: "Nicht sichtbar";
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: bold;
+            font-size: 0.9rem;
+            visibility: visible;
+        }
+
+        @page {
+            size: A4 portrait;
+            margin: 15mm;
+        }
+
+        @media print {
+
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            html, body {
+                height: auto !important;
+                overflow: visible !important;
+            }
+
+            body * {
+                visibility: hidden;
+            }
+
+            #programm-wrapper,
+            #programm-wrapper * {
+                visibility: visible;
+            }
+
+            #programm-wrapper {
+                position: static !important;
+                overflow: visible !important;
+
+                display: block !important;
+                white-space: nowrap;
+
+                zoom: 0.50; /* <- DAS ist der Schlüssel */
+            }
+
+            .day-column {
+                display: inline-block;
+                vertical-align: top;
+                page-break-inside: avoid;
+            }
+        }
+
+
+    </style>
+{% endblock %}

@@ -160,6 +160,13 @@
     </td>
 </tr>
             `);
+
+// Jetzt die richtige Kategorie auswählen:
+                        const newRowSelect = document.querySelector(`#item-${data.item.id} select`);
+                        if (newRowSelect) {
+                            newRowSelect.value = data.item.product_group; // Setzt die richtige Auswahl
+                        }
+
                         attachDeleteHandlers();
                         attachInlineEditHandlers();
                         form.reset();

@@ -28,7 +28,7 @@ from django.shortcuts import redirect
 
 from events.forms import EventPlanningChecklistItemForm
 from events.models import EventPlanningChecklistItem
-from main.decorators import organization_admin_required, pro1_required, material_manager_required
+from main.decorators import organization_admin_required, pro1_required, material_manager_required, pro3_required
 from main.forms import OrganizationForm, MembershipFormset, CustomUserCreationForm, UsernameReminderForm, \
     MessageSendForm, MessageShowForm
 from main.models import Organization, Membership, Message
@@ -385,7 +385,7 @@ def custom_csrf_failure(request, reason=""):
 
 @login_required
 @material_manager_required
-@pro1_required
+@pro3_required
 def organization_material_checklist(request):
     items = EventPlanningChecklistItem.objects.filter(
         organization=request.org, trip__isnull=True
@@ -400,6 +400,7 @@ def organization_material_checklist(request):
 
 @login_required
 @require_POST
+@pro3_required
 def add_organization_material_checklist_item(request):
     title = request.POST.get("title")
     due_date = request.POST.get("due_date") or None

@@ -10,7 +10,7 @@ from urllib.parse import unquote
 
 from django.utils.dateparse import parse_datetime
 from django.utils.text import slugify
-from django.utils.timezone import now
+from django.utils.timezone import now, localtime
 from _decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -24,23 +24,25 @@ from django.views.decorators.http import require_POST
 from icalendar import Calendar, Event
 from unicodedata import decimal
 from django.urls import reverse
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
 
 from buildings.views import update_trip_material_stock_for_org
-from .models import Trip, TripVacancy, EventPlanningChecklistItem
+from .models import Trip, TripVacancy, EventPlanningChecklistItem, ProgrammItem
 
 from decimal import Decimal, InvalidOperation
 
 from buildings.models import Construction, StockMaterial, ConstructionMaterial, Material
 from events.forms import TripForm, TripConstructionFormSet, LocationForm, ImportLocationForm, TripGroupFormSet, \
-    TripMaterialFormSet, ShoppingListItemForm, TripVacancyForm, EventPlanningChecklistItemForm
+    TripMaterialFormSet, ShoppingListItemForm, TripVacancyForm, EventPlanningChecklistItemForm, ProgrammItemForm, \
+    ProgrammItemEditForm
 from events.models import Trip, TripConstruction, Location, PackedMaterial, TripGroup, TripMaterial, ShoppingListItem, \
     TripVacancy
-from main.decorators import organization_admin_required, event_manager_required, pro1_required
+from main.decorators import organization_admin_required, event_manager_required, pro1_required, pro2_required, \
+    pro3_required, pro4_required
 from main.models import Membership, Organization
 
 
@@ -691,7 +693,7 @@ def edit_trip(request, pk=None):
             if 'save' in request.POST or 'save_as_new' in request.POST:
                 # Wenn der Speichern-Button gedrückt wurde, weiter zu Trips
                 messages.success(request, f'Veranstaltung {trip_d.name} gespeichert.')
-                return redirect('trip')  # Hier 'trip' zu deiner Trip-Liste oder Detail-Seite weiterleiten
+                # return redirect('trip')  # Hier 'trip' zu deiner Trip-Liste oder Detail-Seite weiterleiten
             elif 'check_material' in request.POST:
                 # Wenn der Materialverfügbarkeits-Button gedrückt wurde, weiter zu Materialverfügbarkeit prüfen
                 return redirect('check_trip_material', trip_d.pk)  # Weiterleitung zur Materialverfügbarkeitsprüfung
@@ -1389,7 +1391,6 @@ def download_trip_ics(request, trip_id):
 @pro1_required
 @event_manager_required
 def shoppinglist(request, pk=None):
-    m: Membership = request.user.membership_set.filter(organization=request.org).first()
     trip = get_object_or_404(Trip, pk=pk, owner=request.org)
     items = trip.shoppinglist.all()
     search_query = request.GET.get('search', '').strip()
@@ -1516,7 +1517,7 @@ def delete_shoppinglist_item(request, item_id):
 
 
 @login_required
-@pro1_required
+@pro2_required
 @event_manager_required
 def trip_vacancies(request, trip_id):
     trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
@@ -1537,7 +1538,7 @@ def trip_vacancies(request, trip_id):
 @require_POST
 @login_required
 @event_manager_required
-@pro1_required
+@pro2_required
 def add_vacancy(request, trip_id):
     if not request.user.is_authenticated:
         return HttpResponseForbidden()
@@ -1591,7 +1592,7 @@ def add_vacancy(request, trip_id):
 
 @require_POST
 @login_required
-@pro1_required
+@pro2_required
 @event_manager_required
 def update_vacancy(request):
     if not request.user.is_authenticated:
@@ -1646,7 +1647,7 @@ def update_vacancy(request):
 
 @require_POST
 @login_required
-@pro1_required
+@pro2_required
 @event_manager_required
 def delete_vacancy(request, vacancy_id):
     item = get_object_or_404(TripVacancy, pk=vacancy_id, trip__owner=request.org)
@@ -1655,7 +1656,7 @@ def delete_vacancy(request, vacancy_id):
 
 
 @login_required
-@pro1_required
+@pro2_required
 @event_manager_required
 def export_vacancies_csv(request, trip_id):
     trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
@@ -1683,7 +1684,7 @@ def export_vacancies_csv(request, trip_id):
 
 
 @login_required
-@pro1_required
+@pro2_required
 @event_manager_required
 def import_vacancies_csv(request, trip_id):
     if request.method == "POST" and request.FILES.get("csv_file"):
@@ -1730,7 +1731,7 @@ def import_vacancies_csv(request, trip_id):
 
 
 @login_required
-@pro1_required
+@pro3_required
 @event_manager_required
 def checklist(request, trip_id):
     trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
@@ -1745,7 +1746,7 @@ def checklist(request, trip_id):
 
 
 @login_required
-@pro1_required
+@pro3_required
 @require_POST
 @event_manager_required
 def add_checklist_item(request, trip_id):
@@ -1780,7 +1781,7 @@ def add_checklist_item(request, trip_id):
 
 @login_required
 @require_POST
-@pro1_required
+@pro3_required
 @event_manager_required
 def toggle_checklist_item(request, item_id):
     item = get_object_or_404(EventPlanningChecklistItem,
@@ -1792,7 +1793,7 @@ def toggle_checklist_item(request, item_id):
 
 @login_required
 @require_POST
-@pro1_required
+@pro3_required
 @event_manager_required
 def delete_checklist_item(request, item_id):
     item = get_object_or_404(EventPlanningChecklistItem,
@@ -1804,7 +1805,7 @@ def delete_checklist_item(request, item_id):
 @login_required
 @require_POST
 @csrf_exempt
-@pro1_required
+@pro3_required
 @event_manager_required
 def update_checklist_due_date(request):
     import json
@@ -1828,4 +1829,281 @@ def update_checklist_due_date(request):
     return JsonResponse({
         "success": True,
         "due_date": item.due_date.strftime("%Y-%m-%dT%H:%M") if item.due_date else ""
+    })
+
+
+def overlaps(a_start, a_end, b_start, b_end):
+    return not (a_end <= b_start or a_start >= b_end)
+
+def create_clusters(day_list):
+    clusters = []
+    current_cluster = []
+    for item in sorted(day_list, key=lambda x: x.start_time):
+        if not current_cluster:
+            current_cluster.append(item)
+        else:
+            # Prüfen, ob sich das aktuelle Item mit einem im Cluster überschneidet
+            if any(overlaps(item.start_time, item.end_time, other.start_time, other.end_time) for other in current_cluster):
+                current_cluster.append(item)
+            else:
+                clusters.append(current_cluster)
+                current_cluster = [item]
+    if current_cluster:
+        clusters.append(current_cluster)
+    return clusters
+
+@login_required
+@pro4_required
+def programm(request, pk):
+    m: Membership = request.user.membership_set.filter(organization=request.org).first()
+    trip = get_object_or_404(Trip, pk=pk, owner=request.org)
+    items = trip.programm.all()
+    search_query = request.GET.get('search', '').strip()
+    selected_type = request.GET.get('type', '')
+
+    if search_query:
+        items = items.filter(name__icontains=search_query)
+    if selected_type:
+        items = items.filter(type=selected_type)
+
+    items = items.order_by('start_time', 'name')
+
+    # Layout-Parameter
+    start_hour = 6
+    end_hour = 22
+    scale = 2
+    min_height = 80
+    day_width = 350
+    gap = 10
+    container_height = (end_hour - start_hour) * 60 * scale
+
+    grouped_by_day = defaultdict(list)
+    for item in items:
+        if item.start_time and item.end_time:
+            start = localtime(item.start_time)
+            end = localtime(item.end_time)
+            duration_minutes = int((end - start).total_seconds() / 60)
+            item.duration = max(duration_minutes * scale, min_height)
+            offset_minutes = (start.hour * 60 + start.minute) - (start_hour * 60)
+            item.offset = max(offset_minutes, 0) * scale
+        else:
+            item.duration = min_height
+            item.offset = 0
+        grouped_by_day[start.date()].append(item)
+
+    # Cluster- und Spaltenberechnung
+    for day, day_list in grouped_by_day.items():
+        clusters = create_clusters(day_list)
+        for cluster_idx, cluster in enumerate(clusters):
+            columns = []
+            for item in cluster:
+                placed = False
+                for col_idx, col in enumerate(columns):
+                    if all(not overlaps(item.start_time, item.end_time, other.start_time, other.end_time) for other in col):
+                        col.append(item)
+                        item.column = col_idx
+                        placed = True
+                        break
+                if not placed:
+                    columns.append([item])
+                    item.column = len(columns) - 1
+
+            max_columns = len(columns)
+            for itm in cluster:
+                itm.width = round((day_width - (gap * (max_columns ))) / max_columns, 2)
+                itm.left = itm.column * (itm.width + gap)
+
+                # Debug-Infos hinzufügen
+                itm.debug_info = f"Cluster: {cluster_idx}, Spalte: {itm.column}, Breite: {itm.width:.1f}px"
+
+    # Stundenlinien
+    hours = [(hour, (hour - start_hour) * 60 * scale) for hour in range(start_hour, end_hour + 1)]
+
+    # Tage sortieren
+    all_days = []
+    current_day = trip.start_date
+    while current_day <= trip.end_date:
+        all_days.append(current_day.date())
+        current_day += timedelta(days=1)
+
+    grouped_by_day_sorted = [(day, grouped_by_day.get(day, [])) for day in all_days]
+
+    return render(request, "events/programm.html", {
+        "title": f"Programm der Veranstaltung: {trip.name}",
+        "trip": trip,
+        "grouped_by_day": grouped_by_day_sorted,
+        'types': ProgrammItem.TYPES,
+        'selected_type': selected_type,
+        'search_query': search_query,
+        'hours': hours,
+        'container_height': container_height,
+        'day_width': day_width,
+        'is_event_manager': m.event_manager,
+    })
+
+
+
+
+
+@login_required
+@pro4_required
+@event_manager_required
+def add_programm_item(request, pk):
+    trip = get_object_or_404(Trip, pk=pk, owner=request.org)
+
+    if request.method == "POST":
+        form = ProgrammItemForm(request.POST, trip=trip)
+        if form.is_valid():
+
+            name = form.cleaned_data['name']
+            short_description = form.cleaned_data['short_description']
+            description = form.cleaned_data['description']
+            type = form.cleaned_data['type']
+            start_time = form.cleaned_data['start_time']
+            end_time = form.cleaned_data['end_time']
+            selected_days = form.cleaned_data['days']
+
+            for day_str in selected_days:
+                day = datetime.fromisoformat(day_str).date()
+                start_dt = datetime.combine(day, start_time) if start_time else None
+                end_dt = datetime.combine(day, end_time) if end_time else None
+                ProgrammItem.objects.create(
+                    trip=trip,
+                    name=name,
+                    short_description=short_description,
+                    description=description,
+                    type=type,
+                    start_time=start_dt,
+                    end_time=end_dt
+                )
+            messages.success(request, f'Programmpunkt {name} gespeichert.')
+            return redirect('programm', pk=trip.pk)
+    else:
+        form = ProgrammItemForm(trip=trip)
+
+    return render(request, "events/add_programm_item.html", {
+        "form": form,
+        "trip": trip,
+        "title": f"Neuen Programmpunkt für {trip.name} hinzufügen"
+    })
+
+
+@login_required
+@pro4_required
+@event_manager_required
+def edit_programm_item(request, item_id):
+    item = get_object_or_404(ProgrammItem, id=item_id, trip__owner=request.org)
+
+    if request.method == "POST":
+        if 'save' in request.POST:
+            form = ProgrammItemEditForm(request.POST, instance=item)
+            if form.is_valid():
+                # Speichert Änderungen am bestehenden Programmpunkt
+                form.save()
+                messages.success(request, f'Programmpunkt {item.name} gespeichert.')
+                return redirect('programm', pk=item.trip.pk)
+        elif 'delete' in request.POST:
+            trip_id = item.trip.pk
+            messages.success(request, f'Programmpunkt {item.name} gelöscht.')
+            item.delete()
+            return redirect('programm', trip_id)
+
+    else:
+        form = ProgrammItemEditForm(instance=item)
+
+    return render(request, "events/edit_programm_item.html", {
+        "form": form,
+        "item": item,
+        "title": f"Programmpunkt bearbeiten: {item.name}"
+    })
+
+@login_required
+@pro4_required
+@event_manager_required
+def print_programm(request, pk):
+    m: Membership = request.user.membership_set.filter(organization=request.org).first()
+    trip = get_object_or_404(Trip, pk=pk, owner=request.org)
+    items = trip.programm.all()
+    search_query = request.GET.get('search', '').strip()
+    selected_type = request.GET.get('type', '')
+
+    if search_query:
+        items = items.filter(name__icontains=search_query)
+    if selected_type:
+        items = items.filter(type=selected_type)
+
+    items = items.order_by('start_time', 'name')
+
+    # Layout-Parameter
+    start_hour = 6
+    end_hour = 22
+    scale = 2
+    min_height =80
+    day_width = 1320
+    gap = 25
+    container_height = (end_hour - start_hour) * 60 * scale
+
+    grouped_by_day = defaultdict(list)
+    for item in items:
+        if item.start_time and item.end_time:
+            start = localtime(item.start_time)
+            end = localtime(item.end_time)
+            duration_minutes = int((end - start).total_seconds() / 60)
+            item.duration = max(duration_minutes * scale, min_height)
+            offset_minutes = (start.hour * 60 + start.minute) - (start_hour * 60)
+            item.offset = max(offset_minutes, 0) * scale
+        else:
+            item.duration = min_height
+            item.offset = 0
+        grouped_by_day[start.date()].append(item)
+
+    # Cluster- und Spaltenberechnung
+    for day, day_list in grouped_by_day.items():
+        clusters = create_clusters(day_list)
+        for cluster_idx, cluster in enumerate(clusters):
+            columns = []
+            for item in cluster:
+                placed = False
+                for col_idx, col in enumerate(columns):
+                    if all(not overlaps(item.start_time, item.end_time, other.start_time, other.end_time) for other in
+                           col):
+                        col.append(item)
+                        item.column = col_idx
+                        placed = True
+                        break
+                if not placed:
+                    columns.append([item])
+                    item.column = len(columns) - 1
+
+            max_columns = len(columns)
+            for itm in cluster:
+                itm.width = round((day_width - (gap * (max_columns))) / max_columns, 2)
+                itm.left = itm.column * (itm.width + gap)
+
+                # Debug-Infos hinzufügen
+                itm.debug_info = f"Cluster: {cluster_idx}, Spalte: {itm.column}, Breite: {itm.width:.1f}px"
+
+    # Stundenlinien
+    hours = [(hour, (hour - start_hour) * 60 * scale) for hour in range(start_hour, end_hour + 1)]
+
+    # Tage sortieren
+    all_days = []
+    current_day = trip.start_date
+    while current_day <= trip.end_date:
+        all_days.append(current_day.date())
+        current_day += timedelta(days=1)
+
+    grouped_by_day_sorted = [(day, grouped_by_day.get(day, [])) for day in all_days]
+
+    return render(request, "events/print_programm.html", {
+        "title": f"Programm der Veranstaltung: {trip.name}",
+        "trip": trip,
+        "grouped_by_day": grouped_by_day_sorted,
+        'types': ProgrammItem.TYPES,
+        'selected_type': selected_type,
+        'search_query': search_query,
+        'hours': hours,
+        'container_height': container_height,
+        'day_width': day_width,
+        'is_event_manager': m.event_manager,
     })

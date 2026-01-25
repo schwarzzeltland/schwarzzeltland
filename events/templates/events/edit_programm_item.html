@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="container mt-4">
+
+        {% if form.errors %}
+            <div class="alert alert-danger">
+                Bitte korrigiere die folgenden Fehler:
+                <ul>
+                    {% for field, errors in form.errors.items %}
+                        <li>{{ field }}: {{ errors|join:", " }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                {{ form.name.label_tag }} {{ form.name }}
+            </div>
+            <div class="mb-3">
+                {{ form.short_description.label_tag }} {{ form.short_description }}
+            </div>
+            <div class="mb-3">
+                {{ form.description.label_tag }} {{ form.description }}
+            </div>
+            <div class="mb-3">
+                {{ form.type.label_tag }} {{ form.type }}
+            </div>
+
+            <div class="mb-3 form-check">
+                {{ form.visible_for_members }}
+                <label class="form-check-label">
+                    {{ form.visible_for_members.label }}
+                </label>
+            </div>
+            <div class="row mb-3">
+                <div class="col">
+                    {{ form.start_time.label_tag }} {{ form.start_time }}
+                </div>
+                <div class="col">
+                    {{ form.end_time.label_tag }} {{ form.end_time }}
+                </div>
+            </div>
+            <hr>
+
+            <div class="mt-2">
+                <button type="submit" name="save" class="btn btn-success">Änderungen speichern</button>
+                <button type="submit" name="delete" class="btn btn-danger">Löschen</button>
+            </div>
+            <div class="mt-2">
+                <a href="{% url 'programm' item.trip.pk %}" class="btn btn-secondary">Abbrechen</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

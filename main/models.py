@@ -32,6 +32,9 @@ class Organization(models.Model):
         through='Membership',
     )
     pro1 = models.BooleanField(default=False)
+    pro2 = models.BooleanField(default=False)
+    pro3 = models.BooleanField(default=False)
+    pro4 = models.BooleanField(default=False)
     default_checklist = models.JSONField(default=default_checklist_items, blank=True,verbose_name="""Standard To-Do\'s bei neuen Veranstaltungen (Format: ["To-Do1","To-Do2"])""")
 
     def get_owner(self) -> 'Membership':

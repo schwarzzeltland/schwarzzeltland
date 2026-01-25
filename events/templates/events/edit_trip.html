@@ -312,7 +312,7 @@
                             </div>
                         </div>
 
-                        {% if trip.owner.pro1 %}
+                        {% if trip.owner.pro1 or trip.owner.pro2 or trip.owner.pro3 or trip.owner.pro4 %}
                             <!-- Fach: Zusatzfunktionen -->
                             <h5>
                                 <a class="collapse-toggle" data-bs-toggle="collapse" href="#collapse_zusatz"
@@ -320,19 +320,27 @@
                                     Zusatzfunktionen ↕
                                 </a>
                             </h5>
-
-                            <div class="collapse show" id="collapse_zusatz">
-                                <div class="d-flex flex-wrap gap-1 mb-2">
+                        {% endif %}
+                        <div class="collapse show" id="collapse_zusatz">
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                {% if trip.owner.pro1 %}
                                     <a href="{% url 'shoppinglist' trip.id %}" class="btn btn-primary btn-equal">
                                         Einkaufsliste</a>
+                                {% endif %}
+                                {% if trip.owner.pro2 %}
                                     <a href="{% url 'trip_vacancies' trip.id %}" class="btn btn-primary btn-equal">
                                         Vakanzenliste</a>
+                                {% endif %}
+                                {% if trip.owner.pro3 %}
                                     <a href="{% url 'checklist' trip.id %}" class="btn btn-primary btn-equal">
                                         To-Do's</a>
-                                </div>
+                                {% endif %}
+                                {% if trip.owner.pro4 %}
+                                    <a href="{% url 'programm' trip.id %}" class="btn btn-primary btn-equal">
+                                        Programm</a>
+                                {% endif %}
                             </div>
-                        {% endif %}
-
+                        </div>
                     </div>
 
                     <!-- Fach: Kalender -->

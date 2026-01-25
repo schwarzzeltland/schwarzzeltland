@@ -1,3 +1,4 @@
+from datetime import timedelta
 from time import timezone
 
 from django import forms
@@ -7,7 +8,7 @@ from django.forms import ModelForm, IntegerField, inlineformset_factory, Form, M
 
 from buildings.models import Construction, Material
 from events.models import Trip, TripConstruction, Location, TripGroup, TripMaterial, ShoppingListItem, TripVacancy, \
-    EventPlanningChecklistItem
+    EventPlanningChecklistItem, ProgrammItem
 
 
 class TripForm(ModelForm):
@@ -253,6 +254,7 @@ class ShoppingListItemForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["product_group"].required = False
 
+
 class TripVacancyForm(forms.ModelForm):
     class Meta:
         model = TripVacancy
@@ -271,4 +273,87 @@ class EventPlanningChecklistItemForm(forms.ModelForm):
         widgets = {
             "title": forms.TextInput(attrs={"class": "form-control", "placeholder": "Neuen Punkt hinzufügen..."}),
             "due_date": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
+        }
+
+
+class ProgrammItemForm(forms.ModelForm):
+    # Extra-Felder für Tage und Uhrzeiten
+    days = forms.MultipleChoiceField(
+        widget=forms.CheckboxSelectMultiple,
+        label="Tage auswählen",
+        required=True,
+        error_messages={
+            'days': {'required': 'Bitte wähle mindestens einen Tag aus.'},
+        }
+    )
+
+    start_time = forms.TimeField(
+        required=True,
+        widget=forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+        label="Startzeit",
+
+        error_messages={
+            'start_time': {'required': 'Startzeit darf nicht leer sein.'},
+        }
+    )
+    end_time = forms.TimeField(
+        required=True,
+        widget=forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+        label="Endzeit",
+        error_messages={
+            'end_time': {'required': 'Endzeit darf nicht leer sein.'},
+        }
+    )
+
+    class Meta:
+        model = ProgrammItem
+        fields = ["name", "short_description", "description", "type", "visible_for_members"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control"}),
+            "short_description": forms.TextInput(attrs={"class": "form-control"}),
+            "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "type": forms.Select(attrs={"class": "form-select"}),
+            "visible_for_members": forms.CheckboxInput(attrs={"class": "form-check-input"}
+            )
+        }
+
+    def __init__(self, *args, **kwargs):
+        trip = kwargs.pop('trip', None)
+        super().__init__(*args, **kwargs)
+        if trip:
+            day_choices = []
+            current_day = trip.start_date
+            while current_day <= trip.end_date:
+                day_choices.append((current_day.isoformat(), current_day.strftime("%a, %d.%m.")))
+                current_day += timedelta(days=1)
+            self.fields['days'].choices = day_choices
+
+
+class ProgrammItemEditForm(forms.ModelForm):
+    class Meta:
+        model = ProgrammItem
+        fields = [
+            'name',
+            'short_description',
+            'description',
+            'type',
+            'visible_for_members',
+            'start_time',
+            'end_time',
+        ]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control"}),
+            "short_description": forms.TextInput(attrs={"class": "form-control"}),
+            "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "type": forms.Select(attrs={"class": "form-select"}),
+            "visible_for_members": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "start_time": forms.DateTimeInput(
+                attrs={"class": "form-control", "type": "datetime-local"},
+                format="%Y-%m-%dT%H:%M"
+            ),
+            "end_time": forms.DateTimeInput(
+                attrs={"class": "form-control", "type": "datetime-local"},
+                format="%Y-%m-%dT%H:%M"
+            ),
+
         }

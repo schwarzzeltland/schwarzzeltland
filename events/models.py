@@ -72,6 +72,7 @@ class Trip(models.Model):
         related_name="planned_trips",
         verbose_name="Planer"
     )
+
     def __str__(self):
         return self.name
 
@@ -109,13 +110,14 @@ class TripMaterial(models.Model):
 
 class ShoppingListItem(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="shoppinglist")
-    stockmaterial = models.ForeignKey(StockMaterial,on_delete=models.CASCADE, related_name="shoppinglist", null=True, blank=True)
+    stockmaterial = models.ForeignKey(StockMaterial, on_delete=models.CASCADE, related_name="shoppinglist", null=True,
+                                      blank=True)
     name = models.CharField(max_length=200)
     amount = models.DecimalField(max_digits=8, decimal_places=2, default=1)
     unit = models.CharField(max_length=50, blank=True)
     # Warengruppen
     GROUP_DRINKS = 0
-    GROUP_CEREALS_BAKED= 1
+    GROUP_CEREALS_BAKED = 1
     GROUP_FRUITS_VEGETABLES = 2
     GROUP_COOLED = 3
     GROUP_GRILL = 4
@@ -182,3 +184,45 @@ def create_default_checklist(sender, instance, created, **kwargs):
         defaults = instance.organization.default_checklist or []
         for title in defaults:
             EventPlanningChecklistItem.objects.create(trip=instance, title=title)
+
+
+class ProgrammItem(models.Model):
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="programm")
+    name = models.CharField(max_length=200)
+    short_description = models.CharField(max_length=200, default="", blank=True, verbose_name="Kurz-Beschreibung")
+    description = CharField(max_length=2048, default="", blank=True, verbose_name="Beschreibung")
+    TYPE_MEAL = 0
+    TYPE_WORKSHOP = 1
+    TYPE_SERVICE = 2
+    TYPE_MEAL_SERVICE = 3
+    TYPE_EVENING_PROGRAMM = 4
+    TYPE_OTHER = 99
+
+    TYPES = (
+        (TYPE_MEAL, "Mahlzeit"),
+        (TYPE_WORKSHOP, "Workshop"),
+        (TYPE_SERVICE, "Dienst"),
+        (TYPE_MEAL_SERVICE, "Mahlzeiten-Dienst"),
+        (TYPE_EVENING_PROGRAMM, "Abendprogramm"),
+        (TYPE_OTHER, "Sonstiges"),
+    )
+    type = models.IntegerField(choices=TYPES, null=True, verbose_name="Typ")
+    start_time = models.DateTimeField(null=True, verbose_name="Startzeit")
+    end_time = models.DateTimeField(null=True, verbose_name="Endzeit")
+    visible_for_members = models.BooleanField(default=True,verbose_name="Sichtbar für Mitglieder")
+
+    def __str__(self):
+        return f"{self.name}"
+
+        # ✅ CSS-Klasse für Typ
+
+    def type_class(self):
+        mapping = {
+            self.TYPE_MEAL: "type-meal",
+            self.TYPE_WORKSHOP: "type-workshop",
+            self.TYPE_SERVICE: "type-service",
+            self.TYPE_MEAL_SERVICE: "type-meal-service",
+            self.TYPE_EVENING_PROGRAMM: "type-evening",
+            self.TYPE_OTHER: "type-other",
+        }
+        return mapping.get(self.type, "type-other")

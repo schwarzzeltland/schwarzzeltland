@@ -36,3 +36,30 @@ def pro1_required(func):
             raise PermissionDenied("Diese Organisation hat keine Pro1-Berechtigung.")
         return func(request, *args, **kwargs)
     return wrapper
+
+def pro2_required(func):
+    @wraps(func)
+    def wrapper(request, *args, **kwargs):
+        org = getattr(request, "org", None)
+        if not org or not org.pro2:
+            raise PermissionDenied("Diese Organisation hat keine Pro2-Berechtigung.")
+        return func(request, *args, **kwargs)
+    return wrapper
+
+def pro3_required(func):
+    @wraps(func)
+    def wrapper(request, *args, **kwargs):
+        org = getattr(request, "org", None)
+        if not org or not org.pro3:
+            raise PermissionDenied("Diese Organisation hat keine Pro3-Berechtigung.")
+        return func(request, *args, **kwargs)
+    return wrapper
+
+def pro4_required(func):
+    @wraps(func)
+    def wrapper(request, *args, **kwargs):
+        org = getattr(request, "org", None)
+        if not org or not org.pro4:
+            raise PermissionDenied("Diese Organisation hat keine Pro4-Berechtigung.")
+        return func(request, *args, **kwargs)
+    return wrapper
