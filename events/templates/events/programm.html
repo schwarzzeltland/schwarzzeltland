@@ -39,6 +39,9 @@
                         {% if is_event_manager %}
                             <a href="{% url 'edit_programm_item' item.pk %}"
                                style="text-decoration:none; color:inherit;">
+                        {% elif item.visible_for_members %}
+                            <a href="{% url 'show_programm_item' item.pk %}"
+                               style="text-decoration:none; color:inherit;">
                         {% endif %}
                     <div class="card {{ item.type_class }}  {% if not is_event_manager and not item.visible_for_members %}
                             restricted
@@ -52,9 +55,7 @@
                         <small>{{ item.start_time|date:"H:i" }} - {{ item.end_time|date:"H:i" }}</small><br>
                         <p>{{ item.short_description }}</p>
                     </div>
-                    {% if is_event_manager %}
-                        </a>
-                    {% endif %}
+                    </a>
                     {% endfor %}
                 </div>
             </div>

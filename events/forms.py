@@ -5,6 +5,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.forms import ModelForm, IntegerField, inlineformset_factory, Form, ModelChoiceField
+from django.utils import timezone
 
 from buildings.models import Construction, Material
 from events.models import Trip, TripConstruction, Location, TripGroup, TripMaterial, ShoppingListItem, TripVacancy, \
@@ -314,7 +315,7 @@ class ProgrammItemForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "type": forms.Select(attrs={"class": "form-select"}),
             "visible_for_members": forms.CheckboxInput(attrs={"class": "form-check-input"}
-            )
+                                                       )
         }
 
     def __init__(self, *args, **kwargs):
@@ -327,6 +328,20 @@ class ProgrammItemForm(forms.ModelForm):
                 day_choices.append((current_day.isoformat(), current_day.strftime("%a, %d.%m.")))
                 current_day += timedelta(days=1)
             self.fields['days'].choices = day_choices
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_time = cleaned_data.get("start_time")
+        end_time = cleaned_data.get("end_time")
+        if start_time and timezone.is_naive(start_time):
+            cleaned_data["start_time"] = timezone.make_aware(start_time, timezone.get_current_timezone())
+        if end_time and timezone.is_naive(end_time):
+            cleaned_data["end_time"] = timezone.make_aware(end_time, timezone.get_current_timezone())
+
+        if start_time and end_time and start_time >= end_time:
+            self.add_error('start_time', "Die Startzeit muss vor der Endzeit liegen.")
+            self.add_error('end_time', "Die Endzeit muss nach der Startzeit liegen.")
+        return cleaned_data
 
 
 class ProgrammItemEditForm(forms.ModelForm):
@@ -357,3 +372,24 @@ class ProgrammItemEditForm(forms.ModelForm):
             ),
 
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_time = cleaned_data.get("start_time")
+        end_time = cleaned_data.get("end_time")
+
+        if start_time and timezone.is_naive(start_time):
+            cleaned_data["start_time"] = timezone.make_aware(start_time, timezone.get_current_timezone())
+        if end_time and timezone.is_naive(end_time):
+            cleaned_data["end_time"] = timezone.make_aware(end_time, timezone.get_current_timezone())
+
+        if start_time and end_time:
+            if start_time >= end_time:
+                self.add_error('start_time', "Die Startzeit muss vor der Endzeit liegen.")
+                self.add_error('end_time', "Die Endzeit muss nach der Startzeit liegen.")
+
+            # Prüfen, ob Start und Ende am selben Tag liegen
+            if start_time.date() != end_time.date():
+                self.add_error('start_time', "Start- und Endzeit müssen am selben Tag liegen.")
+                self.add_error('end_time', "Start- und Endzeit müssen am selben Tag liegen.")
+        return cleaned_data

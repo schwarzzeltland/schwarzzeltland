@@ -28,10 +28,12 @@
                 <div class="col">
                     <label class="form-label">{{ form.start_time.label }}</label>
                     {{ form.start_time }}
+                    {{ form.start_time.errors }}
                 </div>
                 <div class="col">
                     <label class="form-label">{{ form.end_time.label }}</label>
                     {{ form.end_time }}
+                    {{ form.end_time.errors }}
                 </div>
             </div>
 

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+    <table class="table">
+    <tbody>
+    <tr>
+        <td><strong>Name:</strong> {{ item.name }}</td>
+    </tr>
+    <tr>
+        <td><strong>Typ:</strong> {{ item.get_type_display }}</td>
+    </tr>
+    <tr>
+        <td><strong>Startzeit:</strong> {% if item.start_time %}{{ item.start_time|date:"d.m.Y H:i" }}{% endif %}</td>
+    </tr>
+    <tr>
+        <td><strong>Endzeit:</strong> {% if item.end_time %}{{ item.end_time|date:"d.m.Y H:i" }}{% endif %}</td>
+    </tr>
+    <tr>
+        <td><strong>Kurzbeschreibung:</strong> {{ item.short_description }}</td>
+    </tr>
+    <tr>
+        <td><strong>Beschreibung:</strong> {{ item.description }}</td>
+    </tr>
+    <tr>
+        <td><strong>Sichtbar für Mitglieder:</strong> {{ item.visible_for_members|yesno:"Ja,Nein" }}</td>
+    </tr>
+      </tbody>
+                    </table>
+    <div class="mt-2">
+        <a href="{% url 'programm' item.trip.pk %}" class="btn btn-secondary">Zurück</a>
+    </div>
+{% endblock %}

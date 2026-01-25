@@ -1869,14 +1869,25 @@ def programm(request, pk):
     items = items.order_by('start_time', 'name')
 
     # Layout-Parameter
-    start_hour = 6
-    end_hour = 22
     scale = 2
     min_height = 80
     day_width = 350
     gap = 10
-    container_height = (end_hour - start_hour) * 60 * scale
+    #container_height = (end_hour - start_hour) * 60 * scale
+    # Dynamische Anpassung des Zeitrasters
+    all_start_times = [localtime(item.start_time).time() for item in items if item.start_time]
+    all_end_times = [localtime(item.end_time).time() for item in items if item.end_time]
 
+    default_start = 7
+    default_end = 22
+    if all_start_times and all_end_times:
+        start_hour = min(default_start, min(t.hour for t in all_start_times))
+        end_hour = max(default_end, max(t.hour for t in all_end_times)+1)
+    else:
+        start_hour = default_start
+        end_hour = default_end
+
+    container_height = (end_hour - start_hour) * 60 * scale
     grouped_by_day = defaultdict(list)
     for item in items:
         if item.start_time and item.end_time:
@@ -2035,14 +2046,25 @@ def print_programm(request, pk):
     items = items.order_by('start_time', 'name')
 
     # Layout-Parameter
-    start_hour = 6
-    end_hour = 22
     scale = 2
-    min_height =80
-    day_width = 1320
+    min_height = 95
+    day_width = 1350
     gap = 25
-    container_height = (end_hour - start_hour) * 60 * scale
+    # container_height = (end_hour - start_hour) * 60 * scale
+    # Dynamische Anpassung des Zeitrasters
+    all_start_times = [localtime(item.start_time).time() for item in items if item.start_time]
+    all_end_times = [localtime(item.end_time).time() for item in items if item.end_time]
 
+    default_start = 7
+    default_end = 22
+    if all_start_times and all_end_times:
+        start_hour = min(default_start, min(t.hour for t in all_start_times))
+        end_hour = max(default_end, max(t.hour for t in all_end_times) + 1)
+    else:
+        start_hour = default_start
+        end_hour = default_end
+
+    container_height = (end_hour - start_hour) * 60 * scale
     grouped_by_day = defaultdict(list)
     for item in items:
         if item.start_time and item.end_time:
@@ -2107,3 +2129,14 @@ def print_programm(request, pk):
         'day_width': day_width,
         'is_event_manager': m.event_manager,
     })
+
+@login_required
+@pro4_required
+def show_program_item(request, item_id):
+    item = get_object_or_404(ProgrammItem, pk=item_id, trip__owner=request.org)
+    return render(request, "events/show_program_item.html", {
+        "item": item,
+        "title":"Programmpunkt anzeigen",
+    })
+
+

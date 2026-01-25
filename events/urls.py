@@ -13,6 +13,7 @@ urlpatterns = [
     path('trip/programm/<int:pk>/add/', views.add_programm_item, name='add_programm_item'),
     path('trip/programm/<int:item_id>/edit/', views.edit_programm_item, name='edit_programm_item'),
     path("trip/<int:pk>/print/", views.print_programm, name="print_programm"),
+    path("trip/programm/<int:item_id>/show/", views.show_program_item, name="show_programm_item"),
     path('trip/shoppinglist/<int:pk>/', views.shoppinglist, name='shoppinglist'),
     path("trip/<int:trip_id>/shoppinglist/add/", views.add_shoppinglist_item, name="add_shoppinglist_item"),
     path("shoppinglist/update/", views.update_shoppinglist_item, name="update_shoppinglist_item"),
