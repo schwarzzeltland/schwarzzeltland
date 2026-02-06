@@ -426,6 +426,8 @@ def material(request):
         (4, "Hering"),
         (5, "Küchenmaterial"),
         (6, "Verbrauchsmaterial"),
+        (7, "Werkzeug"),
+        (8, "Ersatzteil"),
     )
     if selected_material_condition:
         print(selected_material_condition)

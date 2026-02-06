@@ -693,7 +693,7 @@ def edit_trip(request, pk=None):
             if 'save' in request.POST or 'save_as_new' in request.POST:
                 # Wenn der Speichern-Button gedrückt wurde, weiter zu Trips
                 messages.success(request, f'Veranstaltung {trip_d.name} gespeichert.')
-                # return redirect('trip')  # Hier 'trip' zu deiner Trip-Liste oder Detail-Seite weiterleiten
+                return redirect('edit_trip', trip_d.pk)  # Hier 'trip' zu deiner Trip-Liste oder Detail-Seite weiterleiten
             elif 'check_material' in request.POST:
                 # Wenn der Materialverfügbarkeits-Button gedrückt wurde, weiter zu Materialverfügbarkeit prüfen
                 return redirect('check_trip_material', trip_d.pk)  # Weiterleitung zur Materialverfügbarkeitsprüfung
