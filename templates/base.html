@@ -103,26 +103,74 @@
     <section class="breadcrumbs">
         <div class="container">
 
-            <div class="d-flex justify-content-between align-items-center">
-                <h2 class="mr-4">{{ title }}</h2>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+                <h2 class="mb-0">{{ title }}</h2>
+
                 {% if organization %}
-                    <nav class="d-flex justify-content-between align-items-baseline ">
-                        <style>
-                            .sub-menu {
-                                font-size: 22px;
-                                margin: 0 1rem;
-                            }
-                        </style>
-                        <h3 class="sub-menu"><a href="{% url 'constructions' %}">Konstruktionen</a></h3>
-                        <h3 class="sub-menu"><a href="{% url 'material' %}">Material-Lager</a></h3>
-                        <h3 class="sub-menu"><a href="{% url 'trip' %}">Veranstaltungen</a></h3>
-                        <h3 class="sub-menu"><a href="{% url 'location' %}">Orte</a></h3>
-                        <h3 class="sub-menu"><a href="{% url 'messages' %}">Nachrichten</a></h3>
-                        <h3 class="sub-menu"><a href="{% url 'organization' %}">Organisation</a></h3>
+                    <nav class="navbar navbar-expand-lg navbar-light p-0">
+                        <button class="navbar-toggler ms-auto"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#subNav"
+                                aria-controls="subNav"
+                                aria-expanded="false"
+                                aria-label="Toggle navigation">
+                            <span class="navbar-toggler-icon"></span>
+                        </button>
+
+                        <div class="collapse navbar-collapse" id="subNav">
+                            <ul class="navbar-nav ms-lg-3 gap-lg-2">
+
+                                <li class="nav-item">
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'constructions' %}active fw-bold{% endif %}"
+                                       href="{% url 'constructions' %}">Konstruktionen</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'material' %}active fw-bold{% endif %}"
+                                       href="{% url 'material' %}">Material</a>
+
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'trip' %}active fw-bold{% endif %}"
+                                       href="{% url 'trip' %}">Veranstaltungen</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'location' %}active fw-bold{% endif %}"
+                                       href="{% url 'location' %}">Orte</a>
+                                </li>
+                            <li class="nav-item">
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'organization' %}active fw-bold{% endif %}"
+                                       href="{% url 'organization' %}">Organisation</a>
+                                </li>
+                                {% with request.resolver_match.url_name as current %}
+                                    <!-- Mehr-Dropdown -->
+                                    <li class="nav-item dropdown">
+                                        <a class="nav-link dropdown-toggle
+       {% if current in 'messages' %}active{% endif %}"
+                                           href="#"
+                                           role="button"
+                                           data-bs-toggle="dropdown"
+                                           aria-expanded="false">
+                                            Mehr
+                                        </a>
+
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="dropdown-item {% if current == 'messages' %}active{% endif %}"
+                                                   href="{% url 'messages' %}">
+                                                    Nachrichten
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                {% endwith %}
+
+                            </ul>
+                        </div>
                     </nav>
                 {% endif %}
             </div>
-
         </div>
     </section><!-- End Breadcrumbs -->
 
@@ -143,53 +191,54 @@
 
 </main><!-- End #main -->
 <style>
-#cookie-banner {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: #222;
-    color: white;
-    padding: 1em;
-    text-align: center;
-    display: none;
-}
-#cookie-banner.show {
-    display: block;
-}
+    #cookie-banner {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #222;
+        color: white;
+        padding: 1em;
+        text-align: center;
+        display: none;
+    }
+
+    #cookie-banner.show {
+        display: block;
+    }
 </style>
 
 <div id="cookie-banner">
- Diese Webseite verwendet technisch notwendige Cookies.
+    Diese Webseite verwendet technisch notwendige Cookies.
     <a href="{% url 'privacypolice' %}">Datenschutzerklärung</a>
-  <button id="accept-cookies" class="btn btn-sm btn-success ms-3">Ok, verstanden.</button>
+    <button id="accept-cookies" class="btn btn-sm btn-success ms-3">Ok, verstanden.</button>
 </div>
 
 <script>
-function getCookie(name){
-  const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-  return m ? m.pop() : '';
-}
+    function getCookie(name) {
+        const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+        return m ? m.pop() : '';
+    }
 
-document.addEventListener("DOMContentLoaded", function() {
-  const banner = document.getElementById("cookie-banner");
-  if (!document.cookie.includes("cookies_accepted=true")) {
-      banner.classList.add("show");
-  }
-  document.getElementById("accept-cookies").onclick = function() {
-      fetch("{% url 'accept_cookies' %}", {
-          method: "POST",
-          headers: {"X-CSRFToken": getCookie("csrftoken"), "Content-Type": "application/json"},
-          body: JSON.stringify({accept: true})
-      }).then(res => {
-          if (res.ok) {
-              document.cookie = "cookies_accepted=true; path=/; samesite=lax; max-age=31536000";
-              banner.classList.remove("show");
-              location.reload();  // Seite neu laden, damit Session funktioniert
-          }
-      });
-  };
-});
+    document.addEventListener("DOMContentLoaded", function () {
+        const banner = document.getElementById("cookie-banner");
+        if (!document.cookie.includes("cookies_accepted=true")) {
+            banner.classList.add("show");
+        }
+        document.getElementById("accept-cookies").onclick = function () {
+            fetch("{% url 'accept_cookies' %}", {
+                method: "POST",
+                headers: {"X-CSRFToken": getCookie("csrftoken"), "Content-Type": "application/json"},
+                body: JSON.stringify({accept: true})
+            }).then(res => {
+                if (res.ok) {
+                    document.cookie = "cookies_accepted=true; path=/; samesite=lax; max-age=31536000";
+                    banner.classList.remove("show");
+                    location.reload();  // Seite neu laden, damit Session funktioniert
+                }
+            });
+        };
+    });
 </script>
 <!-- ======= Footer ======= -->
 <footer id="footer">
