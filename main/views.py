@@ -116,6 +116,13 @@ def change_event_manager(request, pk):
     m.save()
     return HttpResponse(status=200)
 
+@organization_admin_required
+def change_knowledge_manager(request, pk):
+    m: Membership = request.org.membership_set.get(pk=pk)
+    m.knowledge_manager = not m.knowledge_manager
+    m.save()
+    return HttpResponse(status=200)
+
 
 @organization_admin_required
 def delete_membership(request, pk):

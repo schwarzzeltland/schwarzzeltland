@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+
+{% block content %}
+    <p class="mb-4">Hier kannst du deine Rezepte verwalten, öffentliche Rezepte entdecken oder neue Rezepte
+        erstellen.</p>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <div class="col">
+            <div class="card shadow-sm h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">👨‍🍳 Meine Rezepte</h5>
+                    <p class="card-text">
+                        Alle Rezepte anzeigen, die von deiner Organisation erstellt wurden oder die du deiner
+                        Organisation hinzugefügt hast.
+                    </p>
+
+                    <a href="{% url 'my_recipes' %}" class="btn btn-primary mt-auto">
+                        Meine Rezepte
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card shadow-sm h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">🌐 Öffentliche Rezepte</h5>
+                    <p class="card-text">
+                        Rezepte ansehen, die von anderen Organisationen veröffentlicht wurden.
+                    </p>
+
+                    <a href="{% url 'public_recipes' %}" class="btn btn-secondary mt-auto">
+                        Öffentliche Rezepte
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% if isknowledge_manager %}
+            <div class="col">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">➕ Neues Rezept erstellen</h5>
+                        <p class="card-text">
+                            Ein neues Rezept für deine Organisation anlegen.
+                        </p>
+
+                        <a href="{% url 'new_recipe' %}" class="btn btn-success mt-auto">
+                            Neues Rezept
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

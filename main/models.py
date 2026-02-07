@@ -50,6 +50,7 @@ class Membership(models.Model):
     admin = models.BooleanField(default=False, verbose_name="Admin")
     material_manager = models.BooleanField(default=False)
     event_manager = models.BooleanField(default=False)
+    knowledge_manager = models.BooleanField(default=False)
 
     def __str__(self):
         return self.user.username

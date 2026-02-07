@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+{% block content %}
+    <form method="get" action="{% url 'public_recipes' %}" class="mb-3 position-relative">
+        <div class="input-group">
+            <!-- Titel-Suche -->
+            <input type="text" name="title" class="form-control" placeholder="Titel enthält..."
+                   value="{{ title_query }}">
+            <input type="text" id="tag-search-input" name="tags" class="form-control"
+                   placeholder="Tags (Komma getrennt)" value="{{ tags_query }}">
+            <ul id="tag-search-suggestions" class="list-group position-absolute"
+                style="z-index:1000; top: 100%; left:0; right:0;"></ul>
+            <button class="btn btn-outline-secondary" type="submit">Suchen</button>
+        </div>
+    </form>
+
+    <script>
+        const tagInput = document.getElementById("tag-search-input");
+        const suggestionsList = document.getElementById("tag-search-suggestions");
+
+        tagInput.addEventListener("input", function () {
+            const val = tagInput.value.trim().split(",").pop(); // nur das letzte Teil für Vorschläge
+            if (!val) {
+                suggestionsList.innerHTML = "";
+                return;
+            }
+
+            fetch(`/knowledgebase/recipes/tag-autocomplete/?q=${encodeURIComponent(val)}`)
+                .then(res => res.json())
+                .then(data => {
+                    suggestionsList.innerHTML = "";
+                    data.forEach(tagName => {
+                        const li = document.createElement("li");
+                        li.className = "list-group-item list-group-item-action";
+                        li.textContent = tagName;
+                        li.onclick = () => {
+                            // Letztes Fragment ersetzen durch Klick
+                            let current = tagInput.value.split(",").map(s => s.trim()).filter(s => s);
+                            current.pop(); // letztes Fragment entfernen
+                            current.push(tagName); // neuen Tag hinzufügen
+                            tagInput.value = current.join(", ") + ", ";
+                            suggestionsList.innerHTML = "";
+                            tagInput.focus();
+                        };
+                        suggestionsList.appendChild(li);
+                    });
+                });
+        });
+
+        // Klick außerhalb → Vorschläge schließen
+        document.addEventListener("click", function (e) {
+            if (!tagInput.contains(e.target)) {
+                suggestionsList.innerHTML = "";
+            }
+        });
+
+    </script>
+
+    {% for recipe in recipes %}
+        <div class="card mb-2 p-2">
+            <div class="d-flex flex-row justify-content-between align-items-center">
+                <!-- Linke Seite: Titel + Tags + Autor -->
+                <div class="me-3 flex-grow-1">
+                    <h5 class="mb-1">{{ recipe.title }}</h5>
+                    <div class="mb-1">
+                        {% for tag in recipe.tags.all %}
+                            <span class="badge bg-secondary me-1">{{ tag.name }}</span>
+                        {% endfor %}
+                    </div>
+                    <small class="text-muted">Autor: {{ recipe.author }}</small>
+                </div>
+
+                <!-- Rechte Seite: Input + Button -->
+                <form method="post" action="{% url 'show_public_recipe' recipe.pk %}" class="d-flex align-items-center">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        <button type="submit" class="btn btn-primary">Anzeigen für Personen:</button>
+                        <input type="number" name="servings" class="form-control" value="1" min="1">
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% empty %}
+        <p>Keine Rezepte gefunden.</p>
+    {% endfor %}
+    <div class="mt-2">
+        <a href="{% url 'recipes' %}" class="btn btn-secondary">Zurück</a>
+    </div>
+{% endblock %}

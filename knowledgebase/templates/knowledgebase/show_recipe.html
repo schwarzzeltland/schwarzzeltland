@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+{% block content %}
+    <div class="container mt-4">
+        <h2 class="card-title">{{ recipe.title }}</h2>
+        <p class="mb-1"><strong>Autor:</strong> {{ recipe.author }}</p>
+
+        {% if tags %}
+            <p>
+                {% for tag in tags %}
+                    <span class="badge bg-secondary">{{ tag.name }}</span>
+                {% endfor %}
+            </p>
+        {% endif %}
+
+        {% if recipe.description %}
+            <p><strong>Beschreibung:</strong></p>
+            <p class="mt-3">{{ recipe.description }}</p>
+        {% endif %}
+        <!-- Zutaten -->
+        <p class="mb-1"><strong>Rezept wird für {{ servings }} Personen angezeigt</strong></p>
+        {% if ingredients %}
+            <h5>Zutaten</h5>
+            <ul class="list-group list-group-flush mb-3 ingredients-list">
+                {% for ing in ingredients %}
+                    <li class="list-group-item" data-qty="{{ ing.quantity }}">
+                        {% if ing.quantity %}<span class="ingredient-qty">{{ ing.quantity }}</span>{% endif %}
+                        {% if ing.unit %} {{ ing.unit }}{% endif %} {{ ing.name }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <!-- Arbeitsschritte -->
+        {% if steps %}
+            <h5>Arbeitsschritte</h5>
+            <ol class="list-group list-group-numbered mb-3">
+                {% for step in steps %}
+                    <li class="list-group-item">{{ step.description }}</li>
+                {% endfor %}
+            </ol>
+        {% endif %}
+        {% if "public_recipes" in request.META.HTTP_REFERER %}
+            <!-- Zeige etwas nur, wenn vorher public_recipes war -->
+
+            <!-- Button um Rezept zu kopieren -->
+            <form method="post" action="{% url 'copy_public_recipe' recipe.pk %}"
+                  class="d-flex align-items-center mt-2 copy-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success">Zu meinen Rezepten hinzufügen</button>
+            </form>
+
+            <a href="{% url 'public_recipes' %}" class="btn btn-secondary mt-3">Zurück zur Übersicht</a>
+            </div>
+        {% elif "my_recipes" in request.META.HTTP_REFERER %}
+            <a href="{% url 'my_recipes' %}" class="btn btn-secondary mt-3">Zurück zur Übersicht</a>
+        {% endif %}
+    <script>
+        const personInput = document.querySelector('.person-count-input');
+        const ingredientsList = document.querySelectorAll('.ingredients-list li');
+        const copyFormServings = document.querySelector('.copy-servings');
+
+        function updateQuantities() {
+            const persons = parseFloat(personInput.value) || 1;
+            ingredientsList.forEach(li => {
+                const originalQty = parseFloat(li.dataset.qty) || 0;
+                const qtySpan = li.querySelector('.ingredient-qty');
+                if (qtySpan) {
+                    const adjusted = (originalQty * persons).toFixed(2);
+                    qtySpan.textContent = adjusted.replace(/\.00$/, '');
+                }
+            });
+            copyFormServings.value = persons;
+        }
+
+        personInput.addEventListener('input', updateQuantities);
+        updateQuantities(); // initial
+    </script>
+{% endblock %}

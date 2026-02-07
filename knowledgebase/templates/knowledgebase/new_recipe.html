@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+{% block content %}
+    <div class="container mt-4">
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label">Titel</label>
+                <input type="text" name="title" class="form-control" required>
+            </div>
+            <div class="mb-4 position-relative">
+                <label class="form-label">Tags</label>
+                <div id="tags-list" class="mb-2"></div>
+
+                <!-- Input innerhalb des position-relative Containers -->
+                <input type="text" id="tag-input" class="form-control"
+                       placeholder="Tag durch Enter eingeben oder durch Anklicken Löschen">
+
+                <input type="hidden" name="tags" id="id_tags">
+
+                <!-- Vorschläge direkt unter Input -->
+                <ul id="tag-suggestions" class="list-group position-absolute w-100"
+                    style="z-index:1000; top: 100%; left:0;"></ul>
+            </div>
+            <script>
+                const tagInput = document.getElementById("tag-input");
+                const tagsList = document.getElementById("tags-list");
+                const hiddenTags = document.getElementById("id_tags");
+                const suggestionsList = document.getElementById("tag-suggestions");
+                let tags = [];
+
+                function renderTags() {
+                    tagsList.innerHTML = "";
+                    tags.forEach((t, idx) => {
+                        const span = document.createElement("span");
+                        span.className = "badge bg-primary me-1";
+                        span.textContent = t;
+                        span.style.cursor = "pointer";
+                        span.onclick = () => {
+                            tags.splice(idx, 1);
+                            renderTags();
+                        };
+                        tagsList.appendChild(span);
+                    });
+                    hiddenTags.value = tags.join(",");
+                }
+
+                function addTag(val) {
+                    if (val && !tags.includes(val)) {
+                        tags.push(val);
+                        renderTags();
+                    }
+                }
+
+                tagInput.addEventListener("input", function () {
+                    const val = tagInput.value.trim();
+                    if (!val) {
+                        suggestionsList.innerHTML = "";
+                        return;
+                    }
+
+                    fetch(`/knowledgebase/recipes/tag-autocomplete/?q=${encodeURIComponent(val)}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            suggestionsList.innerHTML = "";
+                            data.forEach(tagName => {
+                                const li = document.createElement("li");
+                                li.className = "list-group-item list-group-item-action";
+                                li.textContent = tagName;
+                                li.onclick = () => {
+                                    addTag(tagName);
+                                    tagInput.value = "";
+                                    suggestionsList.innerHTML = "";
+                                };
+                                suggestionsList.appendChild(li);
+                            });
+                        });
+                });
+
+                tagInput.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        addTag(tagInput.value.trim());
+                        tagInput.value = "";
+                        suggestionsList.innerHTML = "";
+                    }
+                });
+
+                document.addEventListener("click", function (e) {
+                    if (!tagInput.contains(e.target) && !suggestionsList.contains(e.target)) {
+                        suggestionsList.innerHTML = "";
+                    }
+                });
+
+            </script>
+            <div class="mb-3">
+                <label class="form-label">Beschreibung</label>
+                <textarea name="description" class="form-control" rows="4"
+                          placeholder="Beschreibung hier eingeben…"></textarea>
+
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Personenanzahl</label>
+                <input type="number" name="servings" id="servings" class="form-control" value="1" min="1">
+            </div>
+            <div class="mb-4">
+                <label class="form-label">Zutaten</label>
+                <div id="ingredients-list"></div>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addIngredient()">+ Zutat</button>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">Arbeitsschritte</label>
+                <div id="steps-list"></div>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addStep()">+ Schritt</button>
+            </div>
+
+            <div class="form-check mb-4">
+                <input type="checkbox" name="is_public" class="form-check-input">
+                <label class="form-check-label">Öffentlich</label>
+            </div>
+
+            <button type="submit" class="btn btn-success">Rezept speichern</button>
+        </form>
+
+        <div class="mt-2">
+            <a href="{% url 'recipes' %}" class="btn btn-secondary">Zurück</a>
+        </div>
+
+    </div>
+    <script>
+        function addIngredient(name = '', qty = '', unit = '') {
+            const container = document.getElementById('ingredients-list');
+            const div = document.createElement('div');
+            div.className = 'input-group mb-2';
+            div.innerHTML = `
+        <input type="text" name="ingredient_name[]" placeholder="Zutat" value="${name}" class="form-control">
+     <input type="number" name="ingredient_qty[]" placeholder="Menge" value="${qty}" class="form-control" style="max-width:80px" step="0.01" min="0">
+        <input type="text" name="ingredient_unit[]" placeholder="Einheit" value="${unit}" class="form-control" style="max-width:80px">
+        <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">✕</button>
+    `;
+            container.appendChild(div);
+        }
+
+        function addStep(desc = '') {
+            const container = document.getElementById('steps-list');
+            const div = document.createElement('div');
+            div.className = 'input-group mb-3';
+            div.innerHTML = `
+        <textarea name="step_description[]" rows="3" class="form-control" placeholder="Schritt beschreiben…">${desc}</textarea>
+        <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">✕</button>
+    `;
+            container.appendChild(div);
+        }
+
+        // --- Vorbefüllung Zutaten & Schritte ---
+        const ingredientData = JSON.parse('{{ ingredient_data_json|escapejs }}');
+        ingredientData.forEach(i => addIngredient(i.name, i.quantity, i.unit));
+
+        const stepData = JSON.parse('{{ step_data_json|escapejs }}');
+        stepData.forEach(s => addStep(s.description));
+
+
+    </script>
+{% endblock %}

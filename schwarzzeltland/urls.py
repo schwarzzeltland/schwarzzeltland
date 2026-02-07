@@ -26,6 +26,7 @@ urlpatterns = [
     path("main/", include("main.urls")),
     path("buildings/", include("buildings.urls")),
     path("events/", include("events.urls")),
+    path("knowledgebase/", include("knowledgebase.urls")),
     re_path(r'^$', main_views.home_view, name='main'),
 ]
 

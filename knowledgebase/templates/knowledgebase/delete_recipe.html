@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h3>Rezept löschen: {{ recipe.title }}</h3>
+    <p>Willst du dieses Rezept wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Löschen</button>
+        <a href="{% url 'recipes' %}" class="btn btn-secondary">Abbrechen</a>
+    </form>
+</div>
+{% endblock %}
