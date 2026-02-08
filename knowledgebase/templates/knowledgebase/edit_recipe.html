@@ -30,9 +30,8 @@
                 const tagsList = document.getElementById("tags-list");
                 const hiddenTags = document.getElementById("id_tags");
                 const suggestionsList = document.getElementById("tag-suggestions");
-
-                // Vorbefüllte Tags vom Server
-                let tags = {{ tags_list|safe }};
+                let selectingSuggestion = false;
+                let tags = [];
 
                 function renderTags() {
                     tagsList.innerHTML = "";
@@ -50,8 +49,6 @@
                     hiddenTags.value = tags.join(",");
                 }
 
-                renderTags(); // initial
-
                 function addTag(val) {
                     if (val && !tags.includes(val)) {
                         tags.push(val);
@@ -59,12 +56,23 @@
                     }
                 }
 
+                function addTagFromInput() {
+                    const val = tagInput.value.trim();
+                    if (!val) return;
+
+                    addTag(val);
+                    tagInput.value = "";
+                    suggestionsList.innerHTML = "";
+                }
+
+                // Autocomplete
                 tagInput.addEventListener("input", function () {
                     const val = tagInput.value.trim();
                     if (!val) {
                         suggestionsList.innerHTML = "";
                         return;
                     }
+
                     fetch(`/knowledgebase/recipes/tag-autocomplete/?q=${encodeURIComponent(val)}`)
                         .then(res => res.json())
                         .then(data => {
@@ -73,35 +81,45 @@
                                 const li = document.createElement("li");
                                 li.className = "list-group-item list-group-item-action";
                                 li.textContent = tagName;
-                                li.onclick = () => {
+
+                                li.addEventListener("pointerdown", () => {
+                                    selectingSuggestion = true;
+                                });
+
+                                li.addEventListener("click", () => {
                                     addTag(tagName);
                                     tagInput.value = "";
                                     suggestionsList.innerHTML = "";
-                                };
+                                    selectingSuggestion = false;
+                                });
+
                                 suggestionsList.appendChild(li);
                             });
                         });
                 });
 
+                // Desktop
                 tagInput.addEventListener("keydown", function (e) {
                     if (e.key === "Enter") {
                         e.preventDefault();
-                        addTag(tagInput.value.trim());
-                        tagInput.value = "";
-                        suggestionsList.innerHTML = "";
+                        addTagFromInput();
                     }
                 });
 
+                tagInput.addEventListener("change", () => {
+                    if (selectingSuggestion) return;
+                    addTagFromInput();
+                });
+
+
+                // Klick außerhalb → Vorschläge schließen
                 document.addEventListener("click", function (e) {
                     if (!tagInput.contains(e.target) && !suggestionsList.contains(e.target)) {
                         suggestionsList.innerHTML = "";
                     }
                 });
-                tagInput.addEventListener("blur", function () {
-                    addTag(tagInput.value.trim());
-                    tagInput.value = "";
-                    suggestionsList.innerHTML = "";
-                });
+
+
             </script>
             <div class="mb-3">
                 <label class="form-label">Beschreibung</label>
