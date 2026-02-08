@@ -113,19 +113,16 @@ def new_recipe(request):
         ingredient_names = request.POST.getlist("ingredient_name[]")
         ingredient_qtys = request.POST.getlist("ingredient_qty[]")
         ingredient_units = request.POST.getlist("ingredient_unit[]")
-
-        for name, qty, unit in zip(ingredient_names, ingredient_qtys, ingredient_units):
-            try:
-                qty_float = float(qty)
-                qty_per_person = qty_float / person_count
-            except (TypeError, ValueError):
-                qty_per_person = None
+        ingredient_groups = request.POST.getlist("ingredient_group[]")
+        servings = float(request.POST.get("servings", 1))
+        for name, qty, unit, group in zip(ingredient_names, ingredient_qtys, ingredient_units, ingredient_groups):
             if name.strip():
                 RecipeIngredient.objects.create(
                     recipe=recipe,
                     name=name.strip(),
-                    quantity=qty_per_person or None,
-                    unit=unit.strip()
+                    quantity=float(qty) / servings if qty else None,
+                    unit=unit.strip(),
+                    product_group=int(group) if group else None
                 )
 
         # Arbeitsschritte
