@@ -26,7 +26,7 @@
                 {% for ing in ingredients %}
                     <li class="list-group-item" data-qty="{{ ing.quantity }}">
                         {% if ing.quantity %}<span class="ingredient-qty">{{ ing.quantity }}</span>{% endif %}
-                        {% if ing.unit %} {{ ing.unit }}{% endif %} {{ ing.name }}
+                        {% if ing.unit %} {{ ing.unit }}{% endif %}
                     </li>
                 {% endfor %}
             </ul>
@@ -55,6 +55,12 @@
             </div>
         {% elif "my_recipes" in request.META.HTTP_REFERER %}
             <a href="{% url 'my_recipes' %}" class="btn btn-secondary mt-3">Zurück zur Übersicht</a>
+        {% elif "programm" in request.META.HTTP_REFERER %}
+            {% if request.GET.next %}
+                <a href="{{ request.GET.next }}" class="btn btn-secondary mt-3">
+                    Zurück zum Programmpunkt
+                </a>
+            {% endif %}
         {% endif %}
     <script>
         const personInput = document.querySelector('.person-count-input');

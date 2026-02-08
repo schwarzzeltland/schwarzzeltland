@@ -6,6 +6,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from buildings.models import Construction, Material, StockMaterial
+from knowledgebase.models import Recipe
 from main.models import Organization
 
 
@@ -75,6 +76,11 @@ class Trip(models.Model):
 
     def __str__(self):
         return self.name
+
+    def total_persons(self):
+        return self.tripgroup_set.aggregate(
+            total=models.Sum("count")
+        )["total"] or 0
 
 
 class TripConstruction(models.Model):
@@ -207,6 +213,15 @@ class ProgrammItem(models.Model):
         (TYPE_OTHER, "Sonstiges"),
     )
     type = models.IntegerField(choices=TYPES, null=True, verbose_name="Typ")
+    recipe = models.ForeignKey(
+        Recipe,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name="Rezept",
+        help_text="Nur für Mahlzeiten"
+    )
+
     start_time = models.DateTimeField(null=True, verbose_name="Startzeit")
     end_time = models.DateTimeField(null=True, verbose_name="Endzeit")
     visible_for_members = models.BooleanField(default=True,verbose_name="Sichtbar für Mitglieder")
@@ -226,3 +241,4 @@ class ProgrammItem(models.Model):
             self.TYPE_OTHER: "type-other",
         }
         return mapping.get(self.type, "type-other")
+        # Validierung: Nur Mahlzeiten dürfen Rezept haben

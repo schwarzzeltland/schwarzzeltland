@@ -166,7 +166,21 @@
         <input type="text" name="ingredient_name[]" placeholder="Zutat" value="${name}" class="form-control">
      <input type="number" name="ingredient_qty[]" placeholder="Menge" value="${qty}" class="form-control" style="max-width:80px" step="0.01" min="0">
         <input type="text" name="ingredient_unit[]" placeholder="Einheit" value="${unit}" class="form-control" style="max-width:80px">
-        <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">✕</button>
+<select name="ingredient_group[]" class="form-select" style="max-width:120px">
+            <option value="">-- Warengruppe --</option>
+            <option value="0" ${group === '0' ? 'selected' : ''}>Getränke</option>
+            <option value="1" ${group === '1' ? 'selected' : ''}>Brot / Cerealien</option>
+            <option value="2" ${group === '2' ? 'selected' : ''}>Obst / Gemüse</option>
+            <option value="3" ${group === '3' ? 'selected' : ''}>Kühlung</option>
+            <option value="4" ${group === '4' ? 'selected' : ''}>Grillgut</option>
+            <option value="5" ${group === '5' ? 'selected' : ''}>Konserven</option>
+            <option value="6" ${group === '6' ? 'selected' : ''}>Snacks</option>
+            <option value="7" ${group === '7' ? 'selected' : ''}>Hygiene</option>
+            <option value="8" ${group === '8' ? 'selected' : ''}>Werkzeug</option>
+            <option value="9" ${group === '9' ? 'selected' : ''}>Material</option>
+            <option value="99" ${group === '99' ? 'selected' : ''}>Sonstiges</option>
+        </select>
+<button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">✕</button>
     `;
             container.appendChild(div);
         }
@@ -184,7 +198,7 @@
 
         // --- Vorbefüllung Zutaten & Schritte ---
         const ingredientData = JSON.parse('{{ ingredient_data_json|escapejs }}');
-        ingredientData.forEach(i => addIngredient(i.name, i.quantity, i.unit));
+        ingredientData.forEach(i => addIngredient(i.name, i.quantity, i.unit, i.product_group));
 
         const stepData = JSON.parse('{{ step_data_json|escapejs }}');
         stepData.forEach(s => addStep(s.description));

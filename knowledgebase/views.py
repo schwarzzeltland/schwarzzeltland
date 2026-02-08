@@ -104,28 +104,9 @@ def new_recipe(request):
 
         # Tags
         for t_name in [t.strip() for t in tags_input.split(",") if t.strip()]:
-            if is_public:
-                # Öffentlich: Tag global einmalig nach Name suchen/erstellen
-                tag_obj, created = RecipeTag.objects.get_or_create(
-                    name=t_name,
-                    defaults={'is_public': True, 'owner': None}  # owner=None für öffentliche Tags
-                )
-                # Falls existierender Tag nicht public ist → public setzen
-                if not tag_obj.is_public:
-                    tag_obj.is_public = True
-                    tag_obj.save()
-            else:
-                # Privat: Tag nur innerhalb eigener Organisation
-                tag_obj, created = RecipeTag.objects.get_or_create(
-                    name=t_name,
-                    owner=org
-                )
-                # private Tags sind automatisch nicht public
-                if tag_obj.is_public:
-                    tag_obj.is_public = False
-                    tag_obj.save()
-
-                # Tag dem Rezept zuordnen
+            tag_obj, _ = RecipeTag.objects.get_or_create(name=t_name, owner=org)
+            tag_obj.is_public = recipe.is_public
+            tag_obj.save()
             recipe.tags.add(tag_obj)
 
         # Zutaten
@@ -272,13 +253,19 @@ def show_my_recipe(request, pk):
     ingredients = recipe.ingredients.all()
     steps = recipe.steps.all()
     tags = recipe.tags.all()
-    # Standardmäßig 1 Person
+    # 1️⃣ Basiswert aus GET (z. B. vom Trip)
     try:
-        servings = int(request.POST.get("servings", 1))
-        if servings < 1:
-            servings = 1
+        servings = int(request.GET.get("persons", 1))
     except (TypeError, ValueError):
         servings = 1
+    # 2️⃣ POST überschreibt GET (manuelle Änderung)
+    if request.method == "POST":
+        try:
+            servings = int(request.POST.get("servings", servings))
+        except (TypeError, ValueError):
+            pass
+
+    servings = max(servings, 1)
 
     # Mengen anpassen
     adjusted_ingredients = []
@@ -318,43 +305,26 @@ def edit_recipe(request, pk):
         tags_input = request.POST.get("tags", "")
         recipe.tags.clear()
         for t_name in [t.strip() for t in tags_input.split(",") if t.strip()]:
-            if recipe.is_public:
-                # Öffentlich: Tag global einmalig nach Name suchen/erstellen
-                tag_obj, created = RecipeTag.objects.get_or_create(
-                    name=t_name,
-                    defaults={'is_public': True, 'owner': None}  # owner=None für öffentliche Tags
-                )
-                # Falls existierender Tag nicht public ist → public setzen
-                if not tag_obj.is_public:
-                    tag_obj.is_public = True
-                    tag_obj.save()
-            else:
-                # Privat: Tag nur innerhalb eigener Organisation
-                tag_obj, created = RecipeTag.objects.get_or_create(
-                    name=t_name,
-                    owner=org
-                )
-                # private Tags sind automatisch nicht public
-                if tag_obj.is_public:
-                    tag_obj.is_public = False
-                    tag_obj.save()
-
-                # Tag dem Rezept zuordnen
+            tag_obj, _ = RecipeTag.objects.get_or_create(name=t_name, owner=org)
+            tag_obj.is_public = recipe.is_public
+            tag_obj.save()
             recipe.tags.add(tag_obj)
 
         # --- Zutaten ---
         recipe.ingredients.all().delete()
-        names = request.POST.getlist("ingredient_name[]")
-        qtys = request.POST.getlist("ingredient_qty[]")
-        units = request.POST.getlist("ingredient_unit[]")
+        ingredient_names = request.POST.getlist("ingredient_name[]")
+        ingredient_qtys = request.POST.getlist("ingredient_qty[]")
+        ingredient_units = request.POST.getlist("ingredient_unit[]")
+        ingredient_groups = request.POST.getlist("ingredient_group[]")
         servings = float(request.POST.get("servings", 1))
-        for n, q, u in zip(names, qtys, units):
-            if n.strip():
+        for name, qty, unit, group in zip(ingredient_names, ingredient_qtys, ingredient_units, ingredient_groups):
+            if name.strip():
                 RecipeIngredient.objects.create(
                     recipe=recipe,
-                    name=n.strip(),
-                    quantity=float(q) / servings if q else None,
-                    unit=u.strip()
+                    name=name.strip(),
+                    quantity=float(qty) / servings if qty else None,
+                    unit=unit.strip(),
+                    product_group=int(group) if group else None
                 )
 
         # --- Schritte ---
@@ -369,9 +339,15 @@ def edit_recipe(request, pk):
 
     # --- GET ---
     ingredient_data = [
-        {"name": i.name, "quantity": i.quantity, "unit": i.unit}
+        {
+            "name": i.name,
+            "quantity": i.quantity,
+            "unit": i.unit,
+            "product_group": str(i.product_group) if i.product_group is not None else ""
+        }
         for i in recipe.ingredients.all()
     ]
+
     step_data = [
         {"description": s.description} for s in recipe.steps.all()
     ]

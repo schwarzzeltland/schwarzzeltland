@@ -17,7 +17,11 @@
             <div class="mb-3">
                 {{ form.type.label_tag }} {{ form.type }}
             </div>
-
+            <div class="mb-3" id="recipe-wrapper" style="display: none;">
+                {{ form.recipe.label_tag }}
+                {{ form.recipe }}
+                {{ form.recipe.errors }}
+            </div>
             <div class="mb-3 form-check">
                 {{ form.visible_for_members }}
                 <label class="form-check-label">
@@ -66,4 +70,24 @@
             </div>
         </form>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const typeSelect = document.getElementById("id_type");  // Django generiert id automatisch
+            const recipeWrapper = document.getElementById("recipe-wrapper");
+
+            function toggleRecipeField() {
+                if (typeSelect.value === "0") {  // TYPE_MEAL = 0
+                    recipeWrapper.style.display = "block";
+                } else {
+                    recipeWrapper.style.display = "none";
+                    // Optional: Wert zurücksetzen
+                    const recipeSelect = recipeWrapper.querySelector("select");
+                    if (recipeSelect) recipeSelect.value = "";
+                }
+            }
+
+            toggleRecipeField();  // Initial prüfen, falls Formular schon geladen
+            typeSelect.addEventListener("change", toggleRecipeField);
+        });
+    </script>
 {% endblock %}

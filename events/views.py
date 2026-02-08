@@ -693,7 +693,8 @@ def edit_trip(request, pk=None):
             if 'save' in request.POST or 'save_as_new' in request.POST:
                 # Wenn der Speichern-Button gedrückt wurde, weiter zu Trips
                 messages.success(request, f'Veranstaltung {trip_d.name} gespeichert.')
-                return redirect('edit_trip', trip_d.pk)  # Hier 'trip' zu deiner Trip-Liste oder Detail-Seite weiterleiten
+                return redirect('edit_trip',
+                                trip_d.pk)  # Hier 'trip' zu deiner Trip-Liste oder Detail-Seite weiterleiten
             elif 'check_material' in request.POST:
                 # Wenn der Materialverfügbarkeits-Button gedrückt wurde, weiter zu Materialverfügbarkeit prüfen
                 return redirect('check_trip_material', trip_d.pk)  # Weiterleitung zur Materialverfügbarkeitsprüfung
@@ -1835,6 +1836,7 @@ def update_checklist_due_date(request):
 def overlaps(a_start, a_end, b_start, b_end):
     return not (a_end <= b_start or a_start >= b_end)
 
+
 def create_clusters(day_list):
     clusters = []
     current_cluster = []
@@ -1843,7 +1845,8 @@ def create_clusters(day_list):
             current_cluster.append(item)
         else:
             # Prüfen, ob sich das aktuelle Item mit einem im Cluster überschneidet
-            if any(overlaps(item.start_time, item.end_time, other.start_time, other.end_time) for other in current_cluster):
+            if any(overlaps(item.start_time, item.end_time, other.start_time, other.end_time) for other in
+                   current_cluster):
                 current_cluster.append(item)
             else:
                 clusters.append(current_cluster)
@@ -1852,28 +1855,47 @@ def create_clusters(day_list):
         clusters.append(current_cluster)
     return clusters
 
+
 @login_required
 @pro4_required
 def programm(request, pk):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
     trip = get_object_or_404(Trip, pk=pk, owner=request.org)
     items = trip.programm.all()
-    search_query = request.GET.get('search', '').strip()
-    selected_type = request.GET.get('type', '')
 
+    # Suchfeld
+    search_query = request.GET.get('search', '').strip()
+
+    # Multi-Select Typen
+    selected_type_list = request.GET.getlist('type')  # List[str], z.B. ["0", "2", "4"]
+
+    if selected_type_list:
+        # In Integer umwandeln
+        type_list = [int(t) for t in selected_type_list if t.strip()]
+        if type_list:
+            items = items.filter(type__in=type_list)
+
+    # Name-Filter
     if search_query:
         items = items.filter(name__icontains=search_query)
-    if selected_type:
-        items = items.filter(type=selected_type)
 
     items = items.order_by('start_time', 'name')
+
+    # Für Select2: alle Typen vorbereiten
+    types_for_select2 = [{"id": str(t[0]), "text": t[1]} for t in ProgrammItem.TYPES]
+
+    # Auswahl-Liste vorbereiten (Template braucht Liste, keine Strings)
+    if selected_type_list:
+        selected_type_list = [str(t) for t in type_list] if selected_type_list else []
+    else:
+        selected_type_list = []
 
     # Layout-Parameter
     scale = 2
     min_height = 80
     day_width = 350
     gap = 10
-    #container_height = (end_hour - start_hour) * 60 * scale
+    # container_height = (end_hour - start_hour) * 60 * scale
     # Dynamische Anpassung des Zeitrasters
     all_start_times = [localtime(item.start_time).time() for item in items if item.start_time]
     all_end_times = [localtime(item.end_time).time() for item in items if item.end_time]
@@ -1882,7 +1904,7 @@ def programm(request, pk):
     default_end = 22
     if all_start_times and all_end_times:
         start_hour = min(default_start, min(t.hour for t in all_start_times))
-        end_hour = max(default_end, max(t.hour for t in all_end_times)+1)
+        end_hour = max(default_end, max(t.hour for t in all_end_times) + 1)
     else:
         start_hour = default_start
         end_hour = default_end
@@ -1910,7 +1932,8 @@ def programm(request, pk):
             for item in cluster:
                 placed = False
                 for col_idx, col in enumerate(columns):
-                    if all(not overlaps(item.start_time, item.end_time, other.start_time, other.end_time) for other in col):
+                    if all(not overlaps(item.start_time, item.end_time, other.start_time, other.end_time) for other in
+                           col):
                         col.append(item)
                         item.column = col_idx
                         placed = True
@@ -1921,7 +1944,7 @@ def programm(request, pk):
 
             max_columns = len(columns)
             for itm in cluster:
-                itm.width = round((day_width - (gap * (max_columns ))) / max_columns, 2)
+                itm.width = round((day_width - (gap * (max_columns))) / max_columns, 2)
                 itm.left = itm.column * (itm.width + gap)
 
                 # Debug-Infos hinzufügen
@@ -1943,17 +1966,14 @@ def programm(request, pk):
         "title": f"Programm der Veranstaltung: {trip.name}",
         "trip": trip,
         "grouped_by_day": grouped_by_day_sorted,
-        'types': ProgrammItem.TYPES,
-        'selected_type': selected_type,
+        'types': types_for_select2,
+        'selected_type_list': selected_type_list,
         'search_query': search_query,
         'hours': hours,
         'container_height': container_height,
         'day_width': day_width,
         'is_event_manager': m.event_manager,
     })
-
-
-
 
 
 @login_required
@@ -1970,6 +1990,7 @@ def add_programm_item(request, pk):
             short_description = form.cleaned_data['short_description']
             description = form.cleaned_data['description']
             type = form.cleaned_data['type']
+            recipe = form.cleaned_data['recipe']  # <-- Rezept übernehmen
             start_time = form.cleaned_data['start_time']
             end_time = form.cleaned_data['end_time']
             selected_days = form.cleaned_data['days']
@@ -1984,6 +2005,7 @@ def add_programm_item(request, pk):
                     short_description=short_description,
                     description=description,
                     type=type,
+                    recipe=recipe,
                     start_time=start_dt,
                     end_time=end_dt
                 )
@@ -2007,7 +2029,7 @@ def edit_programm_item(request, item_id):
 
     if request.method == "POST":
         if 'save' in request.POST:
-            form = ProgrammItemEditForm(request.POST, instance=item)
+            form = ProgrammItemEditForm(request.POST, instance=item,org=request.org)
             if form.is_valid():
                 # Speichert Änderungen am bestehenden Programmpunkt
                 form.save()
@@ -2020,13 +2042,14 @@ def edit_programm_item(request, item_id):
             return redirect('programm', trip_id)
 
     else:
-        form = ProgrammItemEditForm(instance=item)
+        form = ProgrammItemEditForm(instance=item,org=request.org)
 
     return render(request, "events/edit_programm_item.html", {
         "form": form,
         "item": item,
         "title": f"Programmpunkt bearbeiten: {item.name}"
     })
+
 
 @login_required
 @pro4_required
@@ -2035,13 +2058,22 @@ def print_programm(request, pk):
     m: Membership = request.user.membership_set.filter(organization=request.org).first()
     trip = get_object_or_404(Trip, pk=pk, owner=request.org)
     items = trip.programm.all()
-    search_query = request.GET.get('search', '').strip()
-    selected_type = request.GET.get('type', '')
 
+    # Suchfeld
+    search_query = request.GET.get('search', '').strip()
+
+    # Multi-Select Typen
+    selected_type = request.GET.get('type', '')  # z.B. "1,2"
+    type_list = []
+    if selected_type:
+        type_list = [int(t) for t in selected_type.split(',') if t.strip()]
+
+    if type_list:
+        items = items.filter(type__in=type_list)
+
+    # Name-Filter
     if search_query:
         items = items.filter(name__icontains=search_query)
-    if selected_type:
-        items = items.filter(type=selected_type)
 
     items = items.order_by('start_time', 'name')
 
@@ -2121,8 +2153,6 @@ def print_programm(request, pk):
         "title": f"Programm der Veranstaltung: {trip.name}",
         "trip": trip,
         "grouped_by_day": grouped_by_day_sorted,
-        'types': ProgrammItem.TYPES,
-        'selected_type': selected_type,
         'search_query': search_query,
         'hours': hours,
         'container_height': container_height,
@@ -2130,13 +2160,73 @@ def print_programm(request, pk):
         'is_event_manager': m.event_manager,
     })
 
+
 @login_required
 @pro4_required
 def show_program_item(request, item_id):
     item = get_object_or_404(ProgrammItem, pk=item_id, trip__owner=request.org)
     return render(request, "events/show_program_item.html", {
         "item": item,
-        "title":"Programmpunkt anzeigen",
+        "title": "Programmpunkt anzeigen",
     })
 
+@login_required
+@event_manager_required
+@pro1_required
+def add_recipe_to_shoppinglist(request, item_pk):
+    item = get_object_or_404(
+        ProgrammItem.objects.select_related("trip", "recipe"),
+        pk=item_pk,
+        trip__owner=request.org
+    )
 
+    if item.type != ProgrammItem.TYPE_MEAL or not item.recipe:
+        messages.error(request, "Kein gültiges Rezept zugeordnet.")
+        return redirect(request.GET.get("next", "programm", pk=item.trip.pk))
+
+    trip = item.trip
+    recipe = item.recipe
+
+    # Personenanzahl (GET -> Fallback)
+    try:
+        persons = int(request.GET.get("persons", trip.total_persons()))
+    except (TypeError, ValueError):
+        persons = trip.total_persons()
+
+    persons = max(persons, 1)
+    weekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    start_date = localtime(item.start_time)
+    formatted = f"{weekdays[start_date.weekday()]}, {start_date:%d.%m.}"
+    recipe_suffix = f"(Rezept: {recipe.title} für {formatted})"
+
+    # 🔥 Alte Einträge dieses Rezepts löschen
+    ShoppingListItem.objects.filter(
+        trip=trip,
+        name__endswith=recipe_suffix
+    ).delete()
+
+    # ➕ Neue Zutaten anlegen
+    items_to_create = []
+    for ing in recipe.ingredients.all():
+        if ing.quantity is None:
+            continue
+
+        items_to_create.append(
+            ShoppingListItem(
+                trip=trip,
+                name=f"{ing.name} {recipe_suffix}",
+                amount=ing.quantity * persons,
+                unit=ing.unit or "",
+                product_group=ing.product_group if hasattr(ing, "product_group") else None
+            )
+        )
+
+    ShoppingListItem.objects.bulk_create(items_to_create)
+
+    messages.success(
+        request,
+        f"Zutaten aus „{recipe.title}“ zur Einkaufsliste hinzugefügt ({persons} Personen)."
+    )
+
+    # 🔹 einfach wieder zur vorherigen Seite zurück
+    return redirect(request.META.get("HTTP_REFERER", request.path))

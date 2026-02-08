@@ -10,6 +10,7 @@ from django.utils import timezone
 from buildings.models import Construction, Material
 from events.models import Trip, TripConstruction, Location, TripGroup, TripMaterial, ShoppingListItem, TripVacancy, \
     EventPlanningChecklistItem, ProgrammItem
+from knowledgebase.models import Recipe
 
 
 class TripForm(ModelForm):
@@ -308,12 +309,13 @@ class ProgrammItemForm(forms.ModelForm):
 
     class Meta:
         model = ProgrammItem
-        fields = ["name", "short_description", "description", "type", "visible_for_members"]
+        fields = ["name", "short_description", "description", "type","recipe", "visible_for_members"]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "short_description": forms.TextInput(attrs={"class": "form-control"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "type": forms.Select(attrs={"class": "form-select"}),
+            "recipe": forms.Select(attrs={"class": "form-select"}),
             "visible_for_members": forms.CheckboxInput(attrs={"class": "form-check-input"}
                                                        )
         }
@@ -328,6 +330,8 @@ class ProgrammItemForm(forms.ModelForm):
                 day_choices.append((current_day.isoformat(), current_day.strftime("%a, %d.%m.")))
                 current_day += timedelta(days=1)
             self.fields['days'].choices = day_choices
+            # Queryset nur auf Rezepte des Trip-Owners beschränken
+            self.fields["recipe"].queryset = Recipe.objects.filter(owner=trip.owner)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -352,6 +356,7 @@ class ProgrammItemEditForm(forms.ModelForm):
             'short_description',
             'description',
             'type',
+            'recipe',
             'visible_for_members',
             'start_time',
             'end_time',
@@ -361,6 +366,7 @@ class ProgrammItemEditForm(forms.ModelForm):
             "short_description": forms.TextInput(attrs={"class": "form-control"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "type": forms.Select(attrs={"class": "form-select"}),
+            "recipe": forms.Select(attrs={"class": "form-select"}),
             "visible_for_members": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "start_time": forms.DateTimeInput(
                 attrs={"class": "form-control", "type": "datetime-local"},
@@ -393,3 +399,9 @@ class ProgrammItemEditForm(forms.ModelForm):
                 self.add_error('start_time', "Start- und Endzeit müssen am selben Tag liegen.")
                 self.add_error('end_time', "Start- und Endzeit müssen am selben Tag liegen.")
         return cleaned_data
+    def __init__(self, *args, **kwargs):
+        org = kwargs.pop('org', None)
+        super().__init__(*args, **kwargs)
+        if org:
+            # Queryset nur auf Rezepte des Trip-Owners beschränken
+            self.fields["recipe"].queryset = Recipe.objects.filter(owner=org)

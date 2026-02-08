@@ -5,21 +5,38 @@
 {% block content %}
     <div id="messages"></div>
     <!-- Such- und Filterbereich -->
-    <form method="get" action="" class="mb-3">
+    <form method="get" class="mb-3">
         <div class="input-group">
             <input type="text" class="form-control" name="search"
                    value="{{ search_query|default:'' }}" placeholder="Suche nach Programmpunkt">
-            <select class="form-select" name="type">
-                <option value="">Alle Typen</option>
-                {% for value, label in types %}
-                    <option value="{{ value }}" {% if value|stringformat:"s" == selected_type %}selected{% endif %}>
-                        {{ label }}
+
+            <select id="type-select" name="type" multiple class="form-select">
+                {% for t in types %}
+                    <option value="{{ t.id }}" {% if t.id in selected_type_list %}selected{% endif %}>
+                        {{ t.text }}
                     </option>
                 {% endfor %}
             </select>
-            <button class="btn btn-outline-secondary" type="submit">Suchen</button>
+            <button type="submit" class="btn btn-outline-secondary">Suchen</button>
         </div>
     </form>
+
+
+    <!-- Select2 CSS & JS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $('#type-select').select2({
+                placeholder: "Wähle Typen aus",
+                allowClear: true,
+                tags: false,
+                width: 'resolve'
+            });
+        });
+    </script>
 
 
     <div id="programm-wrapper"
@@ -65,11 +82,12 @@
         <div class="mt-2">
             <a href="{% url 'add_programm_item' trip.id %}" class="btn btn-success">Programmpunkt hinzufügen</a>
 
-            <a href="{% url 'print_programm' trip.pk %}?{% if search_query %}search={{ search_query }}&{% endif %}{% if selected_type %}type={{ selected_type }}{% endif %}"
+            <a href="{% url 'print_programm' trip.pk %}?search={{ search_query }}&type={{ selected_type_list|join:',' }}"
                target="_blank"
                class="btn btn-outline-primary">
                 🖨 Programm drucken
             </a>
+
 
         </div>
         <div class="mt-2">
@@ -207,6 +225,14 @@
                 vertical-align: top;
                 page-break-inside: avoid;
             }
+        }
+
+        /* Gemeinsame Höhe für Input + Select2 */
+        .input-group .form-control,
+        .input-group .select2-container--default .select2-selection--multiple {
+            border-radius: 0.0rem; /* leicht abgerundet, wie Bootstrap */
+            line-height: 1.0;
+            padding: 0.6rem 0.5rem;
         }
 
 

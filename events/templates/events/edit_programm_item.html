@@ -15,6 +15,24 @@
             <div class="mb-3">
                 {{ form.type.label_tag }} {{ form.type }}
             </div>
+            <div class="mb-3" id="recipe-wrapper" style="display: none;">
+                {{ form.recipe.label_tag }}
+                {{ form.recipe }}
+                    <a id="recipe-link"
+                       data-next="{{ request.get_full_path|urlencode }}"
+                       href="#"
+                       class="btn btn-secondary mt-2"
+                       style="display:none;">
+                        Rezept für die Teilnehmeranzahl anzeigen
+                    </a>
+                {% if item.trip.owner.pro1 %}
+                    <!-- Zutaten übernehmen -->
+                        <a href="{% url 'add_recipe_to_shoppinglist' item.pk %}?persons={{ item.trip.total_persons }}&next={{ request.get_full_path|urlencode }}"
+                           class="btn btn-outline-success mt-2">
+                            Zutaten zur Einkaufsliste
+                        </a>
+                {% endif %}
+            </div>
 
             <div class="mb-3 form-check">
                 {{ form.visible_for_members }}
@@ -43,4 +61,60 @@
             </div>
         </form>
     </div>
+    <div class="mb-3" id="recipe-wrapper" style="display: none;">
+        {{ form.recipe.label_tag }}
+        {{ form.recipe }}
+
+        <a id="recipe-link"
+           href="#"
+           class="btn btn-secondary mt-2"
+           style="display:none;"
+           target="_blank">
+            Rezept für die Teilnehmeranzahl anzeigen
+        </a>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const typeSelect = document.getElementById("id_type");
+            const recipeWrapper = document.getElementById("recipe-wrapper");
+            const recipeSelect = document.getElementById("id_recipe");
+            const recipeLink = document.getElementById("recipe-link");
+
+            function updateRecipeVisibility() {
+                const isMeal = typeSelect.value === "0"; // TYPE_MEAL
+
+                recipeWrapper.style.display = isMeal ? "block" : "none";
+
+                if (!isMeal) {
+                    recipeLink.style.display = "none";
+                    recipeLink.href = "#";
+                }
+            }
+
+            function updateRecipeLink() {
+                const recipeId = recipeSelect.value;
+                const nextUrl = recipeLink.dataset.next;
+
+                if (recipeId) {
+                    recipeLink.href =
+                        `/knowledgebase/recipes/show_my_recipe/${recipeId}/?next=${nextUrl}&persons={{ item.trip.total_persons }}`;
+                    recipeLink.style.display = "inline-block";
+                } else {
+                    recipeLink.style.display = "none";
+                    recipeLink.href = "#";
+                }
+            }
+
+            typeSelect.addEventListener("change", updateRecipeVisibility);
+            recipeSelect.addEventListener("change", updateRecipeLink);
+
+            // Initialer Zustand (Edit-View!)
+            updateRecipeVisibility();
+            updateRecipeLink();
+        });
+    </script>
+
+
+
 {% endblock %}
