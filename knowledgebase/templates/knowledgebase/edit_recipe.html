@@ -31,7 +31,7 @@
                 const hiddenTags = document.getElementById("id_tags");
                 const suggestionsList = document.getElementById("tag-suggestions");
                 let selectingSuggestion = false;
-                let tags = [];
+                let tags = {{ tags_list|safe }};
 
                 function renderTags() {
                     tagsList.innerHTML = "";
@@ -49,6 +49,7 @@
                     hiddenTags.value = tags.join(",");
                 }
 
+                renderTags(); // initial
                 function addTag(val) {
                     if (val && !tags.includes(val)) {
                         tags.push(val);
@@ -143,7 +144,8 @@
             </div>
 
             <div class="form-check mb-4">
-                <input type="checkbox" name="is_public" class="form-check-input">
+                <input type="checkbox" name="is_public" class="form-check-input"
+                       {% if recipe.is_public %}checked{% endif %}>
                 <label class="form-check-label">Öffentlich</label>
             </div>
 

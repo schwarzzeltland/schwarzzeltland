@@ -26,7 +26,7 @@
                 return;
             }
 
-            fetch(`/knowledgebase/recipes/tag-autocomplete/?q=${encodeURIComponent(val)}`)
+            fetch(`/knowledgebase/recipes/public-tag-autocomplete/?q=${encodeURIComponent(val)}`)
                 .then(res => res.json())
                 .then(data => {
                     suggestionsList.innerHTML = "";
@@ -74,7 +74,7 @@
                         </div>
 
                         <!-- Aktionen -->
-                        <form method="post" action="{% url 'show_my_recipe' recipe.pk %}" class="flex-shrink-0">
+                        <form method="post" action="{% url 'show_public_recipe' recipe.pk %}" class="flex-shrink-0">
                                 {% csrf_token %}
                                 <div class="input-group input-group-sm">
                                     <button type="submit" class="btn btn-primary">Anzeigen für Personen:</button>

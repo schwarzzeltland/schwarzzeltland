@@ -7,6 +7,7 @@ urlpatterns = [
     path('recipes/my_recipes/', views.my_recipes, name='my_recipes'),
     path('recipes/public_recipes/', views.public_recipes, name='public_recipes'),
     path('recipes/tag-autocomplete/', views.tag_autocomplete, name='tag_autocomplete'),
+    path('recipes/public-tag-autocomplete/', views.public_tag_autocomplete, name='public_tag_autocomplete'),
     path('recipes/show_public_recipe/<int:pk>/', views.show_public_recipe, name='show_public_recipe'),
     path('recipes/show_my_recipe/<int:pk>/', views.show_my_recipe, name='show_my_recipe'),
     path('recipes/copy_public_recipe/<int:pk>/', views.copy_public_recipe, name='copy_public_recipe'),

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from nested_admin.nested import NestedTabularInline
 
-from knowledgebase.models import Recipe, RecipeIngredient, RecipeStep
+from knowledgebase.models import Recipe, RecipeIngredient, RecipeStep, RecipeTag
 
 
 class RecipeIngredientInLine(NestedTabularInline):
@@ -15,7 +15,7 @@ class RecipeStepInLine(NestedTabularInline):
 
 # Register your models here.
 @admin.register(Recipe)
-class LocationAdmin(admin.ModelAdmin):
+class RecipeAdmin(admin.ModelAdmin):
     model = Recipe
     search_fields = ['title']
     inlines = [
@@ -23,3 +23,7 @@ class LocationAdmin(admin.ModelAdmin):
         RecipeStepInLine,
     ]
 
+@admin.register(RecipeTag)
+class RecipeTagAdmin(admin.ModelAdmin):
+    model = RecipeTag
+    search_fields = ['title']

@@ -1,4 +1,3 @@
-
 from django.contrib import messages
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Q
@@ -49,7 +48,7 @@ def my_recipes(request):
         "recipes": recipes,
         "title_query": title_query,
         "tags_query": tags_query,
-        "is_knowledge_manager":m.knowledge_manager,
+        "is_knowledge_manager": m.knowledge_manager,
     })
 
 
@@ -58,7 +57,7 @@ def public_recipes(request):
     org = request.org
     title_query = request.GET.get("title", "").strip()
     tags_query = request.GET.get("tags", "").strip()
-    recipes = Recipe.objects.filter(is_public=True).exclude(owner=org)
+    recipes = Recipe.objects.filter(is_public=True)
 
     # Titel filtern
     if title_query:
@@ -105,7 +104,28 @@ def new_recipe(request):
 
         # Tags
         for t_name in [t.strip() for t in tags_input.split(",") if t.strip()]:
-            tag_obj, created = RecipeTag.objects.get_or_create(name=t_name)
+            if is_public:
+                # Öffentlich: Tag global einmalig nach Name suchen/erstellen
+                tag_obj, created = RecipeTag.objects.get_or_create(
+                    name=t_name,
+                    defaults={'is_public': True, 'owner': None}  # owner=None für öffentliche Tags
+                )
+                # Falls existierender Tag nicht public ist → public setzen
+                if not tag_obj.is_public:
+                    tag_obj.is_public = True
+                    tag_obj.save()
+            else:
+                # Privat: Tag nur innerhalb eigener Organisation
+                tag_obj, created = RecipeTag.objects.get_or_create(
+                    name=t_name,
+                    owner=org
+                )
+                # private Tags sind automatisch nicht public
+                if tag_obj.is_public:
+                    tag_obj.is_public = False
+                    tag_obj.save()
+
+                # Tag dem Rezept zuordnen
             recipe.tags.add(tag_obj)
 
         # Zutaten
@@ -143,12 +163,36 @@ def new_recipe(request):
     return render(request, "knowledgebase/new_recipe.html", {"title": "Neues Rezept erstellen"})
 
 
+@login_required
 def tag_autocomplete(request):
     query = request.GET.get("q", "").strip()
-    if query:
-        tags = RecipeTag.objects.filter(name__icontains=query).values_list("name", flat=True)
-        return JsonResponse(list(tags), safe=False)
-    return JsonResponse([], safe=False)
+    if not query:
+        return JsonResponse([], safe=False)
+
+    org = request.org
+    # Filter: eigene Tags, nur Name
+
+    tags = RecipeTag.objects.filter(
+        Q(name__icontains=query) & (Q(is_public=True) | Q(owner=org))
+    ).values_list("name", flat=True).distinct()
+    return JsonResponse(list(tags), safe=False)
+
+
+@login_required
+def public_tag_autocomplete(request):
+    query = request.GET.get("q", "").strip()
+    if not query:
+        return JsonResponse([], safe=False)
+
+    org = request.org
+
+    # Filter: eigene Tags, nur Name
+    tags = RecipeTag.objects.filter(
+        name__icontains=query,
+        is_public=True  # nur öffentliche Tags
+    ).values_list("name", flat=True).distinct()
+
+    return JsonResponse(list(tags), safe=False)
 
 
 @login_required
@@ -181,7 +225,7 @@ def show_public_recipe(request, pk):
         'recipe': recipe,
         'ingredients': adjusted_ingredients,
         'steps': steps,
-        'servings':servings,
+        'servings': servings,
         'tags': tags,
     })
 
@@ -221,6 +265,7 @@ def copy_public_recipe(request, pk):
     messages.success(request, f'Rezept {recipe.title} gespeichert.')
     return redirect('recipes')
 
+
 @login_required
 def show_my_recipe(request, pk):
     recipe = get_object_or_404(Recipe, pk=pk, owner=request.org)
@@ -251,9 +296,11 @@ def show_my_recipe(request, pk):
         'recipe': recipe,
         'ingredients': adjusted_ingredients,
         'steps': steps,
-        'servings':servings,
+        'servings': servings,
         'tags': tags,
     })
+
+
 @login_required
 @knowledge_manager_required
 def edit_recipe(request, pk):
@@ -262,16 +309,37 @@ def edit_recipe(request, pk):
 
     if request.method == "POST":
         # --- Titel, Beschreibung, Öffentlich ---
-        recipe.title = request.POST.get("title","").strip()
-        recipe.description = request.POST.get("description","").strip()
+        recipe.title = request.POST.get("title", "").strip()
+        recipe.description = request.POST.get("description", "").strip()
         recipe.is_public = bool(request.POST.get("is_public"))
         recipe.save()
 
         # --- Tags ---
-        tags_input = request.POST.get("tags","")
+        tags_input = request.POST.get("tags", "")
         recipe.tags.clear()
         for t_name in [t.strip() for t in tags_input.split(",") if t.strip()]:
-            tag_obj,_ = RecipeTag.objects.get_or_create(name=t_name)
+            if recipe.is_public:
+                # Öffentlich: Tag global einmalig nach Name suchen/erstellen
+                tag_obj, created = RecipeTag.objects.get_or_create(
+                    name=t_name,
+                    defaults={'is_public': True, 'owner': None}  # owner=None für öffentliche Tags
+                )
+                # Falls existierender Tag nicht public ist → public setzen
+                if not tag_obj.is_public:
+                    tag_obj.is_public = True
+                    tag_obj.save()
+            else:
+                # Privat: Tag nur innerhalb eigener Organisation
+                tag_obj, created = RecipeTag.objects.get_or_create(
+                    name=t_name,
+                    owner=org
+                )
+                # private Tags sind automatisch nicht public
+                if tag_obj.is_public:
+                    tag_obj.is_public = False
+                    tag_obj.save()
+
+                # Tag dem Rezept zuordnen
             recipe.tags.add(tag_obj)
 
         # --- Zutaten ---
@@ -279,13 +347,13 @@ def edit_recipe(request, pk):
         names = request.POST.getlist("ingredient_name[]")
         qtys = request.POST.getlist("ingredient_qty[]")
         units = request.POST.getlist("ingredient_unit[]")
-        servings = float(request.POST.get("servings",1))
-        for n,q,u in zip(names, qtys, units):
+        servings = float(request.POST.get("servings", 1))
+        for n, q, u in zip(names, qtys, units):
             if n.strip():
                 RecipeIngredient.objects.create(
                     recipe=recipe,
                     name=n.strip(),
-                    quantity=float(q)/servings if q else None,
+                    quantity=float(q) / servings if q else None,
                     unit=u.strip()
                 )
 
@@ -296,7 +364,7 @@ def edit_recipe(request, pk):
             if s.strip():
                 RecipeStep.objects.create(recipe=recipe, description=s.strip())
 
-        messages.success(request,f"Rezept {recipe.title} aktualisiert.")
+        messages.success(request, f"Rezept {recipe.title} aktualisiert.")
         return redirect("my_recipes")
 
     # --- GET ---
@@ -308,14 +376,12 @@ def edit_recipe(request, pk):
         {"description": s.description} for s in recipe.steps.all()
     ]
     tags_list = [t.name for t in recipe.tags.all()]
-
-    return render(request,"knowledgebase/edit_recipe.html",{
+    return render(request, "knowledgebase/edit_recipe.html", {
         "recipe": recipe,
         "ingredient_data_json": json.dumps(ingredient_data, cls=DjangoJSONEncoder),
         "step_data_json": json.dumps(step_data, cls=DjangoJSONEncoder),
         "tags_list": tags_list,  # für die Badges und Input
     })
-
 
 
 @login_required
