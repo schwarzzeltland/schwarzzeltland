@@ -56,35 +56,58 @@
         });
 
     </script>
+    <div class="table-responsive">
+        <div class="d-flex flex-column gap-2">
+            {% for recipe in recipes %}
+                <div class="card p-2 recipe-card">
+                    <div class="d-flex align-items-center gap-3">
 
-    {% for recipe in recipes %}
-        <div class="card mb-2 p-2">
-            <div class="d-flex flex-row justify-content-between align-items-center">
-                <!-- Linke Seite: Titel + Tags + Autor -->
-                <div class="me-3 flex-grow-1">
-                    <h5 class="mb-1">{{ recipe.title }}</h5>
-                    <div class="mb-1">
-                        {% for tag in recipe.tags.all %}
-                            <span class="badge bg-secondary me-1">{{ tag.name }}</span>
-                        {% endfor %}
+                        <!-- Titel + Tags -->
+                        <div class="flex-grow-1">
+                            <h5 class="mb-1 recipe-title">{{ recipe.title }}</h5>
+                            <small class="text-muted">Autor: {{ recipe.author }}</small>
+                            <div>
+                                {% for tag in recipe.tags.all %}
+                                    <span class="badge bg-secondary me-1">{{ tag.name }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Aktionen -->
+                        <form method="post" action="{% url 'show_my_recipe' recipe.pk %}" class="flex-shrink-0">
+                                {% csrf_token %}
+                                <div class="input-group input-group-sm">
+                                    <button type="submit" class="btn btn-primary">Anzeigen für Personen:</button>
+                                    <input type="number" name="servings" class="form-control" value="1" min="1" style="width: 75px">
+                                </div>
+                            </form>
                     </div>
-                    <small class="text-muted">Autor: {{ recipe.author }}</small>
                 </div>
-
-                <!-- Rechte Seite: Input + Button -->
-                <form method="post" action="{% url 'show_public_recipe' recipe.pk %}" class="d-flex align-items-center">
-                    {% csrf_token %}
-                    <div class="input-group">
-                        <button type="submit" class="btn btn-primary">Anzeigen für Personen:</button>
-                        <input type="number" name="servings" class="form-control" value="1" min="1">
-                    </div>
-                </form>
-            </div>
+            {% empty %}
+                <p>Keine Rezepte gefunden.</p>
+            {% endfor %}
         </div>
-    {% empty %}
-        <p>Keine Rezepte gefunden.</p>
-    {% endfor %}
+    </div>
+
     <div class="mt-2">
         <a href="{% url 'recipes' %}" class="btn btn-secondary">Zurück</a>
     </div>
+
+    <style>
+        .recipe-title {
+            white-space: normal; /* Umbruch erlauben */
+            overflow-wrap: anywhere; /* bricht auch extrem lange Wörter */
+            word-break: normal; /* bessere Lesbarkeit */
+            line-height: 1.3;
+        }
+
+        .recipe-card {
+            min-width: 600px; /* verhindert Button-Quetschen */
+        }
+
+        .recipe-card > div {
+            align-items: flex-start; /* saubere Ausrichtung bei mehrzeiligem Titel */
+        }
+
+    </style>
 {% endblock %}

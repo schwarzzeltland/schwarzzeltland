@@ -97,6 +97,11 @@
                         suggestionsList.innerHTML = "";
                     }
                 });
+                tagInput.addEventListener("blur", function () {
+                    addTag(tagInput.value.trim());
+                    tagInput.value = "";
+                    suggestionsList.innerHTML = "";
+                });
             </script>
             <div class="mb-3">
                 <label class="form-label">Beschreibung</label>

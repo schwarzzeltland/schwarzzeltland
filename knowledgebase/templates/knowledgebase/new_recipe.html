@@ -94,6 +94,27 @@
                         suggestionsList.innerHTML = "";
                     }
                 });
+                li.onmousedown = () => {
+                    isSelectingSuggestion = true;
+                };
+
+                li.onclick = () => {
+                    addTag(tagName);
+                    tagInput.value = "";
+                    suggestionsList.innerHTML = "";
+                    isSelectingSuggestion = false;
+                };
+
+                tagInput.addEventListener("blur", function () {
+                    if (isSelectingSuggestion) return;
+
+                    const val = tagInput.value.trim();
+                    if (val) {
+                        addTag(val);
+                        tagInput.value = "";
+                        suggestionsList.innerHTML = "";
+                    }
+                });
 
             </script>
             <div class="mb-3">

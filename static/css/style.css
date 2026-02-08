@@ -135,7 +135,16 @@ section {
     min-height: 40px;
     margin-top: 74px;
 }
+.breadcrumbs-title {
+    flex: 1 1 auto;        /* darf wachsen & schrumpfen */
+    min-width: 0;          /* extrem wichtig für Umbruch */
+    word-break: break-word;
+}
 
+.breadcrumbs-nav {
+    flex: 0 0 auto;        /* bleibt immer so breit wie nötig */
+    white-space: nowrap;  /* verhindert Umbruch im Menü */
+}
 .breadcrumbs h2 {
     font-size: 28px;
     font-weight: 400;
@@ -175,6 +184,14 @@ section {
 
     .breadcrumbs ol li {
         display: inline-block;
+    }
+     .breadcrumbs > .container > div {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .breadcrumbs-nav {
+        align-self: flex-end;
     }
 }
 
