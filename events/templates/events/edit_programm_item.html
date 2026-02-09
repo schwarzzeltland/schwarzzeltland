@@ -27,7 +27,7 @@
                     </a>
                 {% if item.trip.owner.pro1 %}
                     <!-- Zutaten übernehmen -->
-                        <a href="{% url 'add_recipe_to_shoppinglist' item.pk %}?persons={{ item.trip.total_persons }}&next={{ request.get_full_path|urlencode }}"
+                        <a id="recipe-add-ingredients" href="{% url 'add_recipe_to_shoppinglist' item.pk %}?persons={{ item.trip.total_persons }}&next={{ request.get_full_path|urlencode }}"
                            class="btn btn-outline-success mt-2">
                             Zutaten zur Einkaufsliste
                         </a>
@@ -80,6 +80,7 @@
             const recipeWrapper = document.getElementById("recipe-wrapper");
             const recipeSelect = document.getElementById("id_recipe");
             const recipeLink = document.getElementById("recipe-link");
+            const recipeaddingredients = document.getElementById("recipe-add-ingredients");
 
             function updateRecipeVisibility() {
                 const isMeal = typeSelect.value === "0"; // TYPE_MEAL
@@ -89,6 +90,7 @@
                 if (!isMeal) {
                     recipeLink.style.display = "none";
                     recipeLink.href = "#";
+                    recipeaddingredients.style.display = "none";
                 }
             }
 
@@ -100,9 +102,11 @@
                     recipeLink.href =
                         `/knowledgebase/recipes/show_my_recipe/${recipeId}/?next=${nextUrl}&persons={{ item.trip.total_persons }}`;
                     recipeLink.style.display = "inline-block";
+                    recipeaddingredients.style.display = "inline-block";
                 } else {
                     recipeLink.style.display = "none";
                     recipeLink.href = "#";
+                    recipeaddingredients.style.display = "none";
                 }
             }
 

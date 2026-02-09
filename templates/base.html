@@ -123,21 +123,21 @@
                             <ul class="navbar-nav ms-lg-3 gap-lg-2">
 
                                 <li class="nav-item">
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'material' %}active fw-bold{% endif %}"
+                                       href="{% url 'material' %}">Material-Lager</a>
+
+                                </li>
+                                <li class="nav-item">
                                     <a class="nav-link {% if request.resolver_match.url_name == 'constructions' %}active fw-bold{% endif %}"
                                        href="{% url 'constructions' %}">Konstruktionen</a>
                                 </li>
                                 <li class="nav-item">
-                                    <a class="nav-link {% if request.resolver_match.url_name == 'material' %}active fw-bold{% endif %}"
-                                       href="{% url 'material' %}">Material</a>
-
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'location' %}active fw-bold{% endif %}"
+                                       href="{% url 'location' %}">Orte</a>
                                 </li>
                                 <li class="nav-item">
                                     <a class="nav-link {% if request.resolver_match.url_name == 'trip' %}active fw-bold{% endif %}"
                                        href="{% url 'trip' %}">Veranstaltungen</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link {% if request.resolver_match.url_name == 'location' %}active fw-bold{% endif %}"
-                                       href="{% url 'location' %}">Orte</a>
                                 </li>
                                 <li class="nav-item">
                                     <a class="nav-link {% if request.resolver_match.url_name == 'organization' %}active fw-bold{% endif %}"
