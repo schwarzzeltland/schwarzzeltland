@@ -16,6 +16,7 @@ urlpatterns = [
     path("trip/programm/<int:item_id>/show/", views.show_program_item, name="show_programm_item"),
     path("trip/programm/<int:item_pk>/add-recipe-to-shoppinglist/",views.add_recipe_to_shoppinglist,name="add_recipe_to_shoppinglist"),
     path('trip/shoppinglist/<int:pk>/', views.shoppinglist, name='shoppinglist'),
+    path('trip/shoppinglist/autocomplete/', views.shoppinglist_auto_complete, name='shoppinglist-auto-complete'),
     path("trip/<int:trip_id>/shoppinglist/add/", views.add_shoppinglist_item, name="add_shoppinglist_item"),
     path("shoppinglist/update/", views.update_shoppinglist_item, name="update_shoppinglist_item"),
     path("shoppinglist/<int:item_id>/delete/", views.delete_shoppinglist_item, name="delete_shoppinglist_item"),

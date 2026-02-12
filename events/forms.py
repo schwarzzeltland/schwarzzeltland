@@ -246,7 +246,9 @@ class ShoppingListItemForm(forms.ModelForm):
         model = ShoppingListItem
         fields = ["name", "amount", "unit", "product_group"]
         widgets = {
-            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Artikel"}),
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Artikel",
+            "id": "material-input",
+            "autocomplete": "off"}),
             "amount": forms.NumberInput(attrs={"class": "form-control", "placeholder": "Menge"}),
             "unit": forms.TextInput(attrs={"class": "form-control", "placeholder": "Einheit"}),
             "product_group": forms.Select(attrs={"class": "form-select"}),

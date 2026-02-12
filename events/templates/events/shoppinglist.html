@@ -86,9 +86,62 @@
     <div class="card p-3 mb-3">
         <form id="shoppinglist-form" method="post" class="row g-2 align-items-end">
             {% csrf_token %}
-            <div class="col-md-4">
+            <div class="col-md-4 position-relative">
                 {{ form.name }}
+
+                <ul id="material-suggestions"
+                    class="list-group position-absolute w-100"
+                    style="z-index: 1000;">
+                </ul>
             </div>
+            <script>
+                const materialInput = document.getElementById("material-input");
+                const suggestionsList = document.getElementById("material-suggestions");
+
+                let selectingSuggestion = false;
+
+                // Funktion zum Laden der Vorschläge
+                function loadSuggestions(query = "") {
+                    fetch(`/events/trip/shoppinglist/autocomplete/?q=${encodeURIComponent(query)}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            suggestionsList.innerHTML = "";
+
+                            data.forEach(name => {
+                                const li = document.createElement("li");
+                                li.className = "list-group-item list-group-item-action";
+                                li.textContent = name;
+
+                                li.addEventListener("click", () => {
+                                    materialInput.value = name;
+                                    suggestionsList.innerHTML = "";
+                                });
+
+                                suggestionsList.appendChild(li);
+                            });
+                        });
+                }
+
+                // 1️⃣ Vorschläge beim Fokus anzeigen
+                materialInput.addEventListener("focus", function () {
+                    loadSuggestions(""); // leeres Query → zeigt erste Materialien
+                });
+
+                // 2️⃣ Vorschläge beim Tippen filtern
+                materialInput.addEventListener("input", function () {
+                    const val = materialInput.value.trim();
+                    loadSuggestions(val);
+                });
+
+                // 3️⃣ Dropdown schließen, wenn außerhalb geklickt wird
+                document.addEventListener("click", function (e) {
+                    if (!materialInput.contains(e.target) &&
+                        !suggestionsList.contains(e.target)) {
+                        suggestionsList.innerHTML = "";
+                    }
+                });
+            </script>
+
             <div class="col-md-2">
                 {{ form.amount }}
             </div>

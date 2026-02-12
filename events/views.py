@@ -1416,6 +1416,27 @@ def shoppinglist(request, pk=None):
         'selected_product_group': selected_product_group,
     })
 
+@login_required
+@pro1_required
+def shoppinglist_auto_complete(request):
+    q = request.GET.get("q", "").strip()
+    print(q)
+    if not q:
+        materials = (
+            StockMaterial.objects
+            .filter(organization=request.org)
+            .order_by("material__name")
+            .values_list("material__name", flat=True)[:15]
+        )
+        return JsonResponse(list(materials), safe=False)
+
+    materials = (
+        StockMaterial.objects
+        .filter(organization=request.org,material__name__icontains=q)
+        .order_by("material__name")
+        .values_list("material__name", flat=True)[:15]
+    )
+    return JsonResponse(list(materials), safe=False)
 
 @require_POST
 @login_required
@@ -1426,8 +1447,10 @@ def add_shoppinglist_item(request, trip_id):
     form = ShoppingListItemForm(request.POST)
     if form.is_valid():
         item = form.save(commit=False)
+        consum_material = StockMaterial.objects.filter(organization=request.org,material__name= item.name,material__type=6).first()
         item.trip = trip
-
+        if consum_material :
+            item.stockmaterial=consum_material
         # amount sauber in Decimal umwandeln
         try:
             item.amount = Decimal(str(form.cleaned_data["amount"]).replace(",", "."))
