@@ -1424,16 +1424,16 @@ def shoppinglist_auto_complete(request):
     if not q:
         materials = (
             StockMaterial.objects
-            .filter(organization=request.org)
-            .order_by("material__name")
+            .filter(organization=request.org,material__type=6)
+            .order_by("material__name").distinct()
             .values_list("material__name", flat=True)[:15]
         )
         return JsonResponse(list(materials), safe=False)
 
     materials = (
         StockMaterial.objects
-        .filter(organization=request.org,material__name__icontains=q)
-        .order_by("material__name")
+        .filter(organization=request.org,material__name__icontains=q,material__type=6)
+        .order_by("material__name").distinct()
         .values_list("material__name", flat=True)[:15]
     )
     return JsonResponse(list(materials), safe=False)

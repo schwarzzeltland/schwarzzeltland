@@ -109,5 +109,12 @@
             align-items: flex-start; /* saubere Ausrichtung bei mehrzeiligem Titel */
         }
 
+        #tag-search-suggestions {
+            max-height: 100px; /* maximale Höhe */
+            overflow-y: auto; /* vertikaler Scrollbalken bei Überlauf */
+            z-index: 1000;
+            position: absolute;
+            width: 100%;
+        }
     </style>
 {% endblock %}
