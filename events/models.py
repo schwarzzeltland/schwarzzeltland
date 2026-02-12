@@ -35,7 +35,9 @@ class Location(models.Model):
     public = BooleanField(default=False, verbose_name="Öffentlich")
 
     def __str__(self):
-        return self.name
+        if self.owner:
+            return f"{self.name} ({self.owner.name})"
+        return f"{self.name}"
 
 
 class Trip(models.Model):
@@ -75,7 +77,7 @@ class Trip(models.Model):
     )
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.owner.name})"
 
     def total_persons(self):
         return self.tripgroup_set.aggregate(

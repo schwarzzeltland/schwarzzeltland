@@ -39,7 +39,9 @@ class Material(models.Model):
     public = BooleanField(default=False,verbose_name="Öffentlich")
 
     def __str__(self):
-        return self.name
+        if self.owner:
+            return f"{self.name} ({self.owner.name})"
+        return f"{self.name}"
 
 
 class StockMaterial(models.Model):
@@ -67,7 +69,9 @@ class Construction(models.Model):
     public = BooleanField(default=False,verbose_name="Öffentlich")
 
     def __str__(self):
-        return self.name
+        if self.owner:
+            return f"{self.name} ({self.owner.name})"
+        return f"{self.name}"
 
 
 class ConstructionMaterial(models.Model):
