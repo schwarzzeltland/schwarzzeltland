@@ -310,6 +310,70 @@ def sendmessage_view(request, pk=None):
             sentmessages.sender = request.org
             sentmessages.save()
             messages.success(request, f'Nachricht an {sentmessages.recipient} am {sentmessages.created} gesendet')
+            # ✅ E-Mail an alle Admins der Empfänger-Organisation
+            recipient_org = sentmessages.recipient
+            admins = Membership.objects.filter(organization=recipient_org,admin=True)  # Passe role='admin' an dein User-Modell an
+
+            recipients = [admin.user.email for admin in admins if admin.user.email]
+
+            if recipients:
+                subject = f"Neue Nachricht von {sentmessages.sender.name}"
+                text_message = (
+                    f"Hallo,\n\n"
+                    f"es wurde eine neue Nachricht an eure Organisation {recipient_org.name} gesendet.\n\n"
+                    f"Betreff: {sentmessages.subject}\n\n"
+                    f"Bitte melde dich in Schwarzzeltland an, um die Nachricht zu lesen:\n"
+                    f"{request.build_absolute_uri(reverse_lazy('messages'))}\n\n"
+                    f"Schwarzzeltland"
+                )
+
+                html_message = f"""
+                            <!DOCTYPE html>
+                            <html>
+                              <body style="font-family: Arial, sans-serif; background-color: #f6f6f6; padding: 20px;">
+                                <table width="100%" cellpadding="0" cellspacing="0">
+                                  <tr>
+                                    <td align="center">
+                                      <table width="600" style="background:#ffffff; border-radius:8px; padding:24px;">
+                                        <tr>
+                                          <td>
+                                            <h2 style="color:#333;">Neue Nachricht erhalten</h2>
+                                            <p>Hallo,</p>
+                                            <p>es wurde eine neue Nachricht an eure Organisation <strong>{recipient_org.name}</strong> gesendet.</p>
+                                            <p><strong>Betreff:</strong> {sentmessages.subject}</p>
+                                            <div style="text-align:center; margin:32px 0;">
+                                              <a href="{request.build_absolute_uri(reverse_lazy('inboxmessages'))}/?org={recipient_org.id}"
+                                                 style="
+                                                   background-color:#ffc451;
+                                                   color:#ffffff;
+                                                   padding:14px 24px;
+                                                   text-decoration:none;
+                                                   border-radius:6px;
+                                                   display:inline-block;
+                                                   font-weight:bold;
+                                                 ">
+                                                Nachricht öffnen
+                                              </a>
+                                            </div>
+                                            <p style="color:#666; font-size:13px;">Schwarzzeltland</p>
+                                          </td>
+                                        </tr>
+                                      </table>
+                                    </td>
+                                  </tr>
+                                </table>
+                              </body>
+                            </html>
+                            """
+
+                send_mail(
+                    subject=subject,
+                    message=text_message,
+                    from_email=f"Schwarzzeltland <{settings.EMAIL_HOST_USER}>",
+                    recipient_list=recipients,
+                    html_message=html_message,
+                    fail_silently=False,
+                )
             return HttpResponseRedirect(reverse_lazy('messages'))
     else:
         form = MessageSendForm(initial=initial_data)
