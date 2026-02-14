@@ -1420,7 +1420,6 @@ def shoppinglist(request, pk=None):
 @pro1_required
 def shoppinglist_auto_complete(request):
     q = request.GET.get("q", "").strip()
-    print(q)
     if not q:
         materials = (
             StockMaterial.objects
