@@ -26,7 +26,7 @@
                 {% for ing in ingredients %}
                     <li class="list-group-item" data-qty="{{ ing.quantity }}">
                         {% if ing.quantity %}<span class="ingredient-qty">{{ ing.quantity }}</span>{% endif %}
-                        {% if ing.unit %} {{ ing.unit }}{% endif %}
+                        {% if ing.unit %} {{ ing.unit }} {{ ing.name }}{% endif %}
                     </li>
                 {% endfor %}
             </ul>
