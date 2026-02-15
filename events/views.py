@@ -1995,6 +1995,7 @@ def programm(request, pk):
         'container_height': container_height,
         'day_width': day_width,
         'is_event_manager': m.event_manager,
+        'is_pro_1': request.org.pro1,
     })
 
 

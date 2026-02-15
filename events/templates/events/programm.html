@@ -81,7 +81,10 @@
     {% if is_event_manager %}
         <div class="mt-2">
             <a href="{% url 'add_programm_item' trip.id %}" class="btn btn-success">Programmpunkt hinzufügen</a>
-            <a href="{% url 'add_accumulated_ingredients' trip.pk %}" class="btn btn-primary">Rezept-Zutaten bündeln & zur Einkaufsliste hinzufügen</a>
+            {% if is_pro_1 %}
+                <a href="{% url 'add_accumulated_ingredients' trip.pk %}" class="btn btn-primary">Rezept-Zutaten bündeln
+                    & zur Einkaufsliste hinzufügen</a>
+            {% endif %}
             <a href="{% url 'print_programm' trip.pk %}?search={{ search_query }}&type={{ selected_type_list|join:',' }}"
                target="_blank"
                class="btn btn-outline-primary">
