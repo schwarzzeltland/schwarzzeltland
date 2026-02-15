@@ -17,7 +17,8 @@ class RecipeStepInLine(NestedTabularInline):
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
     model = Recipe
-    search_fields = ['title']
+    search_fields = ['title','owner__name']
+    list_display = ['title','owner']
     inlines = [
         RecipeIngredientInLine,
         RecipeStepInLine,

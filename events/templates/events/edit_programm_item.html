@@ -27,10 +27,10 @@
                     </a>
                 {% if item.trip.owner.pro1 %}
                     <!-- Zutaten übernehmen -->
-                        <a id="recipe-add-ingredients" href="{% url 'add_recipe_to_shoppinglist' item.pk %}?persons={{ item.trip.total_persons }}&next={{ request.get_full_path|urlencode }}"
+                        <button type="submit" name="save_add_ingredients" id="recipe-add-ingredients"
                            class="btn btn-outline-success mt-2">
-                            Zutaten zur Einkaufsliste
-                        </a>
+                            Zutaten zur Einkaufsliste hinzufügen
+                        </button>
                 {% endif %}
             </div>
 

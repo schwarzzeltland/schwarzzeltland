@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="container mt-4">
+        {% if days %}
+            <form method="post" id="accumulate-form">
+                {% csrf_token %}
+                <h5>1. Tage auswählen</h5>
+                <div id="days-wrapper" class="mb-3 border rounded p-3">
+                    {% for day in days %}
+                        <div class="form-check mb-1">
+                            <input class="form-check-input day-input"
+                                   type="checkbox"
+                                   name="selected_days"
+                                   id="day_{{ day.key }}"
+                                   value="{{ day.key }}"
+                                   {% if day.key in selected_day_keys %}checked{% endif %}>
+                            <label class="form-check-label" for="day_{{ day.key }}">{{ day.label }}</label>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <h5>2. Rezepte auswählen</h5>
+                <div id="recipes-wrapper" class="mb-3 border rounded p-3">
+                    <div class="text-muted">Bitte zuerst mindestens einen Tag auswählen.</div>
+                </div>
+
+                <h5>3. Warengruppen auswählen</h5>
+                <div id="groups-wrapper" class="mb-3 border rounded p-3">
+                    <div class="text-muted">Bitte zuerst Rezepte auswählen.</div>
+                </div>
+                <p>Hinweis: Alle bisher kumulierten Rezept-Zutaten auf der Einkaufsliste werden gelöscht!</p>
+                <div class="mt-3">
+                    <button type="submit" id="submit-btn" class="btn btn-primary" disabled>
+                        Zur Einkaufsliste hinzufügen
+                    </button>
+                    <a href="{% url 'programm' trip.pk %}" class="btn btn-secondary">Abbrechen</a>
+                </div>
+            </form>
+        {% else %}
+            <div class="alert alert-info">
+                Keine Programmpunkte mit Rezepten vorhanden.
+            </div>
+            <a href="{% url 'programm' trip.pk %}" class="btn btn-secondary">Zurück zum Programm</a>
+        {% endif %}
+    </div>
+
+    {{ programm_items_data|json_script:"programm-items-data" }}
+    {{ group_labels|json_script:"group-labels-data" }}
+    {{ selected_item_ids|json_script:"selected-item-ids-data" }}
+    {{ selected_group_tokens|json_script:"selected-group-tokens-data" }}
+
+    {% if days %}
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                const itemsData = JSON.parse(document.getElementById("programm-items-data").textContent);
+                const groupLabels = JSON.parse(document.getElementById("group-labels-data").textContent);
+                const initiallySelectedItems = JSON.parse(document.getElementById("selected-item-ids-data").textContent);
+                const initiallySelectedGroups = JSON.parse(document.getElementById("selected-group-tokens-data").textContent);
+
+                const dayInputs = Array.from(document.querySelectorAll(".day-input"));
+                const recipesWrapper = document.getElementById("recipes-wrapper");
+                const groupsWrapper = document.getElementById("groups-wrapper");
+                const submitBtn = document.getElementById("submit-btn");
+
+                function selectedDayInputs() {
+                    return dayInputs.filter(function (input) {
+                        return input.checked;
+                    });
+                }
+
+                function selectedRecipeInputs() {
+                    return Array.from(document.querySelectorAll("input[name='programm_items']:checked"));
+                }
+
+                function selectedGroupInputs() {
+                    return Array.from(document.querySelectorAll("input[name='product_groups']:checked"));
+                }
+
+                function updateSubmitState() {
+                    submitBtn.disabled = !(selectedDayInputs().length && selectedRecipeInputs().length && selectedGroupInputs().length);
+                }
+
+                function renderGroups() {
+                    const selectedRecipes = selectedRecipeInputs();
+                    const previousSelectedGroups = new Set(selectedGroupInputs().map(function (input) {
+                        return input.value;
+                    }));
+                    if (!selectedRecipes.length) {
+                        groupsWrapper.innerHTML = '<div class="text-muted">Bitte zuerst Rezepte auswählen.</div>';
+                        updateSubmitState();
+                        return;
+                    }
+
+                    const groupSet = new Set();
+                    selectedRecipes.forEach(function (input) {
+                        const groups = input.dataset.groups ? JSON.parse(input.dataset.groups) : [];
+                        groups.forEach(function (groupToken) {
+                            groupSet.add(String(groupToken));
+                        });
+                    });
+
+                    const orderedTokens = Object.keys(groupLabels).filter(function (token) {
+                        return groupSet.has(token);
+                    });
+
+                    if (!orderedTokens.length) {
+                        groupsWrapper.innerHTML = '<div class="text-muted">Für die gewählten Rezepte sind keine Warengruppen vorhanden.</div>';
+                        updateSubmitState();
+                        return;
+                    }
+
+                    groupsWrapper.innerHTML = "";
+                    orderedTokens.forEach(function (token) {
+                        const id = "group_" + token.replace(/[^a-zA-Z0-9_]/g, "_");
+                        const checked = (previousSelectedGroups.has(token) || (!previousSelectedGroups.size && initiallySelectedGroups.includes(token))) ? "checked" : "";
+                        groupsWrapper.insertAdjacentHTML(
+                            "beforeend",
+                            '<div class="form-check mb-1">' +
+                            '  <input class="form-check-input" type="checkbox" name="product_groups" id="' + id + '" value="' + token + '" ' + checked + ">" +
+                            '  <label class="form-check-label" for="' + id + '">' + (groupLabels[token] || token) + "</label>" +
+                            "</div>"
+                        );
+                    });
+
+                    groupsWrapper.querySelectorAll("input[name='product_groups']").forEach(function (checkbox) {
+                        checkbox.addEventListener("change", updateSubmitState);
+                    });
+                    updateSubmitState();
+                }
+
+                function renderRecipes() {
+                    const selectedDaySet = new Set(selectedDayInputs().map(function (input) {
+                        return input.value;
+                    }));
+
+                    if (!selectedDaySet.size) {
+                        recipesWrapper.innerHTML = '<div class="text-muted">Bitte zuerst mindestens einen Tag auswählen.</div>';
+                        groupsWrapper.innerHTML = '<div class="text-muted">Bitte zuerst Rezepte auswählen.</div>';
+                        updateSubmitState();
+                        return;
+                    }
+
+                    const previousSelectedRecipes = new Set(selectedRecipeInputs().map(function (input) {
+                        return input.value;
+                    }));
+
+                    const dayItems = itemsData.filter(function (item) {
+                        return selectedDaySet.has(item.day_key);
+                    });
+
+                    if (!dayItems.length) {
+                        recipesWrapper.innerHTML = '<div class="text-muted">Für die gewählten Tage sind keine Rezepte hinterlegt.</div>';
+                        groupsWrapper.innerHTML = '<div class="text-muted">Bitte zuerst Rezepte auswählen.</div>';
+                        updateSubmitState();
+                        return;
+                    }
+
+                    recipesWrapper.innerHTML = "";
+                    dayItems.forEach(function (item) {
+                        const itemId = String(item.id);
+                        const id = "recipe_" + itemId;
+                        const checked = (previousSelectedRecipes.has(itemId) || (!previousSelectedRecipes.size && initiallySelectedItems.includes(itemId))) ? "checked" : "";
+                        recipesWrapper.insertAdjacentHTML(
+                            "beforeend",
+                            '<div class="form-check mb-1">' +
+                            '  <input class="form-check-input" type="checkbox" name="programm_items" id="' + id + '" value="' + itemId + '" data-groups=\'' + JSON.stringify(item.groups || []) + "' " + checked + ">" +
+                            '  <label class="form-check-label" for="' + id + '">' + item.label + "</label>" +
+                            "</div>"
+                        );
+                    });
+
+                    recipesWrapper.querySelectorAll("input[name='programm_items']").forEach(function (checkbox) {
+                        checkbox.addEventListener("change", renderGroups);
+                    });
+                    renderGroups();
+                }
+
+                dayInputs.forEach(function (input) {
+                    input.addEventListener("change", function () {
+                        renderRecipes();
+                    });
+                });
+
+                renderRecipes();
+            });
+        </script>
+    {% endif %}
+{% endblock %}

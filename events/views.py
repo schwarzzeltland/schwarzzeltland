@@ -2050,13 +2050,16 @@ def edit_programm_item(request, item_id):
     item = get_object_or_404(ProgrammItem, id=item_id, trip__owner=request.org)
 
     if request.method == "POST":
-        if 'save' in request.POST:
+        if 'save' in request.POST or 'save_add_ingredients' in request.POST:
             form = ProgrammItemEditForm(request.POST, instance=item,org=request.org)
             if form.is_valid():
                 # Speichert Änderungen am bestehenden Programmpunkt
                 form.save()
                 messages.success(request, f'Programmpunkt {item.name} gespeichert.')
-                return redirect('programm', pk=item.trip.pk)
+                if 'save_add_ingredients' in request.POST:
+                    add_recipe_to_shoppinglist(request, item.pk)
+                else:
+                    return redirect('programm', pk=item.trip.pk)
         elif 'delete' in request.POST:
             trip_id = item.trip.pk
             messages.success(request, f'Programmpunkt {item.name} gelöscht.')
@@ -2252,3 +2255,168 @@ def add_recipe_to_shoppinglist(request, item_pk):
 
     # 🔹 einfach wieder zur vorherigen Seite zurück
     return redirect(request.META.get("HTTP_REFERER", request.path))
+
+@login_required
+@event_manager_required
+@pro1_required
+def add_accumulated_ingredients(request, pk):
+    trip = get_object_or_404(Trip, pk=pk, owner=request.org)
+    programm_items = list(
+        trip.programm.select_related("recipe")
+        .prefetch_related("recipe__ingredients")
+        .filter(type=ProgrammItem.TYPE_MEAL, recipe__isnull=False)
+        .order_by("start_time", "name", "pk")
+    )
+
+    weekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    group_label_map = {str(group_id): label for group_id, label in ShoppingListItem.GROUPS}
+    group_label_map["__none__"] = "Ohne Warengruppe"
+
+    days = []
+    day_keys_seen = set()
+    programm_items_data = []
+    item_meta_by_id = {}
+
+    for item in programm_items:
+        if item.start_time:
+            start_local = localtime(item.start_time)
+            day_key = start_local.date().isoformat()
+            day_label = f"{weekdays[start_local.weekday()]}, {start_local:%d.%m.%Y}"
+            time_label = start_local.strftime("%H:%M")
+        else:
+            day_key = "no_date"
+            day_label = "Ohne Datum"
+            time_label = "--:--"
+
+        if day_key not in day_keys_seen:
+            day_keys_seen.add(day_key)
+            days.append({"key": day_key, "label": day_label})
+
+        ingredient_groups = sorted(
+            set(item.recipe.ingredients.values_list("product_group", flat=True)),
+            key=lambda value: (value is None, value if value is not None else -1),
+        )
+        ingredient_groups_serialized = [
+            "__none__" if group is None else str(group)
+            for group in ingredient_groups
+        ]
+
+        item_label = f"{time_label} - {item.recipe.title}"
+        if item.name and item.name != item.recipe.title:
+            item_label = f"{item_label} ({item.name})"
+
+        programm_items_data.append({
+            "id": item.pk,
+            "day_key": day_key,
+            "label": item_label,
+            "groups": ingredient_groups_serialized,
+        })
+        item_meta_by_id[item.pk] = {"day_key": day_key}
+
+    day_label_by_key = {day["key"]: day["label"] for day in days}
+    selected_day_keys_raw = request.POST.getlist("selected_days") if request.method == "POST" else []
+    selected_item_ids_raw = request.POST.getlist("programm_items") if request.method == "POST" else []
+    selected_group_tokens = request.POST.getlist("product_groups") if request.method == "POST" else []
+
+    if request.method == "POST":
+        selected_day_keys = [key for key in selected_day_keys_raw if key in day_label_by_key]
+        valid_item_ids = []
+        for raw_id in selected_item_ids_raw:
+            try:
+                item_id = int(raw_id)
+            except (TypeError, ValueError):
+                continue
+            if item_id in item_meta_by_id and item_meta_by_id[item_id]["day_key"] in selected_day_keys:
+                valid_item_ids.append(item_id)
+
+        include_without_group = "__none__" in selected_group_tokens
+        selected_group_ids = set()
+        for token in selected_group_tokens:
+            if token == "__none__":
+                continue
+            try:
+                selected_group_ids.add(int(token))
+            except (TypeError, ValueError):
+                continue
+
+        if not selected_day_keys:
+            messages.error(request, "Bitte mindestens einen Tag auswählen.")
+        elif not valid_item_ids:
+            messages.error(request, "Bitte mindestens ein Rezept auswählen.")
+        elif not selected_group_tokens:
+            messages.error(request, "Bitte mindestens eine Warengruppe auswählen.")
+        elif not (include_without_group or selected_group_ids):
+            messages.error(request, "Die ausgewählten Warengruppen sind ungültig.")
+        else:
+            persons = max(trip.total_persons(), 1)
+            selected_programm_items = [
+                item for item in programm_items if item.pk in valid_item_ids
+            ]
+
+            recipe_suffix = "(Rezepte)"
+
+            aggregated = defaultdict(lambda: Decimal("0"))
+            meta = {}
+
+            for program_item in selected_programm_items:
+                for ingredient in program_item.recipe.ingredients.all():
+                    if ingredient.quantity is None:
+                        continue
+                    if ingredient.product_group is None and not include_without_group:
+                        continue
+                    if ingredient.product_group is not None and ingredient.product_group not in selected_group_ids:
+                        continue
+
+                    ingredient_name = ingredient.name.strip()
+                    ingredient_unit = (ingredient.unit or "").strip()
+                    key = (ingredient_name, ingredient_unit, ingredient.product_group)
+                    aggregated[key] += ingredient.quantity * persons
+
+                    ingredient_label = ingredient_name
+                    if len(ingredient_label) > 188:
+                        ingredient_label = f"{ingredient_label[:187]}…"
+                    item_name = f"{ingredient_label} {recipe_suffix}"
+
+                    meta[key] = {
+                        "name": item_name,
+                        "unit": ingredient_unit,
+                        "group": ingredient.product_group,
+                    }
+
+            if not aggregated:
+                messages.warning(request, "Für diese Auswahl wurden keine passenden Zutaten gefunden.")
+                return redirect("programm", pk=trip.pk)
+
+            ShoppingListItem.objects.filter(
+                trip=trip,
+                name__endswith=recipe_suffix,
+            ).delete()
+
+            created_count = 0
+            for key, amount in aggregated.items():
+                item_info = meta[key]
+                ShoppingListItem.objects.create(
+                    trip=trip,
+                    name=item_info["name"],
+                    amount=amount,
+                    unit=item_info["unit"],
+                    product_group=item_info["group"],
+                )
+                created_count += 1
+
+            messages.success(
+                request,
+                f"{created_count} Zutatenpositionen zur Einkaufsliste übernommen."
+            )
+            return redirect("programm", pk=trip.pk)
+
+    return render(request, "events/add_accumulated_ingredients.html", {
+        "title": "Rezept-Zutaten bündeln & zur Einkaufsliste hinzufügen",
+        "trip": trip,
+        "days": days,
+        "programm_items_data": programm_items_data,
+        "group_labels": group_label_map,
+        "selected_day_keys": selected_day_keys_raw,
+        "selected_item_ids": [str(item_id) for item_id in selected_item_ids_raw],
+        "selected_group_tokens": selected_group_tokens,
+    })

@@ -26,7 +26,7 @@ class Recipe(models.Model):
     tags = models.ManyToManyField(RecipeTag, blank=True, related_name="recipes")
 
     def __str__(self):
-        return f"{self.title} ({self.owner.name})"
+        return f"{self.title}"
 
 
 class RecipeIngredient(models.Model):

@@ -46,6 +46,7 @@ def my_recipes(request):
 
     return render(request, "knowledgebase/my_recipes.html", {
         "recipes": recipes,
+        "title":'Meine Rezepte',
         "title_query": title_query,
         "tags_query": tags_query,
         "is_knowledge_manager": m.knowledge_manager,
@@ -73,6 +74,7 @@ def public_recipes(request):
 
     return render(request, "knowledgebase/public_recipes.html", {
         "recipes": recipes,
+        "title":'Öffentliche Rezepte',
         "title_query": title_query,
         "tags_query": tags_query,
     })

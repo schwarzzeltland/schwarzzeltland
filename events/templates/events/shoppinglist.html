@@ -43,7 +43,7 @@
             <tbody>
             {% for item in shoppinglist %}
                 <tr id="item-{{ item.pk }}">
-                    <td class="fw-semibold">{{ item.name }}</td>
+                    <td class="fw-semibold item-name-cell">{{ item.name }}</td>
                     <td>
                         <input type="number" step="0.01" class="form-control form-control-sm inline-edit"
                                data-id="{{ item.pk }}" data-field="amount"
@@ -173,6 +173,19 @@
     <script>
         const form = document.getElementById("shoppinglist-form");
 
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function renderItemName(name) {
+            return escapeHtml(name).replace(/\n/g, "<br>");
+        }
+
         // Hinzufügen
         form.addEventListener("submit", function (e) {
             e.preventDefault();
@@ -193,7 +206,7 @@
                         const tbody = document.querySelector("#shoppinglist-table tbody");
                         tbody.insertAdjacentHTML("beforeend", `
 <tr id="item-${data.item.id}">
-    <td class="fw-semibold">${data.item.name}</td>
+    <td class="fw-semibold item-name-cell">${renderItemName(data.item.name)}</td>
     <td><input type="number" class="form-control form-control-sm inline-edit"
                data-id="${data.item.id}" data-field="amount"
                value="${data.item.amount}"></td>
@@ -306,6 +319,10 @@
         #shoppinglist-table td,
         #shoppinglist-table th {
             white-space: nowrap;
+        }
+
+        #shoppinglist-table td.item-name-cell {
+            white-space: pre-line;
         }
 
         #shoppinglist-form .form-control,
