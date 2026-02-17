@@ -342,7 +342,7 @@ def sendmessage_view(request, pk=None):
                                             <p>es wurde eine neue Nachricht an eure Organisation <strong>{recipient_org.name}</strong> gesendet.</p>
                                             <p><strong>Betreff:</strong> {sentmessages.subject}</p>
                                             <div style="text-align:center; margin:32px 0;">
-                                              <a href="{request.build_absolute_uri(reverse_lazy('inboxmessages'))}/?org={recipient_org.id}"
+                                              <a href="{request.build_absolute_uri(reverse_lazy('inboxmessages'))}?org={recipient_org.id}"
                                                  style="
                                                    background-color:#ffc451;
                                                    color:#ffffff;
