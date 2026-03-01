@@ -25,6 +25,8 @@ services:
       SQL_HOST: db
       SQL_PORT: 5432
       DATABASE: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       - db
       - redis

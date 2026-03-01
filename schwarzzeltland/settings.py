@@ -48,6 +48,7 @@ CELERY_BEAT_SCHEDULE = {
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     "main",
     "buildings",
     "events",
@@ -98,6 +99,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "schwarzzeltland.wsgi.application"
+ASGI_APPLICATION = "schwarzzeltland.asgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
@@ -173,3 +175,22 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
 
 CSRF_FAILURE_VIEW = "main.views.custom_csrf_failure"
 SITE_URL = "https://schwarzzeltland.de"
+
+REDIS_HOST = os.getenv('REDIS_HOST')
+REDIS_PORT = os.getenv('REDIS_PORT', 6379)
+
+if REDIS_HOST:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                "hosts": [(REDIS_HOST, REDIS_PORT)],
+            },
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
