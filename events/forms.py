@@ -60,6 +60,7 @@ class TripForm(ModelForm):
                 'type': 'datetime-local',
                 'class': 'form-control',
             }),
+            'description': forms.Textarea(attrs={"rows": 6, "cols": 60}),
         }
 
     def clean_recipient_org_name(self):

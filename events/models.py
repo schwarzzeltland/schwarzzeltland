@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import CharField, BooleanField
+from django.db.models import CharField, BooleanField, TextField
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -55,7 +55,7 @@ class Trip(models.Model):
         (TYPE_RENTAL, "Material-Verleih")
     )
     name = CharField(max_length=255)
-    description = CharField(max_length=1024, default="", blank=True, verbose_name="Beschreibung")
+    description = TextField(max_length=3000,default="", blank=True, verbose_name="Beschreibung")
     owner = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
     type = models.IntegerField(choices=TYPES, null=True, blank=True, verbose_name="Typ")
     start_date = models.DateTimeField("Startdatum")
