@@ -17,7 +17,7 @@
 
                         <tr>
                             <td><strong>Beschreibung:</strong></td>
-                            <td>{{ trip.description }}</td>
+                            <td>{{ trip.description|linebreaksbr }}</td>
                         </tr>
                         <tr>
                             <td><strong>Typ:</strong></td>
@@ -74,7 +74,7 @@
                             </td>
                             <td>
                                 <strong>Beschreibung:</strong>
-                                {{ tc.description }}
+                                {{ tc.description|linebreaksbr }}
                             </td>
                         </tr>
                     {% endfor %}
@@ -95,8 +95,8 @@
                                     {{ tc.count }}
                                 </td>
                                 <td>
-                                    <strong>Beschreibung:</strong>
-                                    {{ tc.description }}
+                                    <strong>Beschreibung:</strong><br>
+                                    {{ tc.description|linebreaksbr }}
                                 </td>
                             </tr>
                         {% endfor %}

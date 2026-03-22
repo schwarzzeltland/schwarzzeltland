@@ -57,6 +57,9 @@ def trip(request):
     # Suchlogik
     search_query = request.GET.get('search', '')
     selected_trip_type = request.GET.get('trip_type', '')  # Materialtyp
+    hide_past_trips = request.GET.get('hide_past_trips')
+    if hide_past_trips is None:
+        hide_past_trips = '1'
     # 2. Wenn keine GET-Filter vorhanden sind, die Filter aus der Session holen
     if request.session.get('previous_url'):
         previous_url = request.session.get('previous_url')
@@ -71,11 +74,19 @@ def trip(request):
             if 'trip_type' in request.session:
                 del request.session['trip_type']
 
+            if request.GET.get('hide_past_trips') is None:
+                hide_past_trips = request.session.get('hide_past_trips', '1')
+            if 'hide_past_trips' in request.session:
+                del request.session['hide_past_trips']
+
     request.session['search'] = search_query
     request.session['trip_type'] = selected_trip_type
+    request.session['hide_past_trips'] = hide_past_trips
     request.session['previous_url'] = request.build_absolute_uri()
     # Filtere Konstruktionen basierend auf der Suchanfrage
     trips_query = Trip.objects.filter(owner=request.org).order_by('-start_date')
+    if hide_past_trips == '1':
+        trips_query = trips_query.filter(end_date__gte=now()).order_by('-start_date')
     if search_query:
         trips_query = trips_query.filter(
             Q(name__icontains=search_query) | Q(owner__name__icontains=search_query)
@@ -95,6 +106,7 @@ def trip(request):
         'is_event_manager': m.event_manager,
         'search_query': search_query,
         'selected_trip_type': selected_trip_type,
+        'hide_past_trips': hide_past_trips == '1',
         'trip_types': TYPES,
     })
 
