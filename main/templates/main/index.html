@@ -8,7 +8,7 @@
             <div class="col">
                 <div class="card h-100">
                     {% if item.image %}
-                        {% thumbnail 'x450' item.image -- alt=item.name class="card-img-top object-fit-contain" loading="lazy" %}
+                        {% thumbnail 'main:oriented_thumbnail' 'x450' item.image -- alt=item.name class="card-img-top object-fit-contain" loading="lazy" %}
                     {% endif %}
                     <div class="card-body">
                         <h5 class="card-title">{{ item.name }}

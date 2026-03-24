@@ -31,6 +31,7 @@ from events.models import EventPlanningChecklistItem
 from main.decorators import organization_admin_required, pro1_required, material_manager_required, pro3_required
 from main.forms import OrganizationForm, MembershipFormset, CustomUserCreationForm, UsernameReminderForm, \
     MessageSendForm, MessageShowForm
+from main.media_access import serve_protected_media
 from main.models import Organization, Membership, Message
 
 
@@ -42,6 +43,10 @@ def home_view(request):
         'title': 'Home',
         'constructions': constructions,
     })
+
+
+def protected_media(request, path):
+    return serve_protected_media(request, path)
 
 
 @login_required
