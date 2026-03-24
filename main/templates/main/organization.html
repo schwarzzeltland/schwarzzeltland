@@ -20,47 +20,48 @@
             {% endbuttons %}
         {% else %}
             <table class="table">
-            <thead>
-            <tr>
-                <td><strong>Name:</strong></td>
-                <td> {{ organization.name }} </td>
-            </tr>
-            <tr>
-                <td><strong>Bild:</strong></td>
-                <td>
-                    {% if organization.image %}
-                        <img src="{{ organization.image.url }}" alt="Bild" width="200">
-                    {% else %}
-                        Kein Bild vorhanden
-                    {% endif %}
-                </td>
-            </tr>
+                <thead>
+                <tr>
+                    <td><strong>Name:</strong></td>
+                    <td> {{ organization.name }} </td>
+                </tr>
+                <tr>
+                    <td><strong>Bild:</strong></td>
+                    <td>
+                        {% if organization.image %}
+                            <img src="{{ organization.image.url }}" alt="Bild" width="200">
+                        {% else %}
+                            Kein Bild vorhanden
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
         {% endif %}
     </form>
-
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-            <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Admin</th>
-                <th scope="col">Material-Manager</th>
-                <th scope="col">Event-Manager</th>
-                <th scope="col">Knowledge-Manager</th>
-                {% if organization.pro5 %}
-                    <th scope="col">Kassenwart</th>
-                {% endif %}
-                <th scope="col"></th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for m in members %}
-                {% include "./member_list_entry.html" %}
-            {% endfor %}
-            {% if membership.admin %}
-                <tr id="new_member">
-                    <form hx-post="{% url 'add_user' %}" hx-swap="beforebegin" hx-target="#new_member"
-                          hx-on::after-request="
+    {% if membership.admin %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Admin</th>
+                    <th scope="col">Material-Manager</th>
+                    <th scope="col">Event-Manager</th>
+                    <th scope="col">Knowledge-Manager</th>
+                    {% if organization.pro5 %}
+                        <th scope="col">Kassenwart</th>
+                    {% endif %}
+                    <th scope="col"></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for m in members %}
+                    {% include "./member_list_entry.html" %}
+                {% endfor %}
+                {% if membership.admin %}
+                    <tr id="new_member">
+                        <form hx-post="{% url 'add_user' %}" hx-swap="beforebegin" hx-target="#new_member"
+                              hx-on::after-request="
                     const element = document.querySelector('input[name=name2]');
                     if (event.detail.failed) {
                         element.classList.add('is-invalid');
@@ -76,28 +77,30 @@
                         element.classList.remove('is-invalid');
                         element.value = '';
                     }">
-                        <td><input name="name2" type="text" class="form-control" required></td>
-                        <td><input name="admin" class="form-check-input" style="vertical-align: middle"
-                                   type="checkbox"/>
-                        </td>
-                        <td><input name="material_manager" class="form-check-input" style="vertical-align: middle"
-                                   type="checkbox"/></td>
-                        <td><input name="event_manager" class="form-check-input" style="vertical-align: middle"
-                                   type="checkbox"/></td>
-                        <td><input name="knowledge_manager" class="form-check-input" style="vertical-align: middle"
-                                   type="checkbox"/></td>
-                        {% if organization.pro5 %}
-                            <td><input name="cashier_manager" class="form-check-input" style="vertical-align: middle"
+                            <td><input name="name2" type="text" class="form-control" required></td>
+                            <td><input name="admin" class="form-check-input" style="vertical-align: middle"
+                                       type="checkbox"/>
+                            </td>
+                            <td><input name="material_manager" class="form-check-input" style="vertical-align: middle"
                                        type="checkbox"/></td>
-                        {% endif %}
-                        <td>
-                            <button type="submit" class="btn btn-success">Benutzer hinzufügen
-                            </button>
-                        </td>
-                    </form>
-                </tr>
-            {% endif %}
-            </tbody>
-        </table>
-    </div>
+                            <td><input name="event_manager" class="form-check-input" style="vertical-align: middle"
+                                       type="checkbox"/></td>
+                            <td><input name="knowledge_manager" class="form-check-input" style="vertical-align: middle"
+                                       type="checkbox"/></td>
+                            {% if organization.pro5 %}
+                                <td><input name="cashier_manager" class="form-check-input"
+                                           style="vertical-align: middle"
+                                           type="checkbox"/></td>
+                            {% endif %}
+                            <td>
+                                <button type="submit" class="btn btn-success">Benutzer hinzufügen
+                                </button>
+                            </td>
+                        </form>
+                    </tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
 {% endblock %}
