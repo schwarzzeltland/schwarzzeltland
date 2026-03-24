@@ -1,47 +1,51 @@
 from django.contrib import admin
-from nested_admin.nested import NestedTabularInline, NestedModelAdmin
+from nested_admin.nested import NestedModelAdmin, NestedTabularInline
 
-from buildings.models import StockMaterial, Construction
+from buildings.models import Construction, StockMaterial
 from events.models import EventPlanningChecklistItem, ProgrammItem
-from main.models import Organization, Membership, Message
+from main.models import Membership, Message, Organization
 
 
 class MembershipInline(NestedTabularInline):
     model = Membership
     extra = 1
-    # autocomplete_fields = ('user',)
 
 
 class MaterialInline(NestedTabularInline):
     model = StockMaterial
     extra = 1
 
+
 class ConstructionInLine(NestedTabularInline):
     model = Construction
     extra = 1
 
+
 @admin.register(Organization)
 class OrganizationAdmin(NestedModelAdmin):
     inlines = [MembershipInline]
-    search_fields = ['name']
+    search_fields = ["name"]
 
 
 @admin.register(Membership)
 class MembershipAdmin(admin.ModelAdmin):
-    search_fields = ['user__username', 'user__first_name', 'user__last_name']
-    list_display = ["user", "organization", "admin", "material_manager", "event_manager"]
+    search_fields = ["user__username", "user__first_name", "user__last_name"]
+    list_display = ["user", "organization", "admin", "material_manager", "event_manager", "knowledge_manager", "cashier_manager"]
+
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    search_fields = ['recipient__name','sender__name','subject','text','created','is_read']
-    list_display = ['recipient','sender','subject','text','created','is_read']
+    search_fields = ["recipient__name", "sender__name", "subject", "text", "created", "is_read"]
+    list_display = ["recipient", "sender", "subject", "text", "created", "is_read"]
+
 
 @admin.register(EventPlanningChecklistItem)
 class EventPlanningChecklistAdmin(admin.ModelAdmin):
-    search_fields = ['title','trip__name','organization__name']
-    list_display = ['title','trip','organization']
+    search_fields = ["title", "trip__name", "organization__name"]
+    list_display = ["title", "trip", "organization"]
+
 
 @admin.register(ProgrammItem)
 class ProgrammItemAdmin(admin.ModelAdmin):
-    search_fields = ['name','trip__name']
-    list_display = ['name','trip']
+    search_fields = ["name", "trip__name"]
+    list_display = ["name", "trip"]

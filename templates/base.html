@@ -105,10 +105,10 @@
 
             <div class="d-flex justify-content-between align-items-start gap-3">
 
-    <h2 class="mb-0 breadcrumbs-title">{{ title }}</h2>
+                <h2 class="mb-0 breadcrumbs-title">{{ title }}</h2>
 
-    {% if organization %}
-        <nav class="navbar navbar-expand-lg navbar-light p-0 breadcrumbs-nav">
+                {% if organization %}
+                    <nav class="navbar navbar-expand-lg navbar-light p-0 breadcrumbs-nav">
                         <button class="navbar-toggler ms-auto"
                                 type="button"
                                 data-bs-toggle="collapse"
@@ -147,7 +147,7 @@
                                     <!-- Mehr-Dropdown -->
                                     <li class="nav-item dropdown">
                                         <a class="nav-link dropdown-toggle
-       {% if current in 'messages recipes' %}active{% endif %}"
+       {% if current == 'messages' or current == 'sentmessages' or current == 'showmessage' or current == 'sendmessage' or current == 'recipes' or current == 'organization_material_checklist' or current == 'cashbook_list' or current == 'cashbook_create' or current == 'cashbook_detail' or current == 'cashbook_edit' or current == 'cashbook_delete' or current == 'cashbook_entry_create' or current == 'cashbook_entry_edit' or current == 'cashbook_entry_delete' %}active{% endif %}"
                                            href="#"
                                            role="button"
                                            data-bs-toggle="dropdown"
@@ -168,6 +168,22 @@
                                                     Rezepte
                                                 </a>
                                             </li>
+                                            {% if membership.material_manager and organization.pro3 %}
+                                                <li>
+                                                    <a class="dropdown-item {% if current == 'organization_material_checklist' %}active{% endif %}"
+                                                       href="{% url 'organization_material_checklist' %}">
+                                                        Materialwart To-Do's
+                                                    </a>
+                                                </li>
+                                            {% endif %}
+                                            {% if membership.cashier_manager and organization.pro5 %}
+                                                <li>
+                                                    <a class="dropdown-item {% if current == 'cashbook_list' or current == 'cashbook_create' or current == 'cashbook_detail' or current == 'cashbook_edit' or current == 'cashbook_delete' or current == 'cashbook_entry_create' or current == 'cashbook_entry_edit' or current == 'cashbook_entry_delete' %}active{% endif %}"
+                                                       href="{% url 'cashbook_list' %}">
+                                                        Kassenbücher
+                                                    </a>
+                                                </li>
+                                            {% endif %}
                                         </ul>
                                     </li>
                                 {% endwith %}

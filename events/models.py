@@ -77,7 +77,7 @@ class Trip(models.Model):
     )
 
     def __str__(self):
-        return f"{self.name} ({self.owner.name})"
+        return f"{self.name}"
 
     def total_persons(self):
         return self.tripgroup_set.aggregate(

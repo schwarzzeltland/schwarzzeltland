@@ -21,6 +21,13 @@
             {% if m.knowledge_manager %} checked {% endif %}  {% if not membership.admin %} disabled {% endif %}
     />
     </td>
+    {% if organization.pro5 %}
+        <td><input class="form-check-input" type="checkbox" hx-trigger="change"
+                   hx-post="{% url 'change_cashier_manager' m.id %}" hx-swap="none"
+                {% if m.cashier_manager %} checked {% endif %}  {% if not membership.admin %} disabled {% endif %}
+        />
+        </td>
+    {% endif %}
     <td>
         {% if m.user != request.user and membership.admin %}
             <button type="button" class="btn btn-outline-danger"

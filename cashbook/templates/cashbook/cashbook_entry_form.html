@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">{% if entry %}Eintrag bearbeiten{% else %}Eintrag erstellen{% endif %}</h3>
+        <a href="{% url 'cashbook_detail' cashbook.pk %}" class="btn btn-secondary">Zurück</a>
+    </div>
+
+    {% if entry %}
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Fortlaufende Nummer</div>
+                        <div class="fs-5 fw-semibold">#{{ entry.entry_number }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Erstellt am</div>
+                        <div>{{ entry.created_at|date:"d.m.Y H:i" }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Zuletzt bearbeitet</div>
+                        <div>{{ entry.updated_at|date:"d.m.Y H:i" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="form">
+        {% csrf_token %}
+        {% bootstrap_form form %}
+        {% buttons %}
+            <button type="submit" class="btn btn-primary">Speichern</button>
+            {% if entry %}
+                <a href="{% url 'cashbook_entry_delete' cashbook.pk entry.pk %}" class="btn btn-danger">Löschen</a>
+            {% endif %}
+            <a href="{% url 'cashbook_detail' cashbook.pk %}" class="btn btn-secondary">Abbrechen</a>
+        {% endbuttons %}
+    </form>
+
+    <script>
+        const categoryInput = document.getElementById("category-input");
+        if (categoryInput) {
+            const wrapper = categoryInput.parentElement;
+            wrapper.classList.add("position-relative");
+
+            const suggestionsList = document.createElement("ul");
+            suggestionsList.id = "category-suggestions";
+            suggestionsList.className = "list-group position-absolute w-100";
+            suggestionsList.style.zIndex = "1000";
+            suggestionsList.style.maxHeight = "160px";
+            suggestionsList.style.overflowY = "auto";
+            wrapper.appendChild(suggestionsList);
+
+            function loadCategorySuggestions(query = "") {
+                fetch(`/main/cashbooks/autocomplete/category/?q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        suggestionsList.innerHTML = "";
+                        data.forEach(category => {
+                            const li = document.createElement("li");
+                            li.className = "list-group-item list-group-item-action";
+                            li.textContent = category;
+                            li.addEventListener("click", () => {
+                                categoryInput.value = category;
+                                suggestionsList.innerHTML = "";
+                            });
+                            suggestionsList.appendChild(li);
+                        });
+                    });
+            }
+
+            categoryInput.addEventListener("focus", function () {
+                loadCategorySuggestions(categoryInput.value.trim());
+            });
+
+            categoryInput.addEventListener("input", function () {
+                loadCategorySuggestions(categoryInput.value.trim());
+            });
+
+            document.addEventListener("click", function (event) {
+                if (!categoryInput.contains(event.target) && !suggestionsList.contains(event.target)) {
+                    suggestionsList.innerHTML = "";
+                }
+            });
+        }
+    </script>
+{% endblock %}

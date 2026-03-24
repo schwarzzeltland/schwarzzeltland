@@ -1,12 +1,11 @@
-from datetime import timezone
-from time import timezone
-
 from django.contrib.auth.models import User
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils import timezone
 from django.utils.crypto import get_random_string
+from django.utils.text import slugify
+from django.utils import timezone
+from pathlib import Path
 
 
 def generate_recipient_code():
@@ -22,22 +21,38 @@ def default_checklist_items():
         "Transport (Material / Teilnehmer)",
         "Transport vor Ort",
     ]
+
+
+def cashbook_attachment_upload_to(instance, filename):
+    organization_slug = slugify(instance.cashbook.organization.name) or f"organization-{instance.cashbook.organization_id}"
+    cashbook_slug = slugify(instance.cashbook.name) or f"cashbook-{instance.cashbook_id}"
+    booking_date = instance.booking_date or timezone.localdate()
+    extension = Path(filename).suffix
+    base_name = slugify(Path(filename).stem) or "beleg"
+    return (
+        f"cashbooks/{organization_slug}/{cashbook_slug}/"
+        f"{booking_date.year:04d}/{booking_date.month:02d}/"
+        f"{base_name}{extension}"
+    )
+
+
 class Organization(models.Model):
     name = models.CharField(unique=True, max_length=254)
     image = models.ImageField(upload_to="users/", blank=True, null=True, verbose_name="Bild")
-    recipientcode = models.CharField(default=generate_recipient_code, max_length=20,
-                                     verbose_name="Empfängercode für den Materialverleih")
-    members = models.ManyToManyField(
-        User,
-        through='Membership',
-    )
+    recipientcode = models.CharField(default=generate_recipient_code, max_length=20, verbose_name="Empfängercode für den Materialverleih")
+    members = models.ManyToManyField(User, through="Membership")
     pro1 = models.BooleanField(default=False)
     pro2 = models.BooleanField(default=False)
     pro3 = models.BooleanField(default=False)
     pro4 = models.BooleanField(default=False)
-    default_checklist = models.JSONField(default=default_checklist_items, blank=True,verbose_name="""Standard To-Do\'s bei neuen Veranstaltungen (Format: ["To-Do1","To-Do2"])""")
+    pro5 = models.BooleanField(default=False)
+    default_checklist = models.JSONField(
+        default=default_checklist_items,
+        blank=True,
+        verbose_name="""Standard To-Do's bei neuen Veranstaltungen (Format: ["To-Do1","To-Do2"])""",
+    )
 
-    def get_owner(self) -> 'Membership':
+    def get_owner(self) -> "Membership":
         return self.membership_set.earliest("id")
 
     def __str__(self):
@@ -51,6 +66,7 @@ class Membership(models.Model):
     material_manager = models.BooleanField(default=False)
     event_manager = models.BooleanField(default=False)
     knowledge_manager = models.BooleanField(default=False)
+    cashier_manager = models.BooleanField(default=False, verbose_name="Kassenwart")
 
     def __str__(self):
         return self.user.username
@@ -71,13 +87,13 @@ class Message(models.Model):
         Organization,
         on_delete=models.CASCADE,
         verbose_name="Empfänger",
-        related_name="received_messages"
+        related_name="received_messages",
     )
     sender = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
         verbose_name="Absender",
-        related_name="sent_messages"
+        related_name="sent_messages",
     )
     subject = models.CharField(blank=True, max_length=1024, verbose_name="Betreff")
     text = models.TextField(blank=True, verbose_name="Nachricht")

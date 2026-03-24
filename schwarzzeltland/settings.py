@@ -49,6 +49,7 @@ CELERY_BEAT_SCHEDULE = {
 
 INSTALLED_APPS = [
     "daphne",
+    "cashbook",
     "main",
     "buildings",
     "events",

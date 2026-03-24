@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h3 class="mb-0">{{ cashbook.name }}</h3>
+            {% if cashbook.description %}
+                <small class="text-muted">{{ cashbook.description }}</small>
+            {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'cashbook_export_csv' cashbook.pk %}" class="btn btn-outline-secondary">CSV exportieren</a>
+            <a href="{% url 'cashbook_export_receipts_zip' cashbook.pk %}" class="btn btn-outline-secondary">Belege als ZIP</a>
+            <a href="{% url 'cashbook_entry_create' cashbook.pk %}" class="btn btn-success">Eintrag hinzufügen</a>
+            <a href="{% url 'cashbook_edit' cashbook.pk %}" class="btn btn-outline-primary">Kassenbuch bearbeiten</a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card h-100"><div class="card-body"><div class="text-muted small">Startsaldo</div><div class="fs-5">{{ cashbook.opening_balance }} {{ cashbook.currency }}</div></div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100"><div class="card-body"><div class="text-muted small">Einnahmen</div><div class="fs-5 text-success">{{ income_total }} {{ cashbook.currency }}</div></div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100"><div class="card-body"><div class="text-muted small">Ausgaben</div><div class="fs-5 text-danger">{{ expense_total }} {{ cashbook.currency }}</div></div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100"><div class="card-body"><div class="text-muted small">Saldo der Auswahl</div><div class="fs-5 fw-semibold">{{ filtered_balance }} {{ cashbook.currency }}</div></div></div>
+        </div>
+    </div>
+
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-md-3">
+            <input type="text" name="search" value="{{ search_query }}" class="form-control" placeholder="Suche">
+        </div>
+        <div class="col-md-2">
+            <select name="trip" class="form-select">
+                <option value="">Alle Veranstaltungen</option>
+                {% for trip in trip_options %}
+                    <option value="{{ trip.pk }}" {% if selected_trip == trip.pk|stringformat:"s" %}selected{% endif %}>{{ trip.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="entry_type" class="form-select">
+                <option value="">Alle Typen</option>
+                {% for value, label in entry_types %}
+                    <option value="{{ value }}" {% if selected_type == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <input type="date" name="start_date" value="{{ start_date }}" class="form-control">
+        </div>
+        <div class="col-md-2">
+            <input type="date" name="end_date" value="{{ end_date }}" class="form-control">
+        </div>
+        <div class="col-md-1 d-grid">
+            <button type="submit" class="btn btn-outline-secondary">Filter</button>
+        </div>
+    </form>
+
+    <div class="table-responsive mb-4">
+        <table class="table table-hover align-middle">
+            <thead>
+            <tr>
+                <th>Nr.</th>
+                <th>Buchung</th>
+                <th>Typ</th>
+                <th>Titel</th>
+                <th>Kategorie</th>
+                <th>Veranstaltung</th>
+                <th>Beleg</th>
+                <th class="text-end">Betrag</th>
+                <th class="text-end">Saldo</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for entry, balance in running_rows %}
+                <tr>
+                    <td class="fw-semibold">#{{ entry.entry_number }}</td>
+                    <td>
+                        <div>{{ entry.booking_date|date:"d.m.Y" }}</div>
+                        {% if entry.receipt_date %}
+                            <small class="text-muted">Beleg: {{ entry.receipt_date|date:"d.m.Y" }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ entry.get_entry_type_display }}</td>
+                    <td>
+                        <div class="fw-semibold">{{ entry.title }}</div>
+                        {% if entry.counterparty %}
+                            <small class="text-muted">{{ entry.counterparty }}</small>
+                        {% endif %}
+                        {% if entry.description %}
+                            <div><small class="text-muted">{{ entry.description }}</small></div>
+                        {% endif %}
+                    </td>
+                    <td>{{ entry.category|default:"-" }}</td>
+                    <td>{% if entry.trip %}{{ entry.trip.name }}{% else %}-{% endif %}</td>
+                    <td>
+                        {% if entry.attachment %}
+                            <a href="{{ entry.attachment.url }}" target="_blank" rel="noopener">Datei</a>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="text-end {% if entry.entry_type == 'expense' %}text-danger{% else %}text-success{% endif %}">
+                        {{ entry.signed_amount }}
+                    </td>
+                    <td class="text-end fw-semibold">{{ balance }}</td>
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end gap-1">
+                            <a href="{% url 'cashbook_entry_edit' cashbook.pk entry.pk %}" class="btn btn-outline-primary btn-sm">Bearbeiten</a>
+                            <a href="{% url 'cashbook_entry_delete' cashbook.pk entry.pk %}" class="btn btn-outline-danger btn-sm">Löschen</a>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center text-muted">Keine Einträge für diese Auswahl vorhanden.</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="h5 mb-0">Änderungsaudit</h4>
+                <button id="cashbook-audit-toggle" class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#cashbook-audit" aria-expanded="false" aria-controls="cashbook-audit">
+                    Audit anzeigen
+                </button>
+            </div>
+            <div class="collapse" id="cashbook-audit">
+            {% if audit_rows %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                        <tr>
+                            <th>Zeit</th>
+                            <th>Benutzer</th>
+                            <th>Aktion</th>
+                            <th>Objekt</th>
+                            <th>Änderungen</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for audit in audit_rows %}
+                            <tr>
+                                <td>{{ audit.created_at|date:"d.m.Y H:i" }}</td>
+                                <td>{{ audit.actor }}</td>
+                                <td>{{ audit.action }}</td>
+                                <td>{{ audit.label }}</td>
+                                <td>
+                                    {% if audit.change_lines %}
+                                        {% for line in audit.change_lines %}
+                                            <div>{{ line }}</div>
+                                        {% endfor %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-muted">Noch keine Änderungen protokolliert.</div>
+            {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <a href="{% url 'cashbook_list' %}" class="btn btn-secondary">Zurück zur Übersicht</a>
+    </div>
+
+    <script>
+        const auditCollapse = document.getElementById("cashbook-audit");
+        const auditToggle = document.getElementById("cashbook-audit-toggle");
+
+        if (auditCollapse && auditToggle) {
+            auditCollapse.addEventListener("show.bs.collapse", function () {
+                auditToggle.textContent = "Audit ausblenden";
+            });
+
+            auditCollapse.addEventListener("hide.bs.collapse", function () {
+                auditToggle.textContent = "Audit anzeigen";
+            });
+        }
+    </script>
+{% endblock %}

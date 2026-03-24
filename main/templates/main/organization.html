@@ -2,16 +2,6 @@
 {% load bootstrap5 %}
 
 {% block content %}
-    {% if usermaterialmanager and organization.pro3 %}
-        <div class="card mb-3">
-        <div class="card-body">
-                <a href="{% url 'organization_material_checklist' %}" class="btn btn-warning w-100">
-                    Materialwart To-Do's
-                </a>
-        </div>
-        </div>
-         <hr>
-    {% endif %}
     <form method="post" class="form" enctype="multipart/form-data">
         {% csrf_token %}
         {% if membership.admin %}
@@ -57,6 +47,9 @@
                 <th scope="col">Material-Manager</th>
                 <th scope="col">Event-Manager</th>
                 <th scope="col">Knowledge-Manager</th>
+                {% if organization.pro5 %}
+                    <th scope="col">Kassenwart</th>
+                {% endif %}
                 <th scope="col"></th>
             </tr>
             </thead>
@@ -93,6 +86,10 @@
                                    type="checkbox"/></td>
                         <td><input name="knowledge_manager" class="form-check-input" style="vertical-align: middle"
                                    type="checkbox"/></td>
+                        {% if organization.pro5 %}
+                            <td><input name="cashier_manager" class="form-check-input" style="vertical-align: middle"
+                                       type="checkbox"/></td>
+                        {% endif %}
                         <td>
                             <button type="submit" class="btn btn-success">Benutzer hinzufügen
                             </button>

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h3>Eintrag löschen</h3>
+    <p>Soll der Eintrag <strong>{{ entry.title }}</strong> wirklich gelöscht werden?</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Löschen</button>
+        <a href="{% url 'cashbook_detail' cashbook.pk %}" class="btn btn-secondary">Abbrechen</a>
+    </form>
+{% endblock %}

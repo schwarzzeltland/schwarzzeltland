@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 
 from buildings.models import Construction
+from cashbook.models import CashBook, CashBookEntry
 
 TEST_MEDIA_ROOT = tempfile.mkdtemp()
 
@@ -82,3 +83,50 @@ class ProtectedMediaTests(TestCase):
         response = self.client.get(f"/uploads/{cache_path}")
 
         self.assertEqual(response.status_code, 200)
+
+    def test_cashbook_list_requires_pro5(self):
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.get("/main/cashbooks/")
+
+        self.assertEqual(response.status_code, 403)
+
+        self.owner_org.pro5 = True
+        self.owner_org.save(update_fields=["pro5"])
+        owner_membership = self.owner_org.membership_set.get(user=self.owner_user)
+        owner_membership.cashier_manager = True
+        owner_membership.save(update_fields=["cashier_manager"])
+
+        response = self.client.get("/main/cashbooks/")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_cashbook_attachment_requires_cashier_membership(self):
+        attachment_path = "cashbooks/receipt.pdf"
+        self._write_media_file(attachment_path)
+        self.owner_org.pro5 = True
+        self.owner_org.save(update_fields=["pro5"])
+        owner_membership = self.owner_org.membership_set.get(user=self.owner_user)
+        owner_membership.cashier_manager = True
+        owner_membership.save(update_fields=["cashier_manager"])
+        cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse")
+        CashBookEntry.objects.create(
+            cashbook=cashbook,
+            entry_type=CashBookEntry.TYPE_EXPENSE,
+            booking_date="2026-03-24",
+            amount="12.50",
+            title="Testbeleg",
+            attachment=attachment_path,
+            created_by=self.owner_user,
+        )
+
+        anonymous_response = self.client.get(f"/uploads/{attachment_path}")
+        self.assertEqual(anonymous_response.status_code, 404)
+
+        self.client.login(username="other", password="pw")
+        outsider_response = self.client.get(f"/uploads/{attachment_path}")
+        self.assertEqual(outsider_response.status_code, 404)
+
+        self.client.login(username="owner", password="pw")
+        cashier_response = self.client.get(f"/uploads/{attachment_path}")
+        self.assertEqual(cashier_response.status_code, 200)

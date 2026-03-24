@@ -6,13 +6,26 @@ from django.http import FileResponse, Http404
 from django.utils._os import safe_join
 
 from buildings.models import Construction, Material
-from main.models import Organization
+from cashbook.models import CashBookEntry
+from main.models import Membership, Organization
 
 
 def _is_org_member(user, organization):
     if not user.is_authenticated or organization is None:
         return False
     return organization.members.filter(pk=user.pk).exists()
+
+
+def _is_org_admin(user, organization):
+    if not user.is_authenticated or organization is None:
+        return False
+    return Membership.objects.filter(user=user, organization=organization, admin=True).exists()
+
+
+def _is_org_cashier(user, organization):
+    if not user.is_authenticated or organization is None:
+        return False
+    return Membership.objects.filter(user=user, organization=organization, cashier_manager=True).exists()
 
 
 def _resolve_cached_source(path):
@@ -66,6 +79,12 @@ def _has_access_to_media(user, source_path):
         if organization is None:
             return False
         return _is_org_member(user, organization)
+
+    if source_path.startswith("cashbooks/"):
+        entry = CashBookEntry.objects.filter(attachment=source_path).select_related("cashbook__organization").first()
+        if entry is None:
+            return False
+        return _is_org_cashier(user, entry.cashbook.organization)
 
     return False
 

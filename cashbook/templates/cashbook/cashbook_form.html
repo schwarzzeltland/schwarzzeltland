@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+{% block content %}
+    <h3>{% if cashbook %}Kassenbuch bearbeiten{% else %}Kassenbuch erstellen{% endif %}</h3>
+    <form method="post" class="form">
+        {% csrf_token %}
+        {% bootstrap_form form %}
+        {% buttons %}
+            <button type="submit" class="btn btn-primary">Speichern</button>
+            {% if cashbook and request.membership.admin and request.membership.cashier_manager %}
+                <a href="{% url 'cashbook_delete' cashbook.pk %}" class="btn btn-danger">Löschen</a>
+            {% endif %}
+            <a href="{% url 'cashbook_list' %}" class="btn btn-secondary">Abbrechen</a>
+        {% endbuttons %}
+    </form>
+{% endblock %}
