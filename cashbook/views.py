@@ -611,10 +611,7 @@ def cashbook_export_receipts_zip(request, pk):
                     continue
             except Exception:
                 continue
-
-            original_name = Path(attachment_field.name).name
-            prefix = f"{entry.booking_date}_{slugify(entry.title) or 'beleg'}_{entry.pk}"
-            zip_name = f"{prefix}_{original_name}"
+            zip_name = Path(attachment_field.name).name
             with attachment_field.open("rb") as uploaded_file:
                 archive.writestr(zip_name, uploaded_file.read())
 
