@@ -37,13 +37,13 @@
             <th style="width: 7%;">Buchung</th>
             <th style="width: 7%;">Beleg</th>
             <th style="width: 6%;">Typ</th>
-            <th style="width: 17%;">Titel</th>
-            <th style="width: 9%;">Kategorie</th>
-            <th style="width: 11%;">Zahlungspartner</th>
+            <th style="width: 18%;">Titel</th>
+            <th style="width: 10%;">Kategorie</th>
+            <th style="width: 12%;">Zahlungspartner</th>
             <th style="width: 9%;">Referenz</th>
-            <th style="width: 10%;">Veranstaltung</th>
-            <th style="width: 10%;">Betrag</th>
-            <th style="width: 10%;">Saldo</th>
+            <th style="width: 11%;">Veranstaltung</th>
+            <th style="width: 8%;">Betrag</th>
+            <th style="width: 8%;">Saldo</th>
         </tr>
         </thead>
         <tbody>
@@ -63,8 +63,8 @@
                 <td class="wrap">{{ entry.counterparty|default:"-" }}</td>
                 <td class="wrap">{{ entry.reference|default:"-" }}</td>
                 <td class="wrap">{% if entry.trip %}{{ entry.trip.name }}{% else %}-{% endif %}</td>
-                <td class="amount">{{ entry.signed_amount }} {{ cashbook.currency }}</td>
-                <td class="amount">{{ balance }} {{ cashbook.currency }}</td>
+                <td class="amount">{{ entry.signed_amount }}</td>
+                <td class="amount">{{ balance }}</td>
             </tr>
         {% empty %}
             <tr>

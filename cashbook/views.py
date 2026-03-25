@@ -575,18 +575,18 @@ def cashbook_export_pdf(request, pk):
         filename=f'{slugify(cashbook.name) or "kassenbuch"}-entries.pdf',
         css="""
             @page { size: A4 landscape; margin: 8mm; }
-            body { font-family: sans-serif; font-size: 8.5px; color: #111827; }
+            body { font-family: sans-serif; font-size: 8px; color: #111827; }
             h1 { margin: 0 0 3mm; font-size: 15px; }
             .meta { margin-bottom: 3mm; color: #4b5563; }
             .summary { width: 100%; border-collapse: collapse; margin-bottom: 3mm; table-layout: fixed; }
-            .summary td { border: 1px solid #d1d5db; padding: 1.5mm; }
+            .summary td { border: 1px solid #d1d5db; padding: 1.2mm; }
             table.entries { width: 100%; border-collapse: collapse; table-layout: fixed; }
-            table.entries th, table.entries td { border: 1px solid #d1d5db; padding: 1mm; vertical-align: top; }
+            table.entries th, table.entries td { border: 1px solid #d1d5db; padding: 0.8mm; vertical-align: top; }
             table.entries th { background: #f3f4f6; text-align: left; }
-            .amount { text-align: right; white-space: nowrap; }
+            .amount { text-align: right; white-space: nowrap; font-size: 7.4px; }
             .muted { color: #6b7280; }
             .wrap { white-space: pre-wrap; word-break: break-word; }
-            .small { font-size: 7.5px; }
+            .small { font-size: 7px; }
         """,
     )
 
@@ -673,12 +673,12 @@ def cashbook_export_summary_pdf(request):
         filename="cashbooks-summary.pdf",
         css="""
             @page { size: A4 landscape; margin: 8mm; }
-            body { font-family: sans-serif; font-size: 9px; color: #111827; }
+            body { font-family: sans-serif; font-size: 8.5px; color: #111827; }
             h1 { margin: 0 0 3mm; font-size: 15px; }
             .meta { margin-bottom: 3mm; color: #4b5563; }
             table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-            th, td { border: 1px solid #d1d5db; padding: 1.5mm; vertical-align: top; }
+            th, td { border: 1px solid #d1d5db; padding: 1.2mm; vertical-align: top; }
             th { background: #f3f4f6; text-align: left; }
-            .amount { text-align: right; white-space: nowrap; }
+            .amount { text-align: right; white-space: nowrap; font-size: 8px; }
         """,
     )
