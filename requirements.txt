@@ -15,3 +15,4 @@ git+https://github.com/autoantwort/django-imagekit@068a9f087dedcc1e60ec55137b12e
 channels[daphne]>=4.1.0
 channels-redis
 asgiref~=3.8.1
+weasyprint

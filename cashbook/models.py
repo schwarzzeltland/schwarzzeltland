@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 from django.contrib.auth.models import User
@@ -11,8 +12,12 @@ def cashbook_attachment_upload_to(instance, filename):
     organization_slug = slugify(instance.cashbook.organization.name) or f"organization-{instance.cashbook.organization_id}"
     cashbook_slug = slugify(instance.cashbook.name) or f"cashbook-{instance.cashbook_id}"
     booking_date = instance.booking_date or timezone.localdate()
+    if isinstance(booking_date, str):
+        booking_date = date.fromisoformat(booking_date)
     extension = Path(filename).suffix
-    base_name = slugify(Path(filename).stem) or "beleg"
+    title_slug = slugify(instance.title) or "buchung"
+    number = instance.entry_number or "neu"
+    base_name = f"{number}_{title_slug}"
     return (
         f"cashbooks/{organization_slug}/{cashbook_slug}/"
         f"{booking_date.year:04d}/{booking_date.month:02d}/"

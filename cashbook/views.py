@@ -9,7 +9,9 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.utils.text import slugify
+from PIL import Image, ImageDraw, ImageFont
 
 from cashbook.forms import CashBookEntryForm, CashBookForm
 from cashbook.models import CashBook, CashBookAuditLog, CashBookEntry
@@ -96,6 +98,87 @@ def _cashbook_audit_lines(audit_log):
     return lines
 
 
+def _pdf_safe_text(value):
+    return "-" if value in (None, "") else str(value)
+
+
+def _build_text_pdf(title, lines):
+    page_width, page_height = 1654, 2339
+    margin = 120
+    line_height = 38
+    title_height = 70
+    usable_height = page_height - (margin * 2) - title_height
+    lines_per_page = max(1, usable_height // line_height)
+    font = ImageFont.load_default()
+    pages = []
+
+    chunks = [lines[index:index + lines_per_page] for index in range(0, len(lines), lines_per_page)] or [[]]
+    for page_index, chunk in enumerate(chunks):
+        image = Image.new("RGB", (page_width, page_height), "white")
+        draw = ImageDraw.Draw(image)
+        y = margin
+        if page_index == 0:
+            draw.text((margin, y), title, fill="black", font=font)
+            y += title_height
+        for line in chunk:
+            draw.text((margin, y), line, fill="black", font=font)
+            y += line_height
+        pages.append(image)
+
+    buffer = io.BytesIO()
+    pages[0].save(buffer, format="PDF", save_all=True, append_images=pages[1:])
+    return buffer.getvalue()
+
+
+def _build_cashbook_fallback_pdf(cashbook, running_rows):
+    lines = []
+    for entry, balance in running_rows:
+        lines.extend([
+            f"#{entry.entry_number} | {entry.booking_date} | {entry.get_entry_type_display()} | {_pdf_safe_text(entry.title)}",
+            f"Betrag: {_pdf_safe_text(entry.signed_amount)} {cashbook.currency} | Saldo: {_pdf_safe_text(balance)} {cashbook.currency}",
+            f"Kategorie: {_pdf_safe_text(entry.category)} | Zahlungspartner: {_pdf_safe_text(entry.counterparty)}",
+            f"Belegdatum: {_pdf_safe_text(entry.receipt_date)} | Referenz: {_pdf_safe_text(entry.reference)} | Veranstaltung: {_pdf_safe_text(entry.trip.name if entry.trip else '')}",
+            f"Beschreibung: {_pdf_safe_text(entry.description)}",
+            "",
+        ])
+    return _build_text_pdf(f"Kassenbuch {cashbook.name}", lines or ["Keine Einträge vorhanden."])
+
+
+def _build_cashbook_summary_fallback_pdf(rows):
+    lines = []
+    for row in rows:
+        cashbook = row["cashbook"]
+        lines.extend([
+            cashbook.name,
+            f"Währung: {cashbook.currency} | Startsaldo: {cashbook.opening_balance}",
+            f"Einnahmen: {row['income_total']} | Ausgaben: {row['expense_total']} | Aktueller Saldo: {cashbook.current_balance}",
+            f"Einträge: {row['entry_count']} | Aktiv: {'Ja' if cashbook.active else 'Nein'}",
+            "",
+        ])
+    return _build_text_pdf("Kassenbuch-Übersicht", lines or ["Keine Kassenbücher vorhanden."])
+
+
+def _render_pdf_response(*, request, template_name, context, filename, css):
+    try:
+        from weasyprint import CSS, HTML
+    except (ImportError, OSError):
+        fallback_pdf = context.get("fallback_pdf")
+        if fallback_pdf is None:
+            raise
+        pdf = fallback_pdf()
+        response = HttpResponse(pdf, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    html = render_to_string(template_name, context, request=request)
+    pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf(
+        stylesheets=[CSS(string=css)]
+    )
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
 @login_required
 @cashier_manager_required
 @pro5_required
@@ -166,6 +249,7 @@ def cashbook_create(request):
 
 
 @login_required
+@organization_admin_required
 @cashier_manager_required
 @pro5_required
 def cashbook_edit(request, pk):
@@ -227,7 +311,8 @@ def cashbook_delete(request, pk):
 @pro5_required
 def cashbook_detail(request, pk):
     cashbook = get_object_or_404(CashBook, pk=pk, organization=request.org)
-    entries = cashbook.entries.select_related("trip", "created_by").all()
+    all_entries = cashbook.entries.select_related("trip", "created_by").all()
+    entries = all_entries
     audit_rows = [
         {
             "created_at": audit.created_at,
@@ -263,13 +348,24 @@ def cashbook_detail(request, pk):
         entries = entries.filter(booking_date__lte=end_date)
 
     entries = entries.order_by("booking_date", "id")
-    running_rows, filtered_balance = _cashbook_running_rows(entries, cashbook.opening_balance)
+    selection_opening_balance = cashbook.opening_balance
+    first_entry = entries.first()
+    if first_entry is not None:
+        prior_entries = all_entries.filter(
+            Q(booking_date__lt=first_entry.booking_date)
+            | (Q(booking_date=first_entry.booking_date) & Q(id__lt=first_entry.id))
+        )
+        selection_opening_balance += sum(entry.signed_amount for entry in prior_entries)
+
+    running_rows, _ = _cashbook_running_rows(entries, selection_opening_balance)
+    filtered_balance = sum(entry.signed_amount for entry in entries)
     income_total = sum(entry.amount for entry in entries if entry.entry_type == CashBookEntry.TYPE_INCOME)
     expense_total = sum(entry.amount for entry in entries if entry.entry_type == CashBookEntry.TYPE_EXPENSE)
 
     return render(request, "cashbook/cashbook_detail.html", {
         "title": cashbook.name,
         "cashbook": cashbook,
+        "selection_opening_balance": selection_opening_balance,
         "running_rows": running_rows,
         "income_total": income_total,
         "expense_total": expense_total,
@@ -406,11 +502,12 @@ def cashbook_export_csv(request, pk):
     response["Content-Disposition"] = f'attachment; filename="{cashbook.name}-entries.csv"'
     writer = csv.writer(response, delimiter=";")
     writer.writerow([
-        "Buchungsdatum", "Belegdatum", "Art", "Titel", "Kategorie", "Zahlungspartner",
+        "Buchungsnummer", "Buchungsdatum", "Belegdatum", "Art", "Titel", "Kategorie", "Zahlungspartner",
         "Belegnummer / Referenz", "Veranstaltung", "Betrag", "Laufender Saldo", "Beschreibung", "Beleg"
     ])
     for entry, balance in running_rows:
         writer.writerow([
+            entry.entry_number,
             entry.booking_date,
             entry.receipt_date or "",
             entry.get_entry_type_display(),
@@ -423,8 +520,47 @@ def cashbook_export_csv(request, pk):
             balance,
             entry.description,
             entry.attachment.url if entry.attachment else "",
-        ])
+    ])
     return response
+
+
+@login_required
+@cashier_manager_required
+@pro5_required
+def cashbook_export_pdf(request, pk):
+    cashbook = get_object_or_404(CashBook, pk=pk, organization=request.org)
+    entries = cashbook.entries.select_related("trip").order_by("booking_date", "id")
+    running_rows, closing_balance = _cashbook_running_rows(entries, cashbook.opening_balance)
+    income_total = sum(entry.amount for entry in entries if entry.entry_type == CashBookEntry.TYPE_INCOME)
+    expense_total = sum(entry.amount for entry in entries if entry.entry_type == CashBookEntry.TYPE_EXPENSE)
+
+    return _render_pdf_response(
+        request=request,
+        template_name="cashbook/pdf/cashbook_export.html",
+        context={
+            "cashbook": cashbook,
+            "running_rows": running_rows,
+            "income_total": income_total,
+            "expense_total": expense_total,
+            "closing_balance": closing_balance,
+            "fallback_pdf": lambda: _build_cashbook_fallback_pdf(cashbook, running_rows),
+        },
+        filename=f'{slugify(cashbook.name) or "kassenbuch"}-entries.pdf',
+        css="""
+            @page { size: A4 landscape; margin: 12mm; }
+            body { font-family: sans-serif; font-size: 10px; color: #111827; }
+            h1 { margin: 0 0 4mm; font-size: 18px; }
+            .meta { margin-bottom: 5mm; color: #4b5563; }
+            .summary { width: 100%; border-collapse: collapse; margin-bottom: 5mm; }
+            .summary td { border: 1px solid #d1d5db; padding: 2mm; }
+            table.entries { width: 100%; border-collapse: collapse; table-layout: fixed; }
+            table.entries th, table.entries td { border: 1px solid #d1d5db; padding: 1.5mm; vertical-align: top; }
+            table.entries th { background: #f3f4f6; text-align: left; }
+            .amount { text-align: right; white-space: nowrap; }
+            .muted { color: #6b7280; }
+            .wrap { white-space: pre-wrap; word-break: break-word; }
+        """,
+    )
 
 
 @login_required
@@ -480,3 +616,41 @@ def cashbook_export_summary_csv(request):
             "Ja" if cashbook.active else "Nein",
         ])
     return response
+
+
+@login_required
+@cashier_manager_required
+@pro5_required
+def cashbook_export_summary_pdf(request):
+    cashbooks = CashBook.objects.filter(organization=request.org).prefetch_related("entries")
+    rows = []
+    for cashbook in cashbooks:
+        income_total = sum(entry.amount for entry in cashbook.entries.all() if entry.entry_type == CashBookEntry.TYPE_INCOME)
+        expense_total = sum(entry.amount for entry in cashbook.entries.all() if entry.entry_type == CashBookEntry.TYPE_EXPENSE)
+        rows.append({
+            "cashbook": cashbook,
+            "income_total": income_total,
+            "expense_total": expense_total,
+            "entry_count": cashbook.entries.count(),
+        })
+
+    return _render_pdf_response(
+        request=request,
+        template_name="cashbook/pdf/cashbook_summary_export.html",
+        context={
+            "rows": rows,
+            "organization": request.org,
+            "fallback_pdf": lambda: _build_cashbook_summary_fallback_pdf(rows),
+        },
+        filename="cashbooks-summary.pdf",
+        css="""
+            @page { size: A4 landscape; margin: 12mm; }
+            body { font-family: sans-serif; font-size: 10px; color: #111827; }
+            h1 { margin: 0 0 4mm; font-size: 18px; }
+            .meta { margin-bottom: 5mm; color: #4b5563; }
+            table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+            th, td { border: 1px solid #d1d5db; padding: 2mm; vertical-align: top; }
+            th { background: #f3f4f6; text-align: left; }
+            .amount { text-align: right; white-space: nowrap; }
+        """,
+    )

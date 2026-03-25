@@ -87,7 +87,7 @@ class ProtectedMediaTests(TestCase):
     def test_cashbook_list_requires_pro5(self):
         self.client.login(username="owner", password="pw")
 
-        response = self.client.get("/main/cashbooks/")
+        response = self.client.get("/cashbooks/")
 
         self.assertEqual(response.status_code, 403)
 
@@ -97,7 +97,7 @@ class ProtectedMediaTests(TestCase):
         owner_membership.cashier_manager = True
         owner_membership.save(update_fields=["cashier_manager"])
 
-        response = self.client.get("/main/cashbooks/")
+        response = self.client.get("/cashbooks/")
 
         self.assertEqual(response.status_code, 200)
 

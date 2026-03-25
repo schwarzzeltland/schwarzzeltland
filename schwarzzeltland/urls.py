@@ -22,6 +22,7 @@ from main import views as main_views
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("main/", include("main.urls")),
+    path("", include("cashbook.urls")),
     path("buildings/", include("buildings.urls")),
     path("events/", include("events.urls")),
     path("knowledgebase/", include("knowledgebase.urls")),

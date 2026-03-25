@@ -63,7 +63,7 @@
             wrapper.appendChild(suggestionsList);
 
             function loadCategorySuggestions(query = "") {
-                fetch(`/main/cashbooks/autocomplete/category/?q=${encodeURIComponent(query)}`)
+                fetch(`/cashbooks/autocomplete/category/?q=${encodeURIComponent(query)}`)
                     .then(res => res.json())
                     .then(data => {
                         suggestionsList.innerHTML = "";

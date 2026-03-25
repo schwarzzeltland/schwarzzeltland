@@ -1,5 +1,5 @@
 from django.contrib.auth import views as auth_views
-from django.urls import path, include
+from django.urls import path
 
 from main import views
 
@@ -43,7 +43,6 @@ urlpatterns = [
     path('messages/send/', views.sendmessage_view, name='sendmessage'),
     path('messages/send/<int:pk>/', views.sendmessage_view, name='sendmessage'),
     path('messages/inbox/', views.messagesinbox_view, name='inboxmessages'),
-    path("", include("cashbook.urls")),
     path("accept-cookies/", views.accept_cookies, name="accept_cookies"),
     path("organization_material/checklist/", views.organization_material_checklist, name="organization_material_checklist"),
     path("organization_material/checklist/add/", views.add_organization_material_checklist_item, name="add_organization_material_checklist_item"),
