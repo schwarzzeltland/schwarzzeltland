@@ -54,11 +54,8 @@
                 <td>{{ entry.booking_date|date:"d.m.Y" }}</td>
                 <td>{% if entry.receipt_date %}{{ entry.receipt_date|date:"d.m.Y" }}{% else %}-{% endif %}</td>
                 <td>{{ entry.get_entry_type_display }}</td>
-                <td class="wrap">
+                <td>
                     {{ entry.title }}
-                    {% if entry.description %}
-                        <div class="muted small">{{ entry.description }}</div>
-                    {% endif %}
                 </td>
                 <td class="wrap">{{ entry.category|default:"-" }}</td>
                 <td class="wrap">{{ entry.counterparty|default:"-" }}</td>
