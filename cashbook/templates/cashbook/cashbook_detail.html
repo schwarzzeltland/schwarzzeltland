@@ -46,7 +46,30 @@
             justify-content: flex-end;
         }
 
+        .cashbook-header {
+            display: flex;
+            flex-wrap: nowrap;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .cashbook-heading {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        .cashbook-heading h3,
+        .cashbook-heading small {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
         @media (max-width: 767.98px) {
+            .cashbook-header {
+                flex-wrap: wrap;
+            }
+
             .cashbook-actions {
                 width: 100%;
             }
@@ -57,8 +80,8 @@
         }
     </style>
 
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <div>
+    <div class="cashbook-header mb-3">
+        <div class="cashbook-heading">
             <h3 class="mb-0">{{ cashbook.name }}</h3>
             {% if cashbook.description %}
                 <small class="text-muted">{{ cashbook.description }}</small>
@@ -90,36 +113,40 @@
         </div>
     </div>
 
-    <form method="get" class="row g-2 mb-3">
-        <div class="col-md-3">
-            <input type="text" name="search" value="{{ search_query }}" class="form-control" placeholder="Suche">
+    <div class="card border-1 mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2">
+                <div class="col-md-3">
+                    <input type="text" name="search" value="{{ search_query }}" class="form-control" placeholder="Suche">
+                </div>
+                <div class="col-md-2">
+                    <select name="trip" id="trip-filter" class="form-select select2">
+                        <option value="">Alle Veranstaltungen</option>
+                        {% for trip in trip_options %}
+                            <option value="{{ trip.pk }}" {% if selected_trip == trip.pk|stringformat:"s" %}selected{% endif %}>{{ trip.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="entry_type" class="form-select">
+                        <option value="">Alle Typen</option>
+                        {% for value, label in entry_types %}
+                            <option value="{{ value }}" {% if selected_type == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="date" name="start_date" value="{{ start_date }}" class="form-control" placeholder="Von">
+                </div>
+                <div class="col-md-2">
+                    <input type="date" name="end_date" value="{{ end_date }}" class="form-control" placeholder="Bis">
+                </div>
+                <div class="col-md-1 d-grid">
+                    <button type="submit" class="btn btn-outline-secondary">Filter</button>
+                </div>
+            </form>
         </div>
-        <div class="col-md-2">
-            <select name="trip" id="trip-filter" class="form-select select2">
-                <option value="">Alle Veranstaltungen</option>
-                {% for trip in trip_options %}
-                    <option value="{{ trip.pk }}" {% if selected_trip == trip.pk|stringformat:"s" %}selected{% endif %}>{{ trip.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <select name="entry_type" class="form-select">
-                <option value="">Alle Typen</option>
-                {% for value, label in entry_types %}
-                    <option value="{{ value }}" {% if selected_type == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <input type="date" name="start_date" value="{{ start_date }}" class="form-control" placeholder="Von">
-        </div>
-        <div class="col-md-2">
-            <input type="date" name="end_date" value="{{ end_date }}" class="form-control" placeholder="Bis">
-        </div>
-        <div class="col-md-1 d-grid">
-            <button type="submit" class="btn btn-outline-secondary">Filter</button>
-        </div>
-    </form>
+    </div>
 
     <div class="table-responsive mb-4">
         <table class="table table-hover align-middle">
