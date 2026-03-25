@@ -9,12 +9,21 @@
     <div class="meta">
         Organisation: {{ cashbook.organization.name }}<br>
         Währung: {{ cashbook.currency }}<br>
-        {% if cashbook.description %}Beschreibung: {{ cashbook.description }}{% endif %}
+        Startsaldo der Auswahl: {{ selection_opening_balance }} {{ cashbook.currency }}<br>
+        {% if cashbook.description %}Beschreibung: {{ cashbook.description }}<br>{% endif %}
+        <span class="small">
+            Filter:
+            Suche {% if filters.search_query %}{{ filters.search_query }}{% else %}-{% endif %},
+            Veranstaltung {% if trip_filter_label %}{{ trip_filter_label }}{% else %}-{% endif %},
+            Typ {% if type_filter_label %}{{ type_filter_label }}{% else %}-{% endif %},
+            Von {% if filters.start_date %}{{ filters.start_date }}{% else %}-{% endif %},
+            Bis {% if filters.end_date %}{{ filters.end_date }}{% else %}-{% endif %}
+        </span>
     </div>
 
     <table class="summary">
         <tr>
-            <td><strong>Startsaldo</strong><br>{{ cashbook.opening_balance }} {{ cashbook.currency }}</td>
+            <td><strong>Startsaldo</strong><br>{{ selection_opening_balance }} {{ cashbook.currency }}</td>
             <td><strong>Einnahmen</strong><br>{{ income_total }} {{ cashbook.currency }}</td>
             <td><strong>Ausgaben</strong><br>{{ expense_total }} {{ cashbook.currency }}</td>
             <td><strong>Endsaldo</strong><br>{{ closing_balance }} {{ cashbook.currency }}</td>
@@ -24,17 +33,17 @@
     <table class="entries">
         <thead>
         <tr>
-            <th style="width: 5%;">Nr.</th>
-            <th style="width: 8%;">Buchung</th>
-            <th style="width: 8%;">Beleg</th>
-            <th style="width: 7%;">Typ</th>
-            <th style="width: 15%;">Titel</th>
-            <th style="width: 10%;">Kategorie</th>
-            <th style="width: 12%;">Zahlungspartner</th>
-            <th style="width: 10%;">Referenz</th>
+            <th style="width: 4%;">Nr.</th>
+            <th style="width: 7%;">Buchung</th>
+            <th style="width: 7%;">Beleg</th>
+            <th style="width: 6%;">Typ</th>
+            <th style="width: 17%;">Titel</th>
+            <th style="width: 9%;">Kategorie</th>
+            <th style="width: 11%;">Zahlungspartner</th>
+            <th style="width: 9%;">Referenz</th>
             <th style="width: 10%;">Veranstaltung</th>
-            <th style="width: 7%;">Betrag</th>
-            <th style="width: 8%;">Saldo</th>
+            <th style="width: 10%;">Betrag</th>
+            <th style="width: 10%;">Saldo</th>
         </tr>
         </thead>
         <tbody>
@@ -47,7 +56,7 @@
                 <td class="wrap">
                     {{ entry.title }}
                     {% if entry.description %}
-                        <div class="muted">{{ entry.description }}</div>
+                        <div class="muted small">{{ entry.description }}</div>
                     {% endif %}
                 </td>
                 <td class="wrap">{{ entry.category|default:"-" }}</td>

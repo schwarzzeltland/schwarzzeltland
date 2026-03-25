@@ -59,6 +59,7 @@ class CashBookEntryForm(forms.ModelForm):
                 "autocomplete": "off",
                 "placeholder": "Kategorie",
             }),
+            "trip": forms.Select(attrs={"class": "form-select select2"}),
             "description": forms.Textarea(attrs={"rows": 4}),
         }
 

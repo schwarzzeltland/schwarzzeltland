@@ -27,6 +27,39 @@ def _cashbook_running_rows(entries, opening_balance):
     return rows, balance
 
 
+def _cashbook_filter_entries(entries, request):
+    search_query = request.GET.get("search", "").strip()
+    selected_trip = request.GET.get("trip", "").strip()
+    selected_type = request.GET.get("entry_type", "").strip()
+    start_date = request.GET.get("start_date", "").strip()
+    end_date = request.GET.get("end_date", "").strip()
+
+    if search_query:
+        entries = entries.filter(
+            Q(title__icontains=search_query)
+            | Q(description__icontains=search_query)
+            | Q(category__icontains=search_query)
+            | Q(counterparty__icontains=search_query)
+            | Q(reference__icontains=search_query)
+        )
+    if selected_trip:
+        entries = entries.filter(trip_id=selected_trip)
+    if selected_type:
+        entries = entries.filter(entry_type=selected_type)
+    if start_date:
+        entries = entries.filter(booking_date__gte=start_date)
+    if end_date:
+        entries = entries.filter(booking_date__lte=end_date)
+
+    return entries, {
+        "search_query": search_query,
+        "selected_trip": selected_trip,
+        "selected_type": selected_type,
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+
+
 def _cashbook_audit_value(value):
     if value is None:
         return ""
@@ -324,28 +357,7 @@ def cashbook_detail(request, pk):
         for audit in cashbook.audit_logs.select_related("actor", "entry")[:20]
     ]
 
-    search_query = request.GET.get("search", "").strip()
-    selected_trip = request.GET.get("trip", "").strip()
-    selected_type = request.GET.get("entry_type", "").strip()
-    start_date = request.GET.get("start_date", "").strip()
-    end_date = request.GET.get("end_date", "").strip()
-
-    if search_query:
-        entries = entries.filter(
-            Q(title__icontains=search_query)
-            | Q(description__icontains=search_query)
-            | Q(category__icontains=search_query)
-            | Q(counterparty__icontains=search_query)
-            | Q(reference__icontains=search_query)
-        )
-    if selected_trip:
-        entries = entries.filter(trip_id=selected_trip)
-    if selected_type:
-        entries = entries.filter(entry_type=selected_type)
-    if start_date:
-        entries = entries.filter(booking_date__gte=start_date)
-    if end_date:
-        entries = entries.filter(booking_date__lte=end_date)
+    entries, filters = _cashbook_filter_entries(entries, request)
 
     entries = entries.order_by("booking_date", "id")
     selection_opening_balance = cashbook.opening_balance
@@ -370,11 +382,7 @@ def cashbook_detail(request, pk):
         "income_total": income_total,
         "expense_total": expense_total,
         "filtered_balance": filtered_balance,
-        "search_query": search_query,
-        "selected_trip": selected_trip,
-        "selected_type": selected_type,
-        "start_date": start_date,
-        "end_date": end_date,
+        **filters,
         "trip_options": request.org.trip_set.order_by("-start_date", "name"),
         "entry_types": CashBookEntry.TYPE_CHOICES,
         "audit_rows": audit_rows,
@@ -529,10 +537,25 @@ def cashbook_export_csv(request, pk):
 @pro5_required
 def cashbook_export_pdf(request, pk):
     cashbook = get_object_or_404(CashBook, pk=pk, organization=request.org)
-    entries = cashbook.entries.select_related("trip").order_by("booking_date", "id")
-    running_rows, closing_balance = _cashbook_running_rows(entries, cashbook.opening_balance)
+    all_entries = cashbook.entries.select_related("trip")
+    entries, filters = _cashbook_filter_entries(all_entries, request)
+    entries = entries.order_by("booking_date", "id")
+    selection_opening_balance = cashbook.opening_balance
+    first_entry = entries.first()
+    if first_entry is not None:
+        prior_entries = all_entries.filter(
+            Q(booking_date__lt=first_entry.booking_date)
+            | (Q(booking_date=first_entry.booking_date) & Q(id__lt=first_entry.id))
+        )
+        selection_opening_balance += sum(entry.signed_amount for entry in prior_entries)
+
+    running_rows, closing_balance = _cashbook_running_rows(entries, selection_opening_balance)
     income_total = sum(entry.amount for entry in entries if entry.entry_type == CashBookEntry.TYPE_INCOME)
     expense_total = sum(entry.amount for entry in entries if entry.entry_type == CashBookEntry.TYPE_EXPENSE)
+    trip_filter_label = ""
+    if filters["selected_trip"]:
+        trip_filter_label = request.org.trip_set.filter(pk=filters["selected_trip"]).values_list("name", flat=True).first() or ""
+    type_filter_label = dict(CashBookEntry.TYPE_CHOICES).get(filters["selected_type"], "")
 
     return _render_pdf_response(
         request=request,
@@ -540,25 +563,30 @@ def cashbook_export_pdf(request, pk):
         context={
             "cashbook": cashbook,
             "running_rows": running_rows,
+            "selection_opening_balance": selection_opening_balance,
             "income_total": income_total,
             "expense_total": expense_total,
             "closing_balance": closing_balance,
+            "filters": filters,
+            "trip_filter_label": trip_filter_label,
+            "type_filter_label": type_filter_label,
             "fallback_pdf": lambda: _build_cashbook_fallback_pdf(cashbook, running_rows),
         },
         filename=f'{slugify(cashbook.name) or "kassenbuch"}-entries.pdf',
         css="""
-            @page { size: A4 landscape; margin: 12mm; }
-            body { font-family: sans-serif; font-size: 10px; color: #111827; }
-            h1 { margin: 0 0 4mm; font-size: 18px; }
-            .meta { margin-bottom: 5mm; color: #4b5563; }
-            .summary { width: 100%; border-collapse: collapse; margin-bottom: 5mm; }
-            .summary td { border: 1px solid #d1d5db; padding: 2mm; }
+            @page { size: A4 landscape; margin: 8mm; }
+            body { font-family: sans-serif; font-size: 8.5px; color: #111827; }
+            h1 { margin: 0 0 3mm; font-size: 15px; }
+            .meta { margin-bottom: 3mm; color: #4b5563; }
+            .summary { width: 100%; border-collapse: collapse; margin-bottom: 3mm; table-layout: fixed; }
+            .summary td { border: 1px solid #d1d5db; padding: 1.5mm; }
             table.entries { width: 100%; border-collapse: collapse; table-layout: fixed; }
-            table.entries th, table.entries td { border: 1px solid #d1d5db; padding: 1.5mm; vertical-align: top; }
+            table.entries th, table.entries td { border: 1px solid #d1d5db; padding: 1mm; vertical-align: top; }
             table.entries th { background: #f3f4f6; text-align: left; }
             .amount { text-align: right; white-space: nowrap; }
             .muted { color: #6b7280; }
             .wrap { white-space: pre-wrap; word-break: break-word; }
+            .small { font-size: 7.5px; }
         """,
     )
 
@@ -644,12 +672,12 @@ def cashbook_export_summary_pdf(request):
         },
         filename="cashbooks-summary.pdf",
         css="""
-            @page { size: A4 landscape; margin: 12mm; }
-            body { font-family: sans-serif; font-size: 10px; color: #111827; }
-            h1 { margin: 0 0 4mm; font-size: 18px; }
-            .meta { margin-bottom: 5mm; color: #4b5563; }
+            @page { size: A4 landscape; margin: 8mm; }
+            body { font-family: sans-serif; font-size: 9px; color: #111827; }
+            h1 { margin: 0 0 3mm; font-size: 15px; }
+            .meta { margin-bottom: 3mm; color: #4b5563; }
             table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-            th, td { border: 1px solid #d1d5db; padding: 2mm; vertical-align: top; }
+            th, td { border: 1px solid #d1d5db; padding: 1.5mm; vertical-align: top; }
             th { background: #f3f4f6; text-align: left; }
             .amount { text-align: right; white-space: nowrap; }
         """,
