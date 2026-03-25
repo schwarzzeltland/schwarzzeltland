@@ -1,5 +1,44 @@
 {% extends "base.html" %}
 {% block content %}
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <style>
+        .select2-container {
+            width: 100% !important;
+        }
+
+        .select2-container--default .select2-selection--single {
+            height: 38px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            border: 1px solid #ced4da;
+            background-color: #fff;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #212529;
+            line-height: 36px;
+            padding-left: 0;
+            padding-right: 20px;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 100%;
+            right: 10px;
+        }
+
+        .select2-container--default .select2-selection--single:focus,
+        .select2-container--default .select2-selection--single:hover,
+        .select2-container--default.select2-container--focus .select2-selection--single {
+            border-color: #80bdff;
+            outline: 0;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+    </style>
+
     <div class="container mt-4">
         <form method="post">
             {% csrf_token %}
@@ -18,19 +57,18 @@
             <div class="mb-3" id="recipe-wrapper" style="display: none;">
                 {{ form.recipe.label_tag }}
                 {{ form.recipe }}
-                    <a id="recipe-link"
-                       data-next="{{ request.get_full_path|urlencode }}"
-                       href="#"
-                       class="btn btn-secondary mt-2"
-                       style="display:none;">
-                        Rezept für die Teilnehmeranzahl anzeigen
-                    </a>
+                <a id="recipe-link"
+                   data-next="{{ request.get_full_path|urlencode }}"
+                   href="#"
+                   class="btn btn-secondary mt-2"
+                   style="display:none;">
+                    Rezept für die Teilnehmeranzahl anzeigen
+                </a>
                 {% if item.trip.owner.pro1 %}
-                    <!-- Zutaten übernehmen -->
-                        <button type="submit" name="save_add_ingredients" id="recipe-add-ingredients"
-                           class="btn btn-outline-success mt-2">
-                            Zutaten zur Einkaufsliste hinzufügen
-                        </button>
+                    <button type="submit" name="save_add_ingredients" id="recipe-add-ingredients"
+                            class="btn btn-outline-success mt-2">
+                        Zutaten zur Einkaufsliste hinzufügen
+                    </button>
                 {% endif %}
             </div>
 
@@ -61,18 +99,6 @@
             </div>
         </form>
     </div>
-    <div class="mb-3" id="recipe-wrapper" style="display: none;">
-        {{ form.recipe.label_tag }}
-        {{ form.recipe }}
-
-        <a id="recipe-link"
-           href="#"
-           class="btn btn-secondary mt-2"
-           style="display:none;"
-           target="_blank">
-            Rezept für die Teilnehmeranzahl anzeigen
-        </a>
-    </div>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -80,17 +106,29 @@
             const recipeWrapper = document.getElementById("recipe-wrapper");
             const recipeSelect = document.getElementById("id_recipe");
             const recipeLink = document.getElementById("recipe-link");
-            const recipeaddingredients = document.getElementById("recipe-add-ingredients");
+            const recipeAddIngredients = document.getElementById("recipe-add-ingredients");
+
+            if (window.jQuery && recipeSelect) {
+                window.jQuery(recipeSelect).select2({
+                    width: "100%",
+                    placeholder: "Rezept suchen",
+                    allowClear: true
+                });
+            }
 
             function updateRecipeVisibility() {
-                const isMeal = typeSelect.value === "0"; // TYPE_MEAL
-
+                const isMeal = typeSelect.value === "0";
                 recipeWrapper.style.display = isMeal ? "block" : "none";
 
                 if (!isMeal) {
                     recipeLink.style.display = "none";
                     recipeLink.href = "#";
-                    recipeaddingredients.style.display = "none";
+                    if (recipeAddIngredients) {
+                        recipeAddIngredients.style.display = "none";
+                    }
+                    if (window.jQuery && recipeSelect) {
+                        window.jQuery(recipeSelect).val(null).trigger("change");
+                    }
                 }
             }
 
@@ -99,26 +137,25 @@
                 const nextUrl = recipeLink.dataset.next;
 
                 if (recipeId) {
-                    recipeLink.href =
-                        `/knowledgebase/recipes/show_my_recipe/${recipeId}/?next=${nextUrl}&persons={{ item.trip.total_persons }}`;
+                    recipeLink.href = `/knowledgebase/recipes/show_my_recipe/${recipeId}/?next=${nextUrl}&persons={{ item.trip.total_persons }}`;
                     recipeLink.style.display = "inline-block";
-                    recipeaddingredients.style.display = "inline-block";
+                    if (recipeAddIngredients) {
+                        recipeAddIngredients.style.display = "inline-block";
+                    }
                 } else {
                     recipeLink.style.display = "none";
                     recipeLink.href = "#";
-                    recipeaddingredients.style.display = "none";
+                    if (recipeAddIngredients) {
+                        recipeAddIngredients.style.display = "none";
+                    }
                 }
             }
 
             typeSelect.addEventListener("change", updateRecipeVisibility);
             recipeSelect.addEventListener("change", updateRecipeLink);
 
-            // Initialer Zustand (Edit-View!)
             updateRecipeVisibility();
             updateRecipeLink();
         });
     </script>
-
-
-
 {% endblock %}

@@ -585,7 +585,7 @@ def cashbook_export_pdf(request, pk):
             table.entries { width: 100%; border-collapse: collapse; table-layout: fixed; }
             table.entries th, table.entries td { border: 1px solid #d1d5db; padding: 0.8mm; vertical-align: top; }
             table.entries th { background: #f3f4f6; text-align: left; }
-            .amount { text-align: right; white-space: nowrap; font-size: 7.4px; }
+            .amount { text-align: right; white-space: nowrap; font-size: 10px; }
             .muted { color: #6b7280; }
             .wrap { white-space: pre-wrap; word-break: break-word; }
             .small { font-size: 7px; }

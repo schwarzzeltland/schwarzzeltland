@@ -38,6 +38,23 @@
             outline: 0;
             box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
         }
+
+        .cashbook-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        @media (max-width: 767.98px) {
+            .cashbook-actions {
+                width: 100%;
+            }
+
+            .cashbook-actions .btn {
+                flex: 1 1 100%;
+            }
+        }
     </style>
 
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -47,7 +64,7 @@
                 <small class="text-muted">{{ cashbook.description }}</small>
             {% endif %}
         </div>
-        <div class="d-flex gap-2">
+        <div class="cashbook-actions">
             <a href="{% url 'cashbook_export_csv' cashbook.pk %}" class="btn btn-outline-secondary">CSV exportieren</a>
             <a href="{% url 'cashbook_export_pdf' cashbook.pk %}?search={{ search_query|urlencode }}&trip={{ selected_trip|urlencode }}&entry_type={{ selected_type|urlencode }}&start_date={{ start_date|urlencode }}&end_date={{ end_date|urlencode }}" class="btn btn-outline-secondary">PDF exportieren</a>
             <a href="{% url 'cashbook_export_receipts_zip' cashbook.pk %}" class="btn btn-outline-secondary">Belege als ZIP</a>
@@ -94,10 +111,10 @@
             </select>
         </div>
         <div class="col-md-2">
-            <input type="date" name="start_date" value="{{ start_date }}" class="form-control">
+            <input type="date" name="start_date" value="{{ start_date }}" class="form-control" placeholder="Von">
         </div>
         <div class="col-md-2">
-            <input type="date" name="end_date" value="{{ end_date }}" class="form-control">
+            <input type="date" name="end_date" value="{{ end_date }}" class="form-control" placeholder="Bis">
         </div>
         <div class="col-md-1 d-grid">
             <button type="submit" class="btn btn-outline-secondary">Filter</button>

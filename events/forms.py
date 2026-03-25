@@ -318,7 +318,7 @@ class ProgrammItemForm(forms.ModelForm):
             "short_description": forms.TextInput(attrs={"class": "form-control"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "type": forms.Select(attrs={"class": "form-select"}),
-            "recipe": forms.Select(attrs={"class": "form-select"}),
+            "recipe": forms.Select(attrs={"class": "form-select select2"}),
             "visible_for_members": forms.CheckboxInput(attrs={"class": "form-check-input"}
                                                        )
         }
@@ -369,7 +369,7 @@ class ProgrammItemEditForm(forms.ModelForm):
             "short_description": forms.TextInput(attrs={"class": "form-control"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "type": forms.Select(attrs={"class": "form-select"}),
-            "recipe": forms.Select(attrs={"class": "form-select"},),
+            "recipe": forms.Select(attrs={"class": "form-select select2"}),
             "visible_for_members": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "start_time": forms.DateTimeInput(
                 attrs={"class": "form-control", "type": "datetime-local"},
