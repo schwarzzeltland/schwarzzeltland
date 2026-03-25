@@ -552,6 +552,7 @@ def cashbook_export_pdf(request, pk):
     running_rows, closing_balance = _cashbook_running_rows(entries, selection_opening_balance)
     income_total = sum(entry.amount for entry in entries if entry.entry_type == CashBookEntry.TYPE_INCOME)
     expense_total = sum(entry.amount for entry in entries if entry.entry_type == CashBookEntry.TYPE_EXPENSE)
+    filtered_balance = sum(entry.signed_amount for entry in entries)
     trip_filter_label = ""
     if filters["selected_trip"]:
         trip_filter_label = request.org.trip_set.filter(pk=filters["selected_trip"]).values_list("name", flat=True).first() or ""
@@ -566,6 +567,7 @@ def cashbook_export_pdf(request, pk):
             "selection_opening_balance": selection_opening_balance,
             "income_total": income_total,
             "expense_total": expense_total,
+            "filtered_balance": filtered_balance,
             "closing_balance": closing_balance,
             "filters": filters,
             "trip_filter_label": trip_filter_label,
@@ -575,7 +577,7 @@ def cashbook_export_pdf(request, pk):
         filename=f'{slugify(cashbook.name) or "kassenbuch"}-entries.pdf',
         css="""
             @page { size: A4 landscape; margin: 8mm; }
-            body { font-family: sans-serif; font-size: 8px; color: #111827; }
+            body { font-family: sans-serif; font-size: 10px; color: #111827; }
             h1 { margin: 0 0 3mm; font-size: 15px; }
             .meta { margin-bottom: 3mm; color: #4b5563; }
             .summary { width: 100%; border-collapse: collapse; margin-bottom: 3mm; table-layout: fixed; }
