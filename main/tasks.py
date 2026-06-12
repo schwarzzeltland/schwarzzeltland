@@ -1,3 +1,5 @@
+from email.utils import formataddr
+
 from django.urls import reverse
 from django.utils import timezone
 
@@ -40,14 +42,14 @@ def send_due_checklist_items_today():
     )
 
     for item in items:
-        recipients = set()
+        recipients = []
 
         # 🔹 Fall 1: Trip → Planer
         if item.trip:
             planners = item.trip.planners.all()
             for user in planners:
                 if user.email:
-                    recipients.add(user.email)
+                    recipients.append(user.email)
 
         # 🔹 Fall 2: Organisation → Materialwarte
         if item.organization:
@@ -58,7 +60,7 @@ def send_due_checklist_items_today():
 
             for membership in material_managers:
                 if membership.user.email:
-                    recipients.add(membership.user.email)
+                    recipients.append(membership.user.email)
 
         # ❌ Keine Empfänger → keine Mail
         if not recipients:
@@ -140,17 +142,19 @@ def send_due_checklist_items_today():
           </body>
         </html>
         """
+        sender_name=" "
         if item.organization:
             sender_name = item.organization.name
         elif item.trip:
             sender_name = item.trip.owner.name
 
+        from_email = formataddr((sender_name, settings.EMAIL_HOST_USER))
 
         send_mail(
             subject=subject,
             message=text_message,
             recipient_list=recipients,
             html_message=html_message,
-            from_email= f"{sender_name} – Schwarzzeltland <{settings.EMAIL_HOST_USER}>",
+            from_email=from_email,
             fail_silently=False,
         )
