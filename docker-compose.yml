@@ -7,6 +7,7 @@ services:
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/uploads
+      - /etc/ssl/certs:/etc/ssl/certs:ro
     expose:
       - 8000
     environment: &django_env  # Anchor to avoid repeating env vars
@@ -50,6 +51,7 @@ services:
     command: celery -A schwarzzeltland worker --loglevel=info
     volumes:
       - media_volume:/app/uploads
+      - /etc/ssl/certs:/etc/ssl/certs:ro
     environment: *django_env
     depends_on:
       - db
@@ -58,6 +60,8 @@ services:
   celery_beat:
     build: .
     command: celery -A schwarzzeltland beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - /etc/ssl/certs:/etc/ssl/certs:ro
     environment: *django_env
     depends_on:
       - db
