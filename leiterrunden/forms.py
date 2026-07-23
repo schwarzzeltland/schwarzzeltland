@@ -60,4 +60,10 @@ MeetingMinutesItemFormSet = inlineformset_factory(
     extra=0,
     can_delete=True,
 )
-MeetingGuestFormSet = inlineformset_factory(MeetingMinutes, MeetingGuest, fields=["name", "note"], extra=1, can_delete=True)
+MeetingGuestFormSet = inlineformset_factory(
+    MeetingMinutes,
+    MeetingGuest,
+    fields=["name", "note"],
+    extra=0,
+    can_delete=True,
+)

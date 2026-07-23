@@ -34,11 +34,22 @@ class MeetingMinutesTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["formset"].total_form_count(), minutes.items.count())
+        self.assertEqual(
+            response.context["guest_formset"].total_form_count(),
+            minutes.guests.count(),
+        )
         self.assertContains(
             response,
             f'name="items-TOTAL_FORMS" value="{minutes.items.count()}"',
             html=False,
         )
+        self.assertContains(
+            response,
+            f'name="guests-TOTAL_FORMS" value="{minutes.guests.count()}"',
+            html=False,
+        )
+        self.assertContains(response, "Gast hinzufügen")
+        self.assertContains(response, "Gast entfernen")
 
     def test_minutes_list_can_be_searched_and_filtered(self):
         self.client.login(username="leitung", password="pw")
