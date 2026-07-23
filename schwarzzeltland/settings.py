@@ -40,7 +40,11 @@ CELERY_BEAT_SCHEDULE = {
     },
     "send_due_checklist_items_daily": {
         "task": "main.tasks.send_due_checklist_items_today",
-        "schedule": crontab(hour=1, minute=0)  # 08:00 Uhr
+        "schedule": crontab(hour=1, minute=0),  # 01:00 Uhr
+    },
+    "send_due_meeting_minutes_items_daily": {
+        "task": "leiterrunden.tasks.send_due_meeting_minutes_items_today",
+        "schedule": crontab(hour=1, minute=0),
     },
 
 }

@@ -377,6 +377,15 @@ section {
     border: 1px solid #e0e0e0;
 }
 
+.breadcrumbs .more-dropdown-menu {
+    max-width: calc(100vw - 2rem);
+}
+
+.breadcrumbs .more-dropdown-menu .dropdown-item {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
 .breadcrumbs .dropdown-item {
     font-family: "Raleway", sans-serif;
 }
@@ -407,6 +416,11 @@ section {
     .subnav-header h2 {
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    .breadcrumbs .more-dropdown-menu {
+        width: 100%;
+        min-width: 0;
     }
 }
 

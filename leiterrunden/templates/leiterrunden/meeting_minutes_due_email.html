@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+  <body style="font-family:Arial,sans-serif;background-color:#f6f6f6;padding:20px;color:#333;">
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width:600px;width:100%;background:#fff;border-radius:8px;">
+            <tr>
+              <td style="background:#243447;padding:24px;border-radius:8px 8px 0 0;">
+                <h2 style="color:#fff;margin:0;">⏰ TOP heute fällig</h2>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <p>Hallo,</p>
+                <p>der folgende TOP aus dem Protokoll <strong>{{ item.minutes.title }}</strong> ist heute fällig:</p>
+                <p style="font-size:16px;font-weight:bold;">{{ item.topic }}</p>
+                {% if item.notes %}<p style="white-space:pre-wrap;">{{ item.notes }}</p>{% endif %}
+                <p><strong>Fällig am:</strong><br>{{ item.due_date|date:"d.m.Y" }}</p>
+                <div style="text-align:center;margin:32px 0;">
+                  <a href="{{ detail_url }}" style="background-color:#ffc451;color:#fff;padding:14px 24px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;">Protokoll öffnen</a>
+                </div>
+                <p style="color:#666;font-size:13px;">Schwarzzeltland</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

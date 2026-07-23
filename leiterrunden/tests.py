@@ -2,7 +2,9 @@ from django.contrib.auth.models import User
 from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from leiterrunden.models import MeetingMinutes, MeetingMinutesAcceptance
+from leiterrunden.tasks import send_due_meeting_minutes_items_today
 from main.models import Membership
 
 
@@ -51,6 +53,56 @@ class MeetingMinutesTests(TestCase):
         response = self.client.get(reverse("meeting_minutes_list"), {"q": "nicht vorhanden"})
         self.assertNotContains(response, "Juli-Sitzung")
         self.assertContains(response, "Keine Protokolle entsprechen den gewählten Filtern.")
+
+    def test_due_top_notifications_use_responsible_members_or_full_leiterrunde(self):
+        other_user = User.objects.create_user(
+            username="verantwortlich",
+            password="pw",
+            email="verantwortlich@example.test",
+        )
+        other_membership = Membership.objects.create(
+            user=other_user,
+            organization=self.organization,
+            leiterrundenmitglied=True,
+        )
+        self.client.login(username="leitung", password="pw")
+        data = self._post_data("publish")
+        data["items-0-due_date"] = timezone.localdate().isoformat()
+        self.client.post(reverse("meeting_minutes_create"), data)
+        minutes = MeetingMinutes.objects.get()
+        responsible_item = minutes.items.get()
+        responsible_item.responsible_members.add(other_membership)
+        minutes.items.create(
+            topic="Gemeinsame Aufgabe",
+            notes="Alle informieren",
+            due_date=timezone.localdate(),
+            position=2,
+        )
+        draft = MeetingMinutes.objects.create(
+            organization=self.organization,
+            title="Nicht veröffentlichen",
+            meeting_date=timezone.localdate(),
+            created_by=self.user,
+        )
+        draft.items.create(
+            topic="Entwurfsaufgabe",
+            due_date=timezone.localdate(),
+        )
+        mail.outbox.clear()
+
+        sent_count = send_due_meeting_minutes_items_today()
+
+        self.assertEqual(sent_count, 2)
+        messages_by_subject = {message.subject: message for message in mail.outbox}
+        self.assertEqual(
+            messages_by_subject["⏰ Heute fällig: Sommerlager"].to,
+            ["verantwortlich@example.test"],
+        )
+        self.assertCountEqual(
+            messages_by_subject["⏰ Heute fällig: Gemeinsame Aufgabe"].to,
+            ["leitung@example.test", "verantwortlich@example.test"],
+        )
+        self.assertNotIn("Entwurfsaufgabe", " ".join(messages_by_subject))
 
     def test_published_minutes_are_locked_and_exportable(self):
         absent_user = User.objects.create_user(username="abwesend", password="pw", email="abwesend@example.test")
