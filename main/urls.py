@@ -12,6 +12,7 @@ urlpatterns = [
     path('change_event_manager/<int:pk>/', views.change_event_manager, name='change_event_manager'),
     path('change_knowledge_manager/<int:pk>/', views.change_knowledge_manager, name='change_knowledge_manager'),
     path('change_cashier_manager/<int:pk>/', views.change_cashier_manager, name='change_cashier_manager'),
+    path('change_leiterrundenmitglied/<int:pk>/', views.change_leiterrundenmitglied, name='change_leiterrundenmitglied'),
     path('delete_membership/<int:pk>/', views.delete_membership, name='delete_membership'),
     path('add_user', views.add_user, name='add_user'),
     path('contacts', views.contacts_view, name='contacts'),

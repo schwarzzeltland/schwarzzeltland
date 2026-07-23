@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">Leiterrunden-Protokolle</h3>
+        <a href="{% url 'meeting_minutes_create' %}" class="btn btn-success">Protokoll erstellen</a>
+    </div>
+    <form method="get" class="card card-body mb-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-lg-4">
+                <label for="minutes-search" class="form-label">Suche</label>
+                <input id="minutes-search" type="search" name="q" value="{{ query }}" class="form-control" placeholder="Titel, Einleitung oder TOP durchsuchen">
+            </div>
+            <div class="col-md-4 col-lg-3">
+                <label for="minutes-status" class="form-label">Status</label>
+                <select id="minutes-status" name="status" class="form-select">
+                    <option value="">Alle Status</option>
+                    <option value="draft" {% if status == "draft" %}selected{% endif %}>Entwurf</option>
+                    <option value="published" {% if status == "published" %}selected{% endif %}>Veröffentlicht</option>
+                    <option value="changed" {% if status == "changed" %}selected{% endif %}>Geändert</option>
+                    <option value="accepted" {% if status == "accepted" %}selected{% endif %}>Angenommen</option>
+                    <option value="pending" {% if status == "pending" %}selected{% endif %}>Annahme ausstehend</option>
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label for="minutes-from" class="form-label">Von</label>
+                <input id="minutes-from" type="date" name="date_from" value="{{ date_from }}" class="form-control">
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label for="minutes-to" class="form-label">Bis</label>
+                <input id="minutes-to" type="date" name="date_to" value="{{ date_to }}" class="form-control">
+            </div>
+            <div class="col-lg-1 d-flex gap-2">
+                <button class="btn btn-primary" title="Filtern">Suchen</button>
+            </div>
+        </div>
+        {% if filters_active %}<div class="mt-2"><a href="{% url 'meeting_minutes_list' %}" class="small">Filter zurücksetzen</a></div>{% endif %}
+    </form>
+    {% if minutes %}
+        <div class="list-group">
+            {% for minute in minutes %}
+                <a href="{% url 'meeting_minutes_detail' minute.pk %}" class="list-group-item list-group-item-action">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-semibold">{{ minute.title }}</div>
+                            <small class="text-muted">{{ minute.meeting_date|date:"d.m.Y" }} · {{ minute.items.count }} Tagesordnungspunkt(e)</small>
+                        </div>
+                        <span class="d-inline-flex flex-nowrap gap-1 align-items-center">{% if minute.changed %}<span class="badge text-bg-warning">Geändert</span>{% elif minute.published %}<span class="badge text-bg-success">Veröffentlicht</span>{% else %}<span class="badge text-bg-secondary">Entwurf</span>{% endif %}{% if minute.accepted %}<span class="badge text-bg-primary">Angenommen</span>{% endif %}</span>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">{% if filters_active %}Keine Protokolle entsprechen den gewählten Filtern.{% else %}Noch keine Protokolle vorhanden.{% endif %}</div>
+    {% endif %}
+{% endblock %}

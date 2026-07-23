@@ -30,7 +30,7 @@ class OrganizationAdmin(NestedModelAdmin):
 @admin.register(Membership)
 class MembershipAdmin(admin.ModelAdmin):
     search_fields = ["user__username", "user__first_name", "user__last_name"]
-    list_display = ["user", "organization", "admin", "material_manager", "event_manager", "knowledge_manager", "cashier_manager"]
+    list_display = ["user", "organization", "admin", "material_manager", "event_manager", "knowledge_manager", "cashier_manager", "leiterrundenmitglied"]
 
 
 @admin.register(Message)

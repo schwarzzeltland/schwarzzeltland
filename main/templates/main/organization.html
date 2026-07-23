@@ -51,6 +51,9 @@
                     {% if organization.pro5 %}
                         <th scope="col">Kassenwart</th>
                     {% endif %}
+                    {% if organization.pro6 %}
+                        <th scope="col">Leiterrundenmitglied</th>
+                    {% endif %}
                     <th scope="col"></th>
                 </tr>
                 </thead>
@@ -91,6 +94,10 @@
                                 <td><input name="cashier_manager" class="form-check-input"
                                            style="vertical-align: middle"
                                            type="checkbox"/></td>
+                            {% endif %}
+                            {% if organization.pro6 %}
+                                <td><input name="leiterrundenmitglied" class="form-check-input"
+                                           style="vertical-align: middle" type="checkbox"/></td>
                             {% endif %}
                             <td>
                                 <button type="submit" class="btn btn-success">Benutzer hinzufügen

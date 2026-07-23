@@ -46,6 +46,7 @@ class Organization(models.Model):
     pro3 = models.BooleanField(default=False)
     pro4 = models.BooleanField(default=False)
     pro5 = models.BooleanField(default=False)
+    pro6 = models.BooleanField(default=False)
     default_checklist = models.JSONField(
         default=default_checklist_items,
         blank=True,
@@ -67,6 +68,7 @@ class Membership(models.Model):
     event_manager = models.BooleanField(default=False)
     knowledge_manager = models.BooleanField(default=False)
     cashier_manager = models.BooleanField(default=False, verbose_name="Kassenwart")
+    leiterrundenmitglied = models.BooleanField(default=False, verbose_name="Leiterrundenmitglied")
 
     def __str__(self):
         return self.user.username

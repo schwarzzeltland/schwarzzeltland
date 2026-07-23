@@ -147,7 +147,7 @@
                                     <!-- Mehr-Dropdown -->
                                     <li class="nav-item dropdown">
                                         <a class="nav-link dropdown-toggle
-       {% if current == 'messages' or current == 'sentmessages' or current == 'showmessage' or current == 'sendmessage' or current == 'recipes' or current == 'organization_material_checklist' or current == 'cashbook_list' or current == 'cashbook_create' or current == 'cashbook_detail' or current == 'cashbook_edit' or current == 'cashbook_delete' or current == 'cashbook_entry_create' or current == 'cashbook_entry_edit' or current == 'cashbook_entry_delete' %}active{% endif %}"
+       {% if current == 'messages' or current == 'sentmessages' or current == 'showmessage' or current == 'sendmessage' or current == 'recipes' or current == 'organization_material_checklist' or current == 'cashbook_list' or current == 'cashbook_create' or current == 'cashbook_detail' or current == 'cashbook_edit' or current == 'cashbook_delete' or current == 'cashbook_entry_create' or current == 'cashbook_entry_edit' or current == 'cashbook_entry_delete' or current == 'meeting_minutes_list' or current == 'meeting_minutes_create' or current == 'meeting_minutes_detail' or current == 'meeting_minutes_edit' or current == 'meeting_minutes_delete' %}active{% endif %}"
                                            href="#"
                                            role="button"
                                            data-bs-toggle="dropdown"
@@ -181,6 +181,14 @@
                                                     <a class="dropdown-item {% if current == 'cashbook_list' or current == 'cashbook_create' or current == 'cashbook_detail' or current == 'cashbook_edit' or current == 'cashbook_delete' or current == 'cashbook_entry_create' or current == 'cashbook_entry_edit' or current == 'cashbook_entry_delete' %}active{% endif %}"
                                                        href="{% url 'cashbook_list' %}">
                                                         Kassenbücher
+                                                    </a>
+                                                </li>
+                                            {% endif %}
+                                            {% if membership.leiterrundenmitglied and organization.pro6 %}
+                                                <li>
+                                                    <a class="dropdown-item {% if current == 'meeting_minutes_list' or current == 'meeting_minutes_create' or current == 'meeting_minutes_detail' or current == 'meeting_minutes_edit' or current == 'meeting_minutes_delete' %}active{% endif %}"
+                                                       href="{% url 'meeting_minutes_list' %}">
+                                                        Leiterrunden-Protokolle
                                                     </a>
                                                 </li>
                                             {% endif %}

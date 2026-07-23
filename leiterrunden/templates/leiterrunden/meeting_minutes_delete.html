@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h3>Protokoll löschen</h3>
+    <p>Soll das Protokoll <strong>{{ minutes.title }}</strong> wirklich gelöscht werden?</p>
+    <form method="post">{% csrf_token %}<button class="btn btn-danger">Löschen</button> <a href="{% url 'meeting_minutes_detail' minutes.pk %}" class="btn btn-secondary">Abbrechen</a></form>
+{% endblock %}

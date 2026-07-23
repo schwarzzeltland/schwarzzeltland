@@ -132,6 +132,14 @@ def change_cashier_manager(request, pk):
 
 
 @organization_admin_required
+def change_leiterrundenmitglied(request, pk):
+    m: Membership = request.org.membership_set.get(pk=pk)
+    m.leiterrundenmitglied = not m.leiterrundenmitglied
+    m.save(update_fields=["leiterrundenmitglied"])
+    return HttpResponse(status=200)
+
+
+@organization_admin_required
 def delete_membership(request, pk):
     m = request.org.membership_set.get(pk=pk)
     if m == request.org.get_owner():
@@ -153,7 +161,9 @@ def add_user(request):
             admin=request.POST.get("admin", None) == "on",
             material_manager=request.POST.get("material_manager", None) == "on",
             event_manager=request.POST.get("event_manager", None) == "on",
+            knowledge_manager=request.POST.get("knowledge_manager", None) == "on",
             cashier_manager=request.POST.get("cashier_manager", None) == "on",
+            leiterrundenmitglied=request.POST.get("leiterrundenmitglied", None) == "on",
         )
         return render(request, "main/member_list_entry.html", {"m": m})
     print("unknown user", username)
