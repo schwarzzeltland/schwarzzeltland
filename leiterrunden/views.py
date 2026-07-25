@@ -73,6 +73,48 @@ def _acceptance_rows(minutes):
 
 def _minutes_tree(minutes):
     items = list(minutes.items.all())
+    previous_by_position = {}
+    if minutes.replaces_id:
+        previous_by_position = {
+            previous.position: previous for previous in minutes.replaces.items.all()
+        }
+    for item in items:
+        item.change_labels = []
+        if not minutes.replaces_id:
+            continue
+        original = item.copied_from or previous_by_position.get(item.position)
+        if not original:
+            item.change_labels.append("Neu hinzugefügt")
+            continue
+        if original.topic != item.topic:
+            item.change_labels.append(f'Titel: „{original.topic}“ → „{item.topic}“')
+        if original.notes != item.notes:
+            item.change_labels.append(
+                f'Notizen/Beschluss: „{original.notes or "–"}“ → „{item.notes or "–"}“'
+            )
+        old_responsible = ", ".join(
+            sorted(member.user.username for member in original.responsible_members.all())
+        ) or "–"
+        new_responsible = ", ".join(
+            sorted(member.user.username for member in item.responsible_members.all())
+        ) or "–"
+        if old_responsible != new_responsible:
+            item.change_labels.append(
+                f"Verantwortliche: {old_responsible} → {new_responsible}"
+            )
+        if original.due_date != item.due_date:
+            old_due = original.due_date.strftime("%d.%m.%Y") if original.due_date else "–"
+            new_due = item.due_date.strftime("%d.%m.%Y") if item.due_date else "–"
+            item.change_labels.append(f"Fälligkeit: {old_due} → {new_due}")
+        original_parent_id = original.parent_id
+        current_original_parent_id = None
+        if item.parent_id:
+            current_original_parent_id = (
+                item.parent.copied_from_id
+                or getattr(previous_by_position.get(item.parent.position), "id", None)
+            )
+        if original_parent_id != current_original_parent_id:
+            item.change_labels.append("Position innerhalb der TOP-Hierarchie geändert")
     children = {item.id: [] for item in items}
     roots = []
     for item in items:
@@ -106,6 +148,7 @@ def _duplicate_minutes(source, user, title, replaces=None):
         for item in source_items:
             copied_item = MeetingMinutesItem.objects.create(
                 minutes=duplicate,
+                copied_from=item,
                 topic=item.topic,
                 notes=item.notes,
                 responsible=item.responsible,
@@ -230,7 +273,7 @@ def meeting_minutes_create(request):
 @leiterrundenmitglied_required
 @pro6_required
 def meeting_minutes_detail(request, pk):
-    minutes = get_object_or_404(MeetingMinutes.objects.select_related("replaces").prefetch_related("items__responsible_members__user", "attendances__membership__user", "guests"), pk=pk, organization=request.org)
+    minutes = get_object_or_404(MeetingMinutes.objects.select_related("replaces").prefetch_related("items__responsible_members__user", "items__copied_from__responsible_members__user", "replaces__items__responsible_members__user", "attendances__membership__user", "guests"), pk=pk, organization=request.org)
     membership = Membership.objects.get(user=request.user, organization=request.org)
     has_accepted = minutes.acceptances.filter(membership=membership).exists()
     return render(
@@ -346,7 +389,7 @@ def meeting_minutes_pdf(request, pk):
 @leiterrundenmitglied_required
 @pro6_required
 def meeting_minutes_pdf(request, pk):
-    minutes = get_object_or_404(MeetingMinutes.objects.prefetch_related("items__responsible_members__user", "attendances__membership__user", "guests"), pk=pk, organization=request.org, published=True)
+    minutes = get_object_or_404(MeetingMinutes.objects.select_related("replaces").prefetch_related("items__responsible_members__user", "items__copied_from__responsible_members__user", "replaces__items__responsible_members__user", "attendances__membership__user", "guests"), pk=pk, organization=request.org, published=True)
     minutes_tree = _minutes_tree(minutes)
     try:
         from weasyprint import CSS, HTML
@@ -369,12 +412,26 @@ def meeting_minutes_pdf(request, pk):
             lines += ["", "HINWEIS: Geänderte Fassung.", "Dieses Protokoll ersetzt eine vorherige Veröffentlichung."]
         lines += ["", "ANWESEND"]
         lines += [a.membership.user.username for a in minutes.attendances.all() if a.present]
+        lines += ["", "GÄSTE"]
+        lines += [
+            f"{guest.name}{f' – {guest.note}' if guest.note else ''}"
+            for guest in minutes.guests.all()
+        ] or ["-"]
         tree_lines = []
         def add_tree_lines(items, level=0):
             for item in items:
+                for change in item.change_labels:
+                    tree_lines.append((level, f"ÄNDERUNG: {change}"))
                 tree_lines.append((level, f"TOP {item.display_number} {item.topic}"))
                 if item.notes:
                     tree_lines.append((level + 1, item.notes))
+                responsible_names = ", ".join(
+                    member.user.username for member in item.responsible_members.all()
+                )
+                if responsible_names:
+                    tree_lines.append((level + 1, f"Verantwortlich: {responsible_names}"))
+                if item.due_date:
+                    tree_lines.append((level + 1, f"Fällig am: {item.due_date:%d.%m.%Y}"))
                 add_tree_lines(item.tree_children, level + 1)
         add_tree_lines(minutes_tree)
         lines += ["", "TAGESORDNUNG"] + tree_lines

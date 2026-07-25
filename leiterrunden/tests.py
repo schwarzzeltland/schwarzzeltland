@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 from django.core import mail
 from django.test import TestCase
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from leiterrunden.models import MeetingMinutes, MeetingMinutesAcceptance
@@ -50,6 +51,18 @@ class MeetingMinutesTests(TestCase):
         )
         self.assertContains(response, "Gast hinzufügen")
         self.assertContains(response, "Gast entfernen")
+
+    def test_due_date_is_loaded_again_in_edit_form(self):
+        self.client.login(username="leitung", password="pw")
+        data = self._post_data()
+        data["items-0-due_date"] = "2026-08-15"
+        self.client.post(reverse("meeting_minutes_create"), data)
+        minutes = MeetingMinutes.objects.get()
+
+        response = self.client.get(reverse("meeting_minutes_edit", args=[minutes.pk]))
+
+        self.assertEqual(minutes.items.get().due_date.isoformat(), "2026-08-15")
+        self.assertContains(response, 'value="2026-08-15"', html=False)
 
     def test_minutes_list_can_be_searched_and_filtered(self):
         self.client.login(username="leitung", password="pw")
@@ -170,19 +183,45 @@ class MeetingMinutesTests(TestCase):
 
     def test_published_minutes_can_be_revised_with_history(self):
         self.client.login(username="leitung", password="pw")
-        self.client.post(reverse("meeting_minutes_create"), self._post_data("publish"))
+        original_data = self._post_data("publish")
+        original_data["guests-0-name"] = "Gastperson"
+        original_data["guests-0-note"] = "Beratung"
+        self.client.post(reverse("meeting_minutes_create"), original_data)
         source = MeetingMinutes.objects.get()
         response = self.client.post(reverse("meeting_minutes_revise", args=[source.pk]))
         revision = MeetingMinutes.objects.get(replaces=source)
         self.assertRedirects(response, reverse("meeting_minutes_edit", args=[revision.pk]))
         self.assertFalse(source.changed)
+        self.assertEqual(revision.items.get().copied_from, source.items.get())
 
         data = self._post_data("publish")
         data["title"] = "Juli-Sitzung (korrigiert)"
+        data["items-0-notes"] = "Material vollständig geprüft"
+        data["items-0-due_date"] = "2026-08-15"
         data["items-INITIAL_FORMS"] = "1"
         data["items-0-id"] = str(revision.items.get().pk)
+        data["guests-INITIAL_FORMS"] = "1"
+        data["guests-0-id"] = str(revision.guests.get().pk)
+        data["guests-0-name"] = "Gastperson"
+        data["guests-0-note"] = "Beratung"
         self.client.post(reverse("meeting_minutes_edit", args=[revision.pk]), data)
         source.refresh_from_db()
         revision.refresh_from_db()
         self.assertTrue(revision.published)
         self.assertTrue(source.changed)
+        detail = self.client.get(reverse("meeting_minutes_detail", args=[revision.pk]))
+        self.assertContains(detail, "Neue Version")
+        self.assertContains(detail, "Notizen/Beschluss:")
+        pdf_html = render_to_string(
+            "leiterrunden/meeting_minutes_pdf.html",
+            {
+                "minutes": revision,
+                "minutes_tree": detail.context["minutes_tree"],
+                "acceptance_rows": detail.context["acceptance_rows"],
+            },
+        )
+        self.assertIn("Gastperson", pdf_html)
+        self.assertIn("Neue Version", pdf_html)
+        self.assertIn("Material vollständig geprüft", pdf_html)
+        self.assertIn("Fällig am:", pdf_html)
+        self.assertIn("15.08.2026", pdf_html)

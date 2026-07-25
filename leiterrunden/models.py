@@ -62,6 +62,15 @@ class MeetingMinutes(models.Model):
 
 class MeetingMinutesItem(models.Model):
     minutes = models.ForeignKey(MeetingMinutes, on_delete=models.CASCADE, related_name="items")
+    copied_from = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="copies",
+        editable=False,
+        verbose_name="Kopiert von",
+    )
     parent = models.ForeignKey("self", null=True, blank=True, on_delete=models.CASCADE, related_name="children", verbose_name="Übergeordneter TOP")
     topic = models.CharField(max_length=255, verbose_name="Tagesordnungspunkt")
     notes = models.TextField(blank=True, verbose_name="Notizen / Beschluss")

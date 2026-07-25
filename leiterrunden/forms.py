@@ -33,13 +33,18 @@ class MeetingMinutesItemForm(forms.ModelForm):
     class Meta:
         model = MeetingMinutesItem
         fields = ["parent", "topic", "notes", "responsible_members", "due_date", "position"]
-        widgets = {"notes": forms.Textarea(attrs={"rows": 3}), "due_date": forms.DateInput(attrs={"type": "date"}), "position": forms.HiddenInput()}
+        widgets = {
+            "notes": forms.Textarea(attrs={"rows": 3}),
+            "due_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "position": forms.HiddenInput(),
+        }
 
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop("organization", None)
         minutes = kwargs.get("instance").minutes if kwargs.get("instance") and kwargs["instance"].pk else None
         super().__init__(*args, **kwargs)
         self.fields["position"].required = False
+        self.fields["due_date"].input_formats = ["%Y-%m-%d"]
         self.fields["responsible_members"].required = False
         self.fields["responsible_members"].queryset = organization.membership_set.filter(leiterrundenmitglied=True).select_related("user") if organization else self.fields["responsible_members"].queryset.none()
         self.fields["responsible_members"].widget.attrs.update({"class": "form-select select2-responsible"})
