@@ -48,6 +48,7 @@ services:
 
   celery_worker:
     build: .
+    restart: unless-stopped
     command: celery -A schwarzzeltland worker --loglevel=info
     volumes:
       - media_volume:/app/uploads
@@ -59,6 +60,7 @@ services:
 
   celery_beat:
     build: .
+    restart: unless-stopped
     command: celery -A schwarzzeltland beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
       - /etc/ssl/certs:/etc/ssl/certs:ro
