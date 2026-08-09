@@ -3,6 +3,7 @@ from functools import wraps
 from pickle import LIST
 import re
 import io
+from pathlib import Path
 
 from django.utils import timezone
 from django.utils.timezone import now
@@ -20,6 +21,23 @@ from buildings.models import StockMaterial, Construction, ConstructionMaterial, 
 from events.models import ShoppingListItem, Trip, TripMaterial
 from main.models import Membership
 from main.decorators import material_manager_required
+
+
+def _load_qr_pdf_font(size):
+    from PIL import ImageFont
+
+    candidates = (
+        "C:/Windows/Fonts/arial.ttf",
+        "C:/Windows/Fonts/segoeui.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/Library/Fonts/Arial Unicode.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+    )
+    for font_path in candidates:
+        if Path(font_path).is_file():
+            return ImageFont.truetype(font_path, size=size)
+    raise RuntimeError("Kein Unicode-fähiger TrueType-Font für den QR-PDF-Export gefunden.")
 
 
 @login_required
@@ -440,6 +458,22 @@ def material(request):
             materials = materials.filter(condition_medium_healthy__gt=0)
         elif selected_material_condition == "broke":
             materials = materials.filter(condition_broke__gt=0)
+    material_groups_by_id = {}
+    for stock in materials:
+        group = material_groups_by_id.setdefault(stock.material_id, {
+            "material": stock.material,
+            "stocks": [],
+            "total_count": 0,
+            "condition_healthy": 0,
+            "condition_medium_healthy": 0,
+            "condition_broke": 0,
+        })
+        group["stocks"].append(stock)
+        group["total_count"] += stock.count
+        group["condition_healthy"] += stock.condition_healthy
+        group["condition_medium_healthy"] += stock.condition_medium_healthy
+        group["condition_broke"] += stock.condition_broke
+    material_groups = list(material_groups_by_id.values())
     if m.material_manager:
         form = AddMaterialStockForm(organization=request.org)
         if request.method == 'POST':
@@ -490,6 +524,7 @@ def material(request):
     return render(request, 'buildings/material.html', {
         'title': 'Material-Lager',
         'materials': materials,
+        'material_groups': material_groups,
         'form': form,
         'is_material_manager': m.material_manager,
         'organization': request.org,
@@ -709,8 +744,8 @@ def material_container_qr_sheet(request):
         columns, rows = 2, 4
     cell_width = (page_size[0] - 2 * margin) // columns
     cell_height = (page_size[1] - 2 * margin) // rows
-    font = ImageFont.load_default(size=24)
-    small_font = ImageFont.load_default(size=18)
+    font = _load_qr_pdf_font(24)
+    small_font = _load_qr_pdf_font(18)
     pages = []
 
     def wrap_label_text(draw, value, text_font, max_width, max_lines):

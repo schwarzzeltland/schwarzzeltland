@@ -107,6 +107,8 @@
 
                 <h2 class="mb-0 breadcrumbs-title">{{ title }}</h2>
 
+                {% block page_actions %}{% endblock %}
+
                 {% if organization %}
                     <nav class="navbar navbar-expand-lg navbar-light p-0 breadcrumbs-nav">
                         <button class="navbar-toggler ms-auto"

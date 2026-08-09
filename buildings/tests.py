@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 
 from buildings.models import Material, MaterialContainer, StockMaterial
 from buildings.forms import MaterialContainerContentsForm, StockMaterialForm
+from buildings.views import _load_qr_pdf_font
 
 # Create your tests here.
 
@@ -64,6 +65,10 @@ class MaterialContainerTests(TestCase):
         self.assertEqual(response["Content-Type"], "application/pdf")
         self.assertTrue(response.content.startswith(b"%PDF"))
 
+    def test_qr_pdf_font_supports_german_characters(self):
+        font = _load_qr_pdf_font(18)
+        self.assertIsNotNone(font.getmask("Küchenkiste auf dem Dachboden – groß").getbbox())
+
     def test_qr_creation_has_three_output_types_and_is_separate_from_list(self):
         response = self.client.get(f"/buildings/material/containers/qr-sheet/?org={self.organization.pk}")
         self.assertContains(response, "Nur QR-Code")
@@ -104,5 +109,28 @@ class MaterialContainerTests(TestCase):
         response = self.client.get(f"/buildings/material?org={self.organization.pk}")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Material einsortieren")
+        self.assertContains(response, "Einsortieren schließen")
+        self.assertContains(response, 'data-close-label="Schließen"')
         self.assertContains(response, "Material suchen und auswählen")
         self.assertContains(response, "Bei Auswahl einer Kiste wird deren Lagerort automatisch")
+
+    def test_material_list_groups_stock_locations_by_material(self):
+        StockMaterial.objects.create(
+            organization=self.organization, material=self.material, count=16,
+            storage_place="Dachboden / 2", condition_healthy=14,
+            condition_medium_healthy=1, condition_broke=1,
+        )
+        response = self.client.get(f"/buildings/material?org={self.organization.pk}")
+        group = next(group for group in response.context["material_groups"] if group["material"] == self.material)
+        self.assertEqual(group["total_count"], 21)
+        self.assertEqual(group["condition_healthy"], 19)
+        self.assertEqual(group["condition_medium_healthy"], 1)
+        self.assertEqual(group["condition_broke"], 1)
+        self.assertEqual(len(group["stocks"]), 2)
+
+    def test_single_stock_group_displays_location_in_overview(self):
+        response = self.client.get(f"/buildings/material?org={self.organization.pk}")
+        self.assertContains(response, self.stock.effective_storage_place)
+        self.assertNotContains(response, "1 Lagerorte")
+        self.assertContains(response, f'/buildings/material/edit/{self.stock.pk}/')
+        self.assertContains(response, f'/buildings/material/delete/{self.stock.pk}/')
