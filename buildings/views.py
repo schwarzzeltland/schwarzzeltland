@@ -2,6 +2,7 @@ from collections import defaultdict
 from functools import wraps
 from pickle import LIST
 import re
+import io
 
 from django.utils import timezone
 from django.utils.timezone import now
@@ -9,13 +10,13 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
-from django.http import HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404, redirect
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 
 from buildings.forms import AddMaterialStockForm, MaterialForm, ConstructionForm, ImportConstructionForm, \
-    ConstructionMaterialFormSet, StockMaterialForm, PlainMaterialForm
-from buildings.models import StockMaterial, Construction, ConstructionMaterial, Material
+    ConstructionMaterialFormSet, StockMaterialForm, PlainMaterialForm, MaterialContainerForm, MaterialContainerContentsForm, MaterialContainerQrSheetForm
+from buildings.models import StockMaterial, Construction, ConstructionMaterial, Material, MaterialContainer
 from events.models import ShoppingListItem, Trip, TripMaterial
 from main.models import Membership
 from main.decorators import material_manager_required
@@ -409,11 +410,13 @@ def material(request):
     if search_query:
         materials = StockMaterial.objects.filter(
             Q(material__name__icontains=search_query) |
-            Q(storage_place__icontains=search_query),
+            Q(storage_place__icontains=search_query) |
+            Q(container__name__icontains=search_query) |
+            Q(container__storage_place__icontains=search_query),
             organization=request.org
-        ).order_by('material__name')
+        ).select_related("container", "material").order_by('material__name')
     else:
-        materials = StockMaterial.objects.filter(organization=request.org).order_by('material__name')
+        materials = StockMaterial.objects.filter(organization=request.org).select_related("container", "material").order_by('material__name')
     # Filterung nach Materialtyp
     if selected_material_type:
         materials = materials.filter(material__type=selected_material_type).order_by('material__name')
@@ -473,6 +476,7 @@ def material(request):
                     organization=request.org,
                     count=form.cleaned_data['count'],
                     storage_place=form.cleaned_data['storage_place'],
+                    container=form.cleaned_data.get('container'),
                     condition_healthy=form.cleaned_data['count'],
                     condition_medium_healthy=0,
                     condition_broke=0)
@@ -525,7 +529,7 @@ def edit_material(request, pk=None):
     request.session['previous_url'] = request.build_absolute_uri()
     mat = get_object_or_404(StockMaterial, pk=pk, organization=request.org)
     if request.method == 'POST':
-        form = StockMaterialForm(request.POST, instance=mat)
+        form = StockMaterialForm(request.POST, instance=mat, organization=request.org)
         mat_form = PlainMaterialForm(request.POST, request.FILES, instance=mat.material)
         if form.is_valid() and mat_form.is_valid():
             if 'save' in request.POST:
@@ -541,6 +545,7 @@ def edit_material(request, pk=None):
                 StockMaterial.objects.create(material=material, organization=request.org,
                                              count=form.cleaned_data['count'],
                                              storage_place=form.cleaned_data['storage_place'],
+                                             container=form.cleaned_data.get('container'),
                                              condition_healthy=form.cleaned_data['condition_healthy'],
                                              condition_medium_healthy=form.cleaned_data['condition_medium_healthy'],
                                              condition_broke=form.cleaned_data['condition_broke'],
@@ -551,7 +556,7 @@ def edit_material(request, pk=None):
                 update_trip_material_stock_for_org(request, request.org)
             return HttpResponseRedirect(reverse_lazy('material'))
     else:
-        form = StockMaterialForm(instance=mat)
+        form = StockMaterialForm(instance=mat, organization=request.org)
         mat_form = PlainMaterialForm(instance=mat.material)
     return render(request, 'buildings/edit_material.html', {
         'title': 'Material berabeiten',
@@ -602,3 +607,198 @@ def show_material(request, pk=None):
         'title': 'Material anzeigen',
         'material': material
     })
+
+
+@login_required
+def material_container_list(request):
+    containers = MaterialContainer.objects.filter(organization=request.org).prefetch_related("stock_items__material")
+    search_query = request.GET.get("search", "").strip()
+    if search_query:
+        containers = containers.filter(
+            Q(name__icontains=search_query)
+            | Q(storage_place__icontains=search_query)
+            | Q(description__icontains=search_query)
+            | Q(stock_items__material__name__icontains=search_query)
+        ).distinct()
+    return render(request, "buildings/material_container_list.html", {
+        "title": "Materialkisten", "containers": containers,
+        "is_material_manager": bool(request.membership and request.membership.material_manager),
+        "search_query": search_query,
+    })
+
+
+@login_required
+@material_manager_required
+def material_container_create(request):
+    form = MaterialContainerForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        container = form.save(commit=False)
+        container.organization = request.org
+        container.save()
+        messages.success(request, f'Materialkiste „{container.name}“ angelegt.')
+        return redirect("material_container_edit", pk=container.pk)
+    return render(request, "buildings/material_container_form.html", {"title": "Materialkiste anlegen", "form": form, "container": None})
+
+
+@login_required
+def material_container_detail(request, pk):
+    container = get_object_or_404(MaterialContainer.objects.prefetch_related("stock_items__material"), pk=pk, organization=request.org)
+    return render(request, "buildings/material_container_detail.html", {
+        "title": container.name, "container": container,
+        "is_material_manager": bool(request.membership and request.membership.material_manager),
+    })
+
+
+@login_required
+@material_manager_required
+def material_container_edit(request, pk):
+    container = get_object_or_404(MaterialContainer, pk=pk, organization=request.org)
+    form = MaterialContainerForm(request.POST or None, instance=container)
+    contents_form = MaterialContainerContentsForm(request.POST or None, organization=request.org, container=container)
+    if request.method == "POST" and form.is_valid() and contents_form.is_valid():
+        form.save()
+        contents_form.save()
+        messages.success(request, f'Materialkiste „{container.name}“ gespeichert.')
+        return redirect("material_container_detail", pk=container.pk)
+    return render(request, "buildings/material_container_form.html", {"title": "Materialkiste bearbeiten", "form": form, "contents_form": contents_form, "container": container})
+
+
+@login_required
+@material_manager_required
+def material_container_delete(request, pk):
+    container = get_object_or_404(MaterialContainer, pk=pk, organization=request.org)
+    if request.method == "POST":
+        name = container.name
+        container.delete()
+        messages.success(request, f'Materialkiste „{name}“ gelöscht. Die Materialbestände bleiben erhalten.')
+        return redirect("material_container_list")
+    return render(request, "buildings/material_container_delete.html", {"title": "Materialkiste löschen", "container": container})
+
+
+@login_required
+def material_container_qr(request, pk):
+    container = get_object_or_404(MaterialContainer, pk=pk, organization=request.org)
+    import qrcode
+    scan_url = request.build_absolute_uri(reverse("material_container_scan", args=[container.scan_code]))
+    image = qrcode.make(scan_url)
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    response = HttpResponse(buffer.getvalue(), content_type="image/png")
+    response["Content-Disposition"] = f'inline; filename="materialkiste-{container.pk}-qr.png"'
+    return response
+
+
+@login_required
+def material_container_qr_sheet(request):
+    form = MaterialContainerQrSheetForm(request.POST or None, organization=request.org)
+    if request.method != "POST" or not form.is_valid():
+        return render(request, "buildings/material_container_qr_sheet.html", {"title": "QR-Codes für Materialkisten", "form": form})
+    containers = list(form.cleaned_data["containers"])
+    output_type = form.cleaned_data["output_type"]
+
+    import qrcode
+    from PIL import Image, ImageDraw, ImageFont
+
+    page_size = (1240, 1754)  # A4 bei ca. 150 dpi
+    margin = 60
+    if output_type == MaterialContainerQrSheetForm.TYPE_QR_ONLY:
+        columns, rows = 3, 4
+    elif output_type == MaterialContainerQrSheetForm.TYPE_WITH_CONTENTS:
+        columns, rows = 2, 2
+    else:
+        columns, rows = 2, 4
+    cell_width = (page_size[0] - 2 * margin) // columns
+    cell_height = (page_size[1] - 2 * margin) // rows
+    font = ImageFont.load_default(size=24)
+    small_font = ImageFont.load_default(size=18)
+    pages = []
+
+    def wrap_label_text(draw, value, text_font, max_width, max_lines):
+        words = str(value).split()
+        lines = []
+        current = ""
+        while words and len(lines) < max_lines:
+            word = words.pop(0)
+            candidate = f"{current} {word}".strip()
+            if draw.textbbox((0, 0), candidate, font=text_font)[2] <= max_width:
+                current = candidate
+                continue
+            if current:
+                lines.append(current)
+                current = ""
+                words.insert(0, word)
+                continue
+            part = ""
+            for char in word:
+                candidate = part + char
+                if draw.textbbox((0, 0), candidate, font=text_font)[2] <= max_width:
+                    part = candidate
+                else:
+                    lines.append(part)
+                    part = char
+                    if len(lines) >= max_lines:
+                        break
+            current = part
+        if current and len(lines) < max_lines:
+            lines.append(current)
+        if words and lines:
+            last = lines[-1]
+            while last and draw.textbbox((0, 0), last + "…", font=text_font)[2] > max_width:
+                last = last[:-1]
+            lines[-1] = last + "…"
+        return "\n".join(lines)
+
+    for index, container in enumerate(containers):
+        page_index = index // (columns * rows)
+        while len(pages) <= page_index:
+            pages.append(Image.new("RGB", page_size, "white"))
+        position = index % (columns * rows)
+        col, row = position % columns, position // columns
+        x, y = margin + col * cell_width, margin + row * cell_height
+        draw = ImageDraw.Draw(pages[page_index])
+        scan_url = request.build_absolute_uri(reverse("material_container_scan", args=[container.scan_code]))
+        qr_image = qrcode.make(scan_url).convert("RGB")
+        qr_size = min(300 if output_type == MaterialContainerQrSheetForm.TYPE_QR_ONLY else 260, cell_height - 70, cell_width - 70)
+        qr_image = qr_image.resize((qr_size, qr_size))
+        if output_type == MaterialContainerQrSheetForm.TYPE_QR_ONLY:
+            pages[page_index].paste(qr_image, (x + (cell_width - qr_size) // 2, y + (cell_height - qr_size) // 2))
+            continue
+        draw.rectangle((x + 8, y + 8, x + cell_width - 8, y + cell_height - 8), outline="#adb5bd", width=2)
+        pages[page_index].paste(qr_image, (x + 24, y + 34))
+        text_x = x + qr_size + 45
+        text_width = x + cell_width - 24 - text_x
+        wrapped_name = wrap_label_text(draw, container.name, font, text_width, 3)
+        draw.multiline_text((text_x, y + 45), wrapped_name, fill="black", font=font, spacing=5)
+        location = container.storage_place or "Kein Lagerort"
+        wrapped_location = wrap_label_text(draw, location, small_font, text_width, 3)
+        draw.multiline_text((text_x, y + 155), wrapped_location, fill="#495057", font=small_font, spacing=5)
+        if output_type == MaterialContainerQrSheetForm.TYPE_WITH_CONTENTS:
+            content_y = y + qr_size + 55
+            draw.text((x + 24, content_y), "Inhalt", fill="black", font=font)
+            content_y += 38
+            max_content_width = cell_width - 55
+            max_lines = max(1, (y + cell_height - 30 - content_y) // 24)
+            content_lines = []
+            for stock_item in container.stock_items.all():
+                remaining_lines = max_lines - len(content_lines)
+                if remaining_lines <= 0:
+                    break
+                wrapped = wrap_label_text(draw, f"{stock_item.material.name}: {stock_item.count}", small_font, max_content_width, remaining_lines)
+                content_lines.extend(wrapped.splitlines())
+            if not content_lines:
+                content_lines = ["Kiste ist leer"]
+            draw.multiline_text((x + 24, content_y), "\n".join(content_lines[:max_lines]), fill="#495057", font=small_font, spacing=5)
+
+    buffer = io.BytesIO()
+    pages[0].save(buffer, format="PDF", save_all=True, append_images=pages[1:], resolution=150)
+    response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="materialkisten-qr-codes.pdf"'
+    return response
+
+
+@login_required
+def material_container_scan(request, scan_code):
+    container = get_object_or_404(MaterialContainer, scan_code=scan_code)
+    if not request.user.membership_set.filter(organization=container.organization).exists():
+        raise PermissionDenied("Keine Berechtigung für diese Materialkiste.")
+    return redirect(f'{reverse("material_container_detail", args=[container.pk])}?org={container.organization_id}')

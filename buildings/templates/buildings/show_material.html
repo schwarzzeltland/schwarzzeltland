@@ -58,7 +58,7 @@
                         </tr>
                         <tr>
                             <td><strong>Lagerplatz:</strong></td>
-                            <td>{{ material.storage_place }}</td>
+                            <td>{% if material.container %}<a href="{% url 'material_container_detail' material.container.pk %}">{{ material.effective_storage_place }}</a>{% else %}{{ material.storage_place }}{% endif %}</td>
                         </tr>
                     </tbody>
                 </table>

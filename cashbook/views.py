@@ -1,21 +1,45 @@
 import csv
 import io
 import zipfile
+import uuid
+import xml.etree.ElementTree as ET
 from decimal import Decimal
 from pathlib import Path
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils.text import slugify
+from django.utils import timezone
 from PIL import Image, ImageDraw, ImageFont
 
-from cashbook.forms import CashBookEntryForm, CashBookForm
-from cashbook.models import CashBook, CashBookAuditLog, CashBookEntry
+from cashbook.forms import CashBookEntryForm, CashBookForm, ReimbursementRequestForm, ReimbursementReviewForm
+from cashbook.models import CashBook, CashBookAuditLog, CashBookEntry, ReimbursementRequest
+from cashbook.notifications import notify_requester_about_decision, notify_responsible_about_request
 from main.decorators import cashier_manager_required, organization_admin_required, pro5_required
+
+CASHBOOK_AUDIT_FIELDS = ["name", "description", "currency", "opening_balance", "responsible_id", "account_holder", "iban", "bic", "active"]
+
+def _can_edit_cashbook(request, cashbook):
+    membership = getattr(request, "membership", None)
+    return bool(membership and membership.cashier_manager and (
+        cashbook.responsible_id == membership.id or cashbook.responsible_id is None
+    ))
+
+
+def _can_manage_cashbook(request):
+    membership = getattr(request, "membership", None)
+    return bool(membership and membership.admin and membership.cashier_manager)
+
+
+def _require_cashbook_editor(request, cashbook):
+    if not _can_edit_cashbook(request, cashbook):
+        raise PermissionDenied("Nur der verantwortliche Kassenwart darf dieses Kassenbuch bearbeiten.")
 
 
 def _cashbook_running_rows(entries, opening_balance):
@@ -255,7 +279,7 @@ def cashbook_list(request):
 @pro5_required
 def cashbook_create(request):
     if request.method == "POST":
-        form = CashBookForm(request.POST)
+        form = CashBookForm(request.POST, organization=request.org)
         if form.is_valid():
             cashbook = form.save(commit=False)
             cashbook.organization = request.org
@@ -267,12 +291,12 @@ def cashbook_create(request):
                 action=CashBookAuditLog.ACTION_CREATE,
                 label=cashbook.name,
                 cashbook=cashbook,
-                changes=_cashbook_snapshot(cashbook, ["name", "description", "currency", "opening_balance", "active"]),
+                changes=_cashbook_snapshot(cashbook, CASHBOOK_AUDIT_FIELDS),
             )
             messages.success(request, "Kassenbuch erstellt.")
             return redirect("cashbook_detail", pk=cashbook.pk)
     else:
-        form = CashBookForm()
+        form = CashBookForm(organization=request.org)
 
     return render(request, "cashbook/cashbook_form.html", {
         "title": "Kassenbuch erstellen",
@@ -288,11 +312,11 @@ def cashbook_create(request):
 def cashbook_edit(request, pk):
     cashbook = get_object_or_404(CashBook, pk=pk, organization=request.org)
     if request.method == "POST":
-        before = _cashbook_snapshot(cashbook, ["name", "description", "currency", "opening_balance", "active"])
-        form = CashBookForm(request.POST, instance=cashbook)
+        before = _cashbook_snapshot(cashbook, CASHBOOK_AUDIT_FIELDS)
+        form = CashBookForm(request.POST, instance=cashbook, organization=request.org)
         if form.is_valid():
             cashbook = form.save()
-            changes = _cashbook_changes(before, _cashbook_snapshot(cashbook, ["name", "description", "currency", "opening_balance", "active"]))
+            changes = _cashbook_changes(before, _cashbook_snapshot(cashbook, CASHBOOK_AUDIT_FIELDS))
             if changes:
                 _create_cashbook_audit_log(
                     organization=request.org,
@@ -306,7 +330,7 @@ def cashbook_edit(request, pk):
             messages.success(request, "Kassenbuch gespeichert.")
             return redirect("cashbook_detail", pk=cashbook.pk)
     else:
-        form = CashBookForm(instance=cashbook)
+        form = CashBookForm(instance=cashbook, organization=request.org)
 
     return render(request, "cashbook/cashbook_form.html", {
         "title": "Kassenbuch bearbeiten",
@@ -328,7 +352,7 @@ def cashbook_delete(request, pk):
             target_type=CashBookAuditLog.TARGET_CASHBOOK,
             action=CashBookAuditLog.ACTION_DELETE,
             label=cashbook.name,
-            changes=_cashbook_snapshot(cashbook, ["name", "description", "currency", "opening_balance", "active"]),
+            changes=_cashbook_snapshot(cashbook, CASHBOOK_AUDIT_FIELDS),
         )
         cashbook.delete()
         messages.success(request, "Kassenbuch gelöscht.")
@@ -386,6 +410,9 @@ def cashbook_detail(request, pk):
         "trip_options": request.org.trip_set.order_by("-start_date", "name"),
         "entry_types": CashBookEntry.TYPE_CHOICES,
         "audit_rows": audit_rows,
+        "can_edit": _can_edit_cashbook(request, cashbook),
+        "can_manage": _can_manage_cashbook(request),
+        "reimbursement_requests": cashbook.reimbursement_requests.select_related("requester").all()[:20],
     })
 
 
@@ -394,6 +421,7 @@ def cashbook_detail(request, pk):
 @pro5_required
 def cashbook_entry_create(request, cashbook_pk):
     cashbook = get_object_or_404(CashBook, pk=cashbook_pk, organization=request.org)
+    _require_cashbook_editor(request, cashbook)
     if request.method == "POST":
         form = CashBookEntryForm(request.POST, request.FILES, organization=request.org)
         if form.is_valid():
@@ -432,6 +460,7 @@ def cashbook_entry_create(request, cashbook_pk):
 @pro5_required
 def cashbook_entry_edit(request, cashbook_pk, pk):
     cashbook = get_object_or_404(CashBook, pk=cashbook_pk, organization=request.org)
+    _require_cashbook_editor(request, cashbook)
     entry = get_object_or_404(CashBookEntry, pk=pk, cashbook=cashbook)
     if request.method == "POST":
         before = _cashbook_snapshot(entry, [
@@ -474,6 +503,7 @@ def cashbook_entry_edit(request, cashbook_pk, pk):
 @pro5_required
 def cashbook_entry_delete(request, cashbook_pk, pk):
     cashbook = get_object_or_404(CashBook, pk=cashbook_pk, organization=request.org)
+    _require_cashbook_editor(request, cashbook)
     entry = get_object_or_404(CashBookEntry, pk=pk, cashbook=cashbook)
     if request.method == "POST":
         _create_cashbook_audit_log(
@@ -681,3 +711,133 @@ def cashbook_export_summary_pdf(request):
             .amount { text-align: right; white-space: nowrap; font-size: 8px; }
         """,
     )
+
+
+@login_required
+@pro5_required
+def reimbursement_list(request):
+    membership = getattr(request, "membership", None)
+    if not membership or not (membership.cashier_manager or membership.leiterrundenmitglied):
+        raise PermissionDenied("Keine Berechtigung für Auszahlungsanfragen.")
+    requests = ReimbursementRequest.objects.filter(cashbook__organization=request.org).select_related("cashbook", "requester")
+    if not membership.cashier_manager:
+        requests = requests.filter(requester=request.user)
+    return render(request, "cashbook/reimbursement_list.html", {"title": "Auszahlungsanfragen", "reimbursement_requests": requests})
+
+
+@login_required
+@pro5_required
+def reimbursement_create(request):
+    membership = getattr(request, "membership", None)
+    if not membership or not membership.leiterrundenmitglied:
+        raise PermissionDenied("Nur Leiterrundenmitglieder können Auszahlungsanfragen stellen.")
+    form = ReimbursementRequestForm(request.POST or None, request.FILES or None, organization=request.org, requester=request.user)
+    if request.method == "POST" and form.is_valid():
+        reimbursement = form.save(commit=False)
+        reimbursement.requester = request.user
+        reimbursement.save()
+        transaction.on_commit(lambda: notify_responsible_about_request(reimbursement))
+        messages.success(request, "Auszahlungsanfrage wurde eingereicht.")
+        return redirect("reimbursement_list")
+    return render(request, "cashbook/reimbursement_form.html", {
+        "title": "Auszahlungsanfrage stellen", "form": form,
+        "bank_cashbook_ids": list(CashBook.objects.filter(organization=request.org, active=True).exclude(iban="").values_list("pk", flat=True)),
+    })
+
+
+@login_required
+@cashier_manager_required
+@pro5_required
+@transaction.atomic
+def reimbursement_review(request, pk):
+    reimbursement = get_object_or_404(ReimbursementRequest.objects.select_for_update(), pk=pk, cashbook__organization=request.org)
+    _require_cashbook_editor(request, reimbursement.cashbook)
+    if reimbursement.status != ReimbursementRequest.STATUS_PENDING:
+        messages.info(request, "Diese Anfrage wurde bereits geprüft.")
+        return redirect("reimbursement_list")
+    form = ReimbursementReviewForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        reimbursement.review_note = form.cleaned_data["review_note"]
+        reimbursement.reviewed_by = request.user
+        reimbursement.reviewed_at = timezone.now()
+        if form.cleaned_data["decision"] == "approve":
+            entry = CashBookEntry.objects.create(
+                cashbook=reimbursement.cashbook, entry_type=CashBookEntry.TYPE_EXPENSE,
+                booking_date=timezone.localdate(), receipt_date=reimbursement.expense_date,
+                amount=reimbursement.amount, title=reimbursement.title,
+                category="Auslagenerstattung",
+                counterparty=reimbursement.recipient_name,
+                reference=f"Auszahlungsanfrage #{reimbursement.pk}", description=reimbursement.description,
+                created_by=request.user,
+            )
+            old_attachment_name = reimbursement.attachment.name
+            attachment_storage = reimbursement.attachment.storage
+            with attachment_storage.open(old_attachment_name, "rb") as source_file:
+                entry.attachment.save(Path(old_attachment_name).name, source_file, save=True)
+            reimbursement.attachment.name = entry.attachment.name
+            if old_attachment_name != entry.attachment.name:
+                attachment_storage.delete(old_attachment_name)
+            reimbursement.status = ReimbursementRequest.STATUS_APPROVED
+            reimbursement.cashbook_entry = entry
+            _create_cashbook_audit_log(organization=request.org, actor=request.user, target_type=CashBookAuditLog.TARGET_ENTRY,
+                action=CashBookAuditLog.ACTION_CREATE, label=f"#{entry.entry_number} {entry.title}", cashbook=entry.cashbook,
+                entry=entry, changes={"Auszahlungsanfrage": reimbursement.pk})
+        else:
+            reimbursement.status = ReimbursementRequest.STATUS_REJECTED
+        reimbursement.save()
+        transaction.on_commit(lambda: notify_requester_about_decision(reimbursement))
+        messages.success(request, "Auszahlungsanfrage wurde geprüft.")
+        return redirect("reimbursement_list")
+    return render(request, "cashbook/reimbursement_review.html", {"title": "Auszahlungsanfrage prüfen", "reimbursement": reimbursement, "form": form})
+
+
+@login_required
+@cashier_manager_required
+@pro5_required
+def cashbook_export_sepa(request, pk):
+    cashbook = get_object_or_404(CashBook, pk=pk, organization=request.org)
+    _require_cashbook_editor(request, cashbook)
+    if cashbook.currency != "EUR" or not cashbook.account_holder or not cashbook.iban:
+        messages.error(request, "Für SEPA werden EUR, Kontoinhaber und IBAN am Kassenbuch benötigt.")
+        return redirect("cashbook_detail", pk=pk)
+    payments = list(cashbook.reimbursement_requests.filter(status=ReimbursementRequest.STATUS_APPROVED, sepa_exported_at__isnull=True))
+    if not payments:
+        messages.info(request, "Es liegen keine noch nicht exportierten genehmigten Auszahlungen vor.")
+        return redirect("cashbook_detail", pk=pk)
+    ns = "urn:iso:std:iso:20022:tech:xsd:pain.001.001.03"
+    ET.register_namespace("", ns)
+    root = ET.Element(f"{{{ns}}}Document")
+    init = ET.SubElement(root, f"{{{ns}}}CstmrCdtTrfInitn")
+    msg_id = f"SZL-{timezone.now():%Y%m%d%H%M%S}-{uuid.uuid4().hex[:8]}"
+    hdr = ET.SubElement(init, f"{{{ns}}}GrpHdr")
+    for tag, value in (("MsgId", msg_id), ("CreDtTm", timezone.now().isoformat()), ("NbOfTxs", str(len(payments))), ("CtrlSum", f"{sum(p.amount for p in payments):.2f}")):
+        ET.SubElement(hdr, f"{{{ns}}}{tag}").text = value
+    ET.SubElement(ET.SubElement(hdr, f"{{{ns}}}InitgPty"), f"{{{ns}}}Nm").text = cashbook.account_holder[:70]
+    info = ET.SubElement(init, f"{{{ns}}}PmtInf")
+    for tag, value in (("PmtInfId", msg_id), ("PmtMtd", "TRF"), ("BtchBookg", "true"), ("NbOfTxs", str(len(payments))), ("CtrlSum", f"{sum(p.amount for p in payments):.2f}"), ("ReqdExctnDt", str(timezone.localdate()))):
+        ET.SubElement(info, f"{{{ns}}}{tag}").text = value
+    ET.SubElement(ET.SubElement(info, f"{{{ns}}}Dbtr"), f"{{{ns}}}Nm").text = cashbook.account_holder[:70]
+    ET.SubElement(ET.SubElement(ET.SubElement(info, f"{{{ns}}}DbtrAcct"), f"{{{ns}}}Id"), f"{{{ns}}}IBAN").text = cashbook.iban.replace(" ", "").upper()
+    agent = ET.SubElement(ET.SubElement(info, f"{{{ns}}}DbtrAgt"), f"{{{ns}}}FinInstnId")
+    if cashbook.bic:
+        ET.SubElement(agent, f"{{{ns}}}BIC").text = cashbook.bic.replace(" ", "").upper()
+    else:
+        ET.SubElement(ET.SubElement(agent, f"{{{ns}}}Othr"), f"{{{ns}}}Id").text = "NOTPROVIDED"
+    ET.SubElement(info, f"{{{ns}}}ChrgBr").text = "SLEV"
+    for payment in payments:
+        tx = ET.SubElement(info, f"{{{ns}}}CdtTrfTxInf")
+        ET.SubElement(ET.SubElement(tx, f"{{{ns}}}PmtId"), f"{{{ns}}}EndToEndId").text = f"AUSLAGE-{payment.pk}"
+        amount = ET.SubElement(tx, f"{{{ns}}}Amt")
+        ET.SubElement(amount, f"{{{ns}}}InstdAmt", Ccy="EUR").text = f"{payment.amount:.2f}"
+        creditor_agent = ET.SubElement(ET.SubElement(tx, f"{{{ns}}}CdtrAgt"), f"{{{ns}}}FinInstnId")
+        if payment.recipient_bic:
+            ET.SubElement(creditor_agent, f"{{{ns}}}BIC").text = payment.recipient_bic.replace(" ", "").upper()
+        else:
+            ET.SubElement(ET.SubElement(creditor_agent, f"{{{ns}}}Othr"), f"{{{ns}}}Id").text = "NOTPROVIDED"
+        ET.SubElement(ET.SubElement(tx, f"{{{ns}}}Cdtr"), f"{{{ns}}}Nm").text = payment.recipient_name[:70]
+        ET.SubElement(ET.SubElement(ET.SubElement(tx, f"{{{ns}}}CdtrAcct"), f"{{{ns}}}Id"), f"{{{ns}}}IBAN").text = payment.recipient_iban
+        ET.SubElement(ET.SubElement(tx, f"{{{ns}}}RmtInf"), f"{{{ns}}}Ustrd").text = payment.title[:140]
+    cashbook.reimbursement_requests.filter(pk__in=[p.pk for p in payments]).update(sepa_exported_at=timezone.now())
+    response = HttpResponse(ET.tostring(root, encoding="utf-8", xml_declaration=True), content_type="application/xml")
+    response["Content-Disposition"] = f'attachment; filename="{slugify(cashbook.name)}-sepa-{timezone.localdate()}.xml"'
+    return response

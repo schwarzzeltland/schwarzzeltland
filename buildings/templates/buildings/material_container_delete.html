@@ -1,0 +1,2 @@
+{% extends "base.html" %}
+{% block content %}<h3>Materialkiste löschen</h3><p>Soll „{{ container.name }}“ wirklich gelöscht werden? Die enthaltenen Materialbestände bleiben erhalten und werden lediglich aus der Kiste entfernt.</p><form method="post">{% csrf_token %}<button class="btn btn-danger">Kiste löschen</button> <a class="btn btn-secondary" href="{% url 'material_container_detail' container.pk %}">Abbrechen</a></form>{% endblock %}

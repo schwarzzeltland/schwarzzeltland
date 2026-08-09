@@ -6,7 +6,7 @@ from django.core.validators import MinValueValidator
 from django.db.models import Q
 from urllib3.filepost import iter_field_objects
 
-from buildings.models import Material, StockMaterial, Construction, ConstructionMaterial
+from buildings.models import Material, StockMaterial, Construction, ConstructionMaterial, MaterialContainer
 
 from django.forms import IntegerField, CharField, ModelForm, Form, ModelChoiceField, inlineformset_factory, \
     BaseModelFormSet, BaseModelForm
@@ -18,6 +18,9 @@ class AddMaterialStockForm(ModelForm):
         organization = kwargs.pop('organization', None)
         super(AddMaterialStockForm, self).__init__(*args, **kwargs)
         self.instance.organization = organization
+
+        self.fields['container'].queryset = MaterialContainer.objects.filter(organization=organization)
+        self.fields['container'].label_from_instance = lambda container: container.name
 
         # Konstruktionen der eigenen Organisation
         org_material = Material.objects.filter(owner=organization).order_by('name')
@@ -65,11 +68,64 @@ class MaterialForm(ModelForm):
 class StockMaterialForm(ModelForm):
     class Meta:
         model = StockMaterial
-        fields = ["count", "storage_place","condition_healthy","condition_medium_healthy","condition_broke","material_condition_description"]
+        fields = ["count", "storage_place", "container", "condition_healthy","condition_medium_healthy","condition_broke","material_condition_description"]
 
     def __init__(self, *args, **kwargs):
+        organization = kwargs.pop("organization", None)
         super().__init__(*args, **kwargs)
+        self.fields["container"].queryset = MaterialContainer.objects.filter(organization=organization) if organization else MaterialContainer.objects.none()
+        self.fields["container"].label_from_instance = lambda container: container.name
         self.fields['condition_healthy'].widget.attrs['readonly'] = True  # Nutzer kann es nicht direkt ändern
+
+class MaterialContainerForm(ModelForm):
+    class Meta:
+        model = MaterialContainer
+        fields = ["name", "storage_place", "description"]
+
+
+class MaterialContainerContentsForm(forms.Form):
+    stock_items = forms.ModelMultipleChoiceField(
+        queryset=StockMaterial.objects.none(), required=False, label="Inhalt",
+        widget=forms.SelectMultiple(attrs={"class": "form-select select2-stock-items", "data-placeholder": "Materialbestände suchen und auswählen"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        organization = kwargs.pop("organization")
+        container = kwargs.pop("container")
+        super().__init__(*args, **kwargs)
+        self.container = container
+        self.fields["stock_items"].queryset = StockMaterial.objects.filter(organization=organization).filter(Q(container__isnull=True) | Q(container=container)).select_related("material").order_by("material__name", "storage_place")
+        self.fields["stock_items"].initial = container.stock_items.values_list("pk", flat=True)
+        self.fields["stock_items"].label_from_instance = lambda item: f"{item.material.name} – {item.count} Stück ({item.storage_place or 'ohne Lagerort'})"
+
+    def save(self):
+        selected = self.cleaned_data["stock_items"]
+        self.container.stock_items.exclude(pk__in=selected.values_list("pk", flat=True)).update(container=None)
+        selected.update(container=self.container, storage_place=self.container.stock_storage_place)
+
+
+class MaterialContainerQrSheetForm(forms.Form):
+    TYPE_QR_ONLY = "qr_only"
+    TYPE_NAME_LOCATION = "name_location"
+    TYPE_WITH_CONTENTS = "with_contents"
+    TYPE_CHOICES = (
+        (TYPE_QR_ONLY, "Nur QR-Code"),
+        (TYPE_NAME_LOCATION, "QR-Code mit Kistenname und Lagerort"),
+        (TYPE_WITH_CONTENTS, "QR-Code mit Kistenname, Lagerort und Inhalt"),
+    )
+
+    containers = forms.ModelMultipleChoiceField(
+        queryset=MaterialContainer.objects.none(), label="Materialkisten",
+        widget=forms.SelectMultiple(attrs={"class": "form-select select2-containers"}),
+    )
+    output_type = forms.ChoiceField(choices=TYPE_CHOICES, label="Art des Ausdrucks", widget=forms.RadioSelect)
+
+    def __init__(self, *args, **kwargs):
+        organization = kwargs.pop("organization")
+        super().__init__(*args, **kwargs)
+        self.fields["containers"].queryset = MaterialContainer.objects.filter(organization=organization).prefetch_related("stock_items__material")
+        self.fields["containers"].label_from_instance = lambda container: f"{container.name} – {container.storage_place or 'kein Lagerort'}"
+
 
 class PlainMaterialForm(ModelForm):
     class Meta:

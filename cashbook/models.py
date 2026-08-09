@@ -32,6 +32,13 @@ class CashBook(models.Model):
     currency = models.CharField(max_length=3, default="EUR", verbose_name="Währung")
     opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Startsaldo")
     active = models.BooleanField(default=True, verbose_name="Aktiv")
+    responsible = models.ForeignKey(
+        "main.Membership", on_delete=models.PROTECT, null=True, blank=True,
+        related_name="responsible_cashbooks", verbose_name="Verantwortlicher Kassenwart",
+    )
+    account_holder = models.CharField(max_length=70, blank=True, verbose_name="Kontoinhaber")
+    iban = models.CharField(max_length=34, blank=True, verbose_name="IBAN")
+    bic = models.CharField(max_length=11, blank=True, verbose_name="BIC")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -131,3 +138,34 @@ class CashBookAuditLog(models.Model):
 
     def __str__(self):
         return f"{self.get_action_display()} {self.label}"
+
+
+class ReimbursementRequest(models.Model):
+    STATUS_PENDING = "pending"
+    STATUS_APPROVED = "approved"
+    STATUS_REJECTED = "rejected"
+    STATUS_CHOICES = ((STATUS_PENDING, "Offen"), (STATUS_APPROVED, "Genehmigt"), (STATUS_REJECTED, "Abgelehnt"))
+
+    cashbook = models.ForeignKey(CashBook, on_delete=models.CASCADE, related_name="reimbursement_requests", verbose_name="Kassenbuch")
+    requester = models.ForeignKey(User, on_delete=models.PROTECT, related_name="cashbook_reimbursement_requests", verbose_name="Antragsteller")
+    title = models.CharField(max_length=255, verbose_name="Auslage")
+    expense_date = models.DateField(verbose_name="Belegdatum")
+    amount = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Betrag")
+    description = models.TextField(blank=True, verbose_name="Beschreibung")
+    attachment = models.FileField(upload_to="cashbooks/reimbursements/%Y/%m/", verbose_name="Beleg")
+    recipient_name = models.CharField(max_length=70, blank=True, verbose_name="Kontoinhaber")
+    recipient_iban = models.CharField(max_length=34, blank=True, verbose_name="IBAN")
+    recipient_bic = models.CharField(max_length=11, blank=True, verbose_name="BIC")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING, verbose_name="Status")
+    review_note = models.TextField(blank=True, verbose_name="Prüfvermerk")
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_reimbursement_requests")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    sepa_exported_at = models.DateTimeField(null=True, blank=True)
+    cashbook_entry = models.OneToOneField(CashBookEntry, on_delete=models.SET_NULL, null=True, blank=True, related_name="reimbursement_request")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.title} – {self.amount} {self.cashbook.currency}"

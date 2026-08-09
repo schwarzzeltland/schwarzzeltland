@@ -101,6 +101,18 @@ class PackedMaterial(models.Model):
         return f"{self.material_name} - {'Eingepackt' if self.packed else 'Nicht eingepackt'}"
 
 
+class PackedStockMaterial(models.Model):
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="packed_stock_materials")
+    stock_material = models.ForeignKey(StockMaterial, on_delete=models.CASCADE, related_name="packed_for_trips")
+    packed = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["trip", "stock_material"], name="unique_packed_stock_material_per_trip")]
+
+    def __str__(self):
+        return f"{self.trip}: {self.stock_material}"
+
+
 class TripGroup(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE)
     count = models.IntegerField(default=0, verbose_name="Anzahl", validators=[MinValueValidator(0)])
@@ -189,7 +201,7 @@ class EventPlanningChecklistItem(models.Model):
 @receiver(post_save, sender=Trip)
 def create_default_checklist(sender, instance, created, **kwargs):
     if created:
-        defaults = instance.organization.default_checklist or []
+        defaults = instance.owner.default_checklist if instance.owner else []
         for title in defaults:
             EventPlanningChecklistItem.objects.create(trip=instance, title=title)
 

@@ -3,6 +3,7 @@ from django.db import models
 from django.db.models import DecimalField, CharField, IntegerField, BooleanField
 
 from main.models import Organization
+import uuid
 
 
 class Material(models.Model):
@@ -44,11 +45,39 @@ class Material(models.Model):
         return f"{self.name}"
 
 
+class MaterialContainer(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="material_containers")
+    name = CharField(max_length=255, verbose_name="Bezeichnung")
+    storage_place = CharField(max_length=1024, default="", blank=True, verbose_name="Lagerort")
+    description = models.TextField(default="", blank=True, verbose_name="Beschreibung")
+    scan_code = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, verbose_name="QR-Code")
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [models.UniqueConstraint(fields=["organization", "name"], name="unique_material_container_name_per_org")]
+
+    def __str__(self):
+        return f"{self.name} ({self.organization.name})"
+
+    @property
+    def stock_storage_place(self):
+        return f"{self.storage_place} / {self.name}" if self.storage_place else self.name
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.stock_items.exclude(storage_place=self.stock_storage_place).update(storage_place=self.stock_storage_place)
+
+    @property
+    def total_count(self):
+        return sum(item.count for item in self.stock_items.all())
+
+
 class StockMaterial(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     material = models.ForeignKey(Material, on_delete=models.CASCADE)
     count = models.IntegerField(verbose_name="Anzahl",validators=[MinValueValidator(0)])
     storage_place = CharField(max_length=1024, default="", blank=True,verbose_name="Lagerort")
+    container = models.ForeignKey(MaterialContainer, on_delete=models.SET_NULL, null=True, blank=True, related_name="stock_items", verbose_name="Materialkiste")
     condition_healthy=models.IntegerField(verbose_name="Davon in Ordnung",validators=[MinValueValidator(0)], default=0)
     condition_medium_healthy=models.IntegerField(verbose_name="Davon wartungsbedürftig",validators=[MinValueValidator(0)], default=0)
     condition_broke=models.IntegerField(verbose_name="Davon defekt",validators=[MinValueValidator(0)], default=0)
@@ -57,6 +86,17 @@ class StockMaterial(models.Model):
     valid_until = models.DateField(null=True, blank=True)
     def __str__(self):
         return f"{self.material.name} ({self.organization.name})"
+
+    def save(self, *args, **kwargs):
+        if self.container_id:
+            self.storage_place = self.container.stock_storage_place
+        super().save(*args, **kwargs)
+
+    @property
+    def effective_storage_place(self):
+        if self.container_id:
+            return self.container.stock_storage_place
+        return self.storage_place
 
 class Construction(models.Model):
     name = CharField(max_length=255)

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from nested_admin.nested import NestedTabularInline
 
-from cashbook.models import CashBook, CashBookEntry
+from cashbook.models import CashBook, CashBookEntry, ReimbursementRequest
 
 
 class CashBookEntryInline(NestedTabularInline):
@@ -23,3 +23,10 @@ class CashBookEntryAdmin(admin.ModelAdmin):
     search_fields = ["title", "cashbook__name", "cashbook__organization__name", "category", "counterparty", "reference"]
     list_display = ["title", "cashbook", "entry_type", "booking_date", "amount", "trip", "category", "created_by"]
     list_filter = ["entry_type", "booking_date", "cashbook__organization", "cashbook"]
+
+
+@admin.register(ReimbursementRequest)
+class ReimbursementRequestAdmin(admin.ModelAdmin):
+    list_display = ["title", "cashbook", "requester", "amount", "status", "created_at", "reviewed_by"]
+    list_filter = ["status", "cashbook__organization", "cashbook"]
+    search_fields = ["title", "requester__username", "recipient_name", "recipient_iban"]

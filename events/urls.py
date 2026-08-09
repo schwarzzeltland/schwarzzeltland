@@ -45,5 +45,6 @@ urlpatterns = [
          views.find_construction_combination_w_check_material, name='find_construction_combination_w_check_material'),
     path('save_constructions/<int:pk>/', views.save_constructions_for_trip, name='save_constructions_for_trip'),
     path('change-packed-material/', views.change_packed_material, name="change_packed_material"),
+    path('change-packed-stock-material/', views.change_packed_stock_material, name="change_packed_stock_material"),
     path('trip/<int:trip_id>/download_trip_ics/', views.download_trip_ics, name='download_trip_ics'),
 ]

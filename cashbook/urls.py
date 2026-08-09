@@ -18,4 +18,8 @@ urlpatterns = [
     path("cashbooks/<int:cashbook_pk>/entries/create/", views.cashbook_entry_create, name="cashbook_entry_create"),
     path("cashbooks/<int:cashbook_pk>/entries/<int:pk>/edit/", views.cashbook_entry_edit, name="cashbook_entry_edit"),
     path("cashbooks/<int:cashbook_pk>/entries/<int:pk>/delete/", views.cashbook_entry_delete, name="cashbook_entry_delete"),
+    path("cashbooks/reimbursements/", views.reimbursement_list, name="reimbursement_list"),
+    path("cashbooks/reimbursements/create/", views.reimbursement_create, name="reimbursement_create"),
+    path("cashbooks/reimbursements/<int:pk>/review/", views.reimbursement_review, name="reimbursement_review"),
+    path("cashbooks/<int:pk>/export/sepa/", views.cashbook_export_sepa, name="cashbook_export_sepa"),
 ]

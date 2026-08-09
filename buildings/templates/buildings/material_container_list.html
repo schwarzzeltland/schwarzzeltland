@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><h3>Materialkisten</h3><div><a class="btn btn-outline-primary" href="{% url 'material_container_qr_sheet' %}">QR-Codes erstellen</a>{% if is_material_manager %} <a class="btn btn-success" href="{% url 'material_container_create' %}">Kiste anlegen</a>{% endif %}</div></div>
+<form method="get" class="mb-3"><div class="input-group"><input type="search" name="search" value="{{ search_query }}" class="form-control" placeholder="Kiste, Lagerort oder Material suchen"><button class="btn btn-outline-secondary">Suchen</button>{% if search_query %}<a class="btn btn-outline-secondary" href="{% url 'material_container_list' %}">Zurücksetzen</a>{% endif %}</div></form>
+<div class="table-responsive"><table class="table table-hover"><thead><tr><th>Name</th><th>Lagerort</th><th>Positionen</th><th></th></tr></thead><tbody>{% for container in containers %}<tr><td>{{ container.name }}</td><td>{{ container.storage_place|default:"-" }}</td><td>{{ container.stock_items.count }}</td><td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'material_container_detail' container.pk %}">Öffnen</a></td></tr>{% empty %}<tr><td colspan="4" class="text-muted">Keine passenden Materialkisten vorhanden.</td></tr>{% endfor %}</tbody></table></div>
+<a class="btn btn-secondary" href="{% url 'material' %}">Zum Materiallager</a>
+{% endblock %}

@@ -184,6 +184,9 @@
                                                     </a>
                                                 </li>
                                             {% endif %}
+                                            {% if membership.leiterrundenmitglied and organization.pro5 %}
+                                                <li><a class="dropdown-item {% if current == 'reimbursement_list' or current == 'reimbursement_create' %}active{% endif %}" href="{% url 'reimbursement_list' %}">Auszahlungsanfragen</a></li>
+                                            {% endif %}
                                             {% if membership.leiterrundenmitglied and organization.pro6 %}
                                                 <li>
                                                     <a class="dropdown-item {% if current == 'meeting_minutes_list' or current == 'meeting_minutes_create' or current == 'meeting_minutes_detail' or current == 'meeting_minutes_edit' or current == 'meeting_minutes_delete' %}active{% endif %}"

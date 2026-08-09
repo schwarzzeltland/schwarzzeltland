@@ -3,6 +3,7 @@
 
 
 {% block content %}
+    <div class="d-flex justify-content-end mb-3"><a href="{% url 'material_container_list' %}" class="btn btn-outline-primary">Materialkisten</a></div>
     <form method="get" action="" class="mb-3">
     <div class="input-group">
         <!-- Suchleiste -->
@@ -49,7 +50,7 @@
                 <tr>
                     <td>{{ m.material.name }}</td>
                     <td>{{ m.count }}</td>
-                    <td>{{ m.storage_place }}</td>
+                    <td>{% if m.container %}<a href="{% url 'material_container_detail' m.container.pk %}">{{ m.effective_storage_place }}</a>{% else %}{{ m.storage_place }}{% endif %}</td>
                     <td></td>
                     <td class="text-end"> <!-- Text rechtsbündig ausrichten -->
                         <div class="d-flex flex-wrap justify-content-end gap-2">
@@ -70,32 +71,32 @@
         </table>
     </div>
     {% if form %}
-        <form action="" method="post" class="form">
-            {% csrf_token %}
-            <div class="table-responsive">
-                <table class="table">
-                    <tbody>
-                    {{ form.non_field_errors }}
-                    <td>
-                        <div class="input-group">
-                            <label for="id_material"></label>
-                            {{ form.material }}
-                            <a href="{% url 'create_material' %}" class="btn btn-outline-secondary" type="button"
-                               id="button-addon1">Neues Material erstellen
-                            </a>
-                        </div>
-                    </td>
-                    <td>{% bootstrap_field form.count show_label=False %}</td>
-                    <td>{% bootstrap_field form.storage_place show_label=False %}</td>
-                    <th scope="row" class="text-end">
-                        <button type="submit" class="btn btn-success">
-                            Ins Lager einsortieren
-                        </button>
-                    </th>
-                    </tbody>
-                </table>
+        <div class="card shadow-sm mt-4 mb-4">
+            <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div><h4 class="h5 mb-1">Material einsortieren</h4><div class="text-muted small">Vorhandenes Material einem Lagerort oder einer Materialkiste hinzufügen.</div></div>
+                <a href="{% url 'create_material' %}" class="btn btn-outline-primary btn-sm">Neues Material erstellen</a>
             </div>
-        </form>
+            <div class="card-body">
+                <form action="" method="post" class="form">
+                    {% csrf_token %}
+                    {{ form.non_field_errors }}
+                    <div class="row g-3 align-items-start">
+                        <div class="col-12 col-lg-5">
+                            <label for="id_material" class="form-label fw-semibold">Material</label>
+                            {{ form.material }}
+                            {% for error in form.material.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-12 col-sm-4 col-lg-2">{% bootstrap_field form.count %}</div>
+                        <div class="col-12 col-sm-8 col-lg-5">{% bootstrap_field form.storage_place %}</div>
+                        <div class="col-12">
+                            {% bootstrap_field form.container %}
+                            <div class="form-text">Bei Auswahl einer Kiste wird deren Lagerort automatisch im Bestand gespeichert.</div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end mt-3"><button type="submit" class="btn btn-success px-4">Ins Lager einsortieren</button></div>
+                </form>
+            </div>
+        </div>
     {% endif %}
     <!-- Include jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -105,9 +106,14 @@
     <script>
         $(document).ready(function () {
             $('#id_material').select2({
-                placeholder: "--------",
+                placeholder: "Material suchen und auswählen",
                 allowClear: true,
-                width:  $(window).width() < 1000 ? '100%' : '40%' // Automatische Breite basierend auf dem Container
+                width: '100%'
+            });
+            $('#id_container').select2({
+                placeholder: 'Materialkiste suchen',
+                allowClear: true,
+                width: '100%'
             });
         });
     </script>
@@ -123,6 +129,7 @@
         .select2-container--default .select2-selection--single {
             border: 1px solid #ced4da; /* Bootstrap-Standard-Rahmenfarbe */
             background-color: #fff; /* Hintergrundfarbe */
+            border-radius: .375rem;
         }
 
         .select2-container--default .select2-selection--single .select2-selection__arrow {

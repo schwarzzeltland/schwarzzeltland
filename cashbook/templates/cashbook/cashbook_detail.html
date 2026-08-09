@@ -91,8 +91,11 @@
             <a href="{% url 'cashbook_export_csv' cashbook.pk %}" class="btn btn-outline-secondary">CSV exportieren</a>
             <a href="{% url 'cashbook_export_pdf' cashbook.pk %}?search={{ search_query|urlencode }}&trip={{ selected_trip|urlencode }}&entry_type={{ selected_type|urlencode }}&start_date={{ start_date|urlencode }}&end_date={{ end_date|urlencode }}" class="btn btn-outline-secondary">PDF exportieren</a>
             <a href="{% url 'cashbook_export_receipts_zip' cashbook.pk %}" class="btn btn-outline-secondary">Belege als ZIP</a>
-            <a href="{% url 'cashbook_entry_create' cashbook.pk %}" class="btn btn-success">Eintrag hinzufügen</a>
-            {% if request.membership.admin and request.membership.cashier_manager %}
+            {% if can_edit %}
+                <a href="{% url 'cashbook_export_sepa' cashbook.pk %}" class="btn btn-outline-success">SEPA-XML</a>
+                <a href="{% url 'cashbook_entry_create' cashbook.pk %}" class="btn btn-success">Eintrag hinzufügen</a>
+            {% endif %}
+            {% if can_manage %}
                 <a href="{% url 'cashbook_edit' cashbook.pk %}" class="btn btn-outline-primary">Kassenbuch bearbeiten</a>
             {% endif %}
         </div>
@@ -199,8 +202,8 @@
                     <td class="text-end fw-semibold">{{ balance }}</td>
                     <td class="text-end">
                         <div class="d-flex justify-content-end gap-1">
-                            <a href="{% url 'cashbook_entry_edit' cashbook.pk entry.pk %}" class="btn btn-outline-primary btn-sm">Bearbeiten</a>
-                            <a href="{% url 'cashbook_entry_delete' cashbook.pk entry.pk %}" class="btn btn-outline-danger btn-sm">Löschen</a>
+                            {% if can_edit %}<a href="{% url 'cashbook_entry_edit' cashbook.pk entry.pk %}" class="btn btn-outline-primary btn-sm">Bearbeiten</a>
+                            <a href="{% url 'cashbook_entry_delete' cashbook.pk entry.pk %}" class="btn btn-outline-danger btn-sm">Löschen</a>{% endif %}
                         </div>
                     </td>
                 </tr>

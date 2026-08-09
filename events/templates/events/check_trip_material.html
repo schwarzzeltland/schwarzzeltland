@@ -1,97 +1,16 @@
 {% extends "base.html" %}
-
 {% block content %}
-    <h4>Verfügbare Materialien (während des Zeitraums der Veranstaltung):</h4>
-
-    <form method="POST">
-
-
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                <tr>
-                    <th>Material</th>
-                    <th>Benötigte Menge</th>
-                    <th>Verfügbare Menge</th>
-                    <th>Lagerorte und Mengen</th>
-                    <th>Eingepackt?</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for material in available_materials %}
-                    <tr>
-                        <td>{{ material.material }}</td>
-                        <td>{{ material.required_quantity }}</td> <!-- Benötigte Menge anzeigen -->
-                        <td>{{ material.available_quantity }}</td>
-                        <td>
-                            {% for storage in material.storage_info %}
-                                <span>{{ storage.storage_place }}: {{ storage.available_quantity }} Stück</span><br>
-                            {% endfor %}
-                        </td>
-                        <td>
-                            <input class="form-check-input" type="checkbox"
-                                   hx-trigger="change"
-                                   hx-post="{% url 'change_packed_material' %}?material_name={{ material.material|urlencode }}&trip_id={{ trip.pk }}"
-                                   hx-vals='js:{"trip_id": "{{ trip.pk }}", "packed": event.target.checked}'
-                                   hx-swap="none"
-                                    {% if material.packed %} checked {% endif %}
-                                    {% if not is_event_manager %} disabled {% endif %} />
-                        </td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-
-        </div>
-        <h4>Fehlendes Material (während des Zeitraums der Veranstaltung):</h4>
-        {% if missing_materials %}
-
-
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                    <tr>
-                        <th>Materialname</th>
-                        <th>Benötigte Menge</th>
-                        <th>Verfügbare Menge</th>
-                        <th>Fehlende Menge</th>
-                        <th>Lagerorte</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {% for material in missing_materials %}
-                        <tr>
-                            <td>{{ material.material }}</td>
-                            <td>{{ material.required_quantity }}</td>
-                            <td>{{ material.available_quantity }}</td>
-                            <td>{{ material.missing_quantity }}</td>
-                            <td>
-                                {% for storage in material.storage_info %}
-                                    <span>{{ storage.storage_place }}: {{ storage.available_quantity }} Stück</span><br>
-                                {% endfor %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-
-            </div>
-            <!-- Zurück zur Übersicht -->
-        {% else %}
-            <p>Alle Materialien sind ausreichend vorhanden.</p>
-        {% endif %}
-        <h4>Gesamtgewicht der verfügbaren Materialien: {{ total_weight_available }} kg</h4>
-        {% csrf_token %}
-
-        {% if is_event_manager %}
-            <div class="mb-2">
-                <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary">Zurück zur Bearbeitung</a>
-            </div>
-        {% else %}
-            <a href="{% url 'show_trip' trip.pk %}" class="btn btn-secondary">Zurück zur Veranstaltung</a>
-        {% endif %}
-
-        <a href="{% url 'trip' %}" class="btn btn-warning">Zurück zur Übersicht</a>
-
-    </form>
+<h4>Verfügbare Materialien (während des Zeitraums der Veranstaltung):</h4>
+<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Material</th><th>Benötigt</th><th>Verfügbar</th><th>Je Lagerort einpacken</th><th>Eingepackt</th></tr></thead><tbody>
+{% for material in available_materials %}
+<tr class="packing-row {% if material.packed_sufficient %}table-success{% endif %}" data-required="{{ material.required_quantity }}"><td>{{ material.material }}</td><td>{{ material.required_quantity }}</td><td>{{ material.available_quantity }}</td><td>{% for storage in material.storage_info %}<label class="d-block mb-1"><input class="form-check-input packing-checkbox me-1" type="checkbox" data-amount="{{ storage.available_quantity }}" hx-post="{% url 'change_packed_stock_material' %}" hx-vals='js:{"trip_id":"{{ trip.pk }}","stock_material_id":"{{ storage.stock_material_id }}","packed":event.target.checked}' hx-swap="none" {% if storage.packed %}checked{% endif %} {% if not is_event_manager %}disabled{% endif %}>{{ storage.storage_place }}: {{ storage.available_quantity }} Stück</label>{% empty %}<span class="text-muted">Kein Bestand</span>{% endfor %}</td><td><span class="packed-quantity fw-semibold">{{ material.packed_quantity }}</span> / {{ material.required_quantity }}</td></tr>
+{% endfor %}
+</tbody></table></div>
+<h4>Fehlendes Material (während des Zeitraums der Veranstaltung):</h4>
+{% if missing_materials %}<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Material</th><th>Benötigt</th><th>Verfügbar</th><th>Fehlt</th><th>Je Lagerort einpacken</th><th>Eingepackt</th></tr></thead><tbody>
+{% for material in missing_materials %}<tr class="packing-row {% if material.packed_sufficient %}table-success{% endif %}" data-required="{{ material.required_quantity }}"><td>{{ material.material }}</td><td>{{ material.required_quantity }}</td><td>{{ material.available_quantity }}</td><td>{{ material.missing_quantity }}</td><td>{% for storage in material.storage_info %}<label class="d-block mb-1"><input class="form-check-input packing-checkbox me-1" type="checkbox" data-amount="{{ storage.available_quantity }}" hx-post="{% url 'change_packed_stock_material' %}" hx-vals='js:{"trip_id":"{{ trip.pk }}","stock_material_id":"{{ storage.stock_material_id }}","packed":event.target.checked}' hx-swap="none" {% if storage.packed %}checked{% endif %} {% if not is_event_manager %}disabled{% endif %}>{{ storage.storage_place }}: {{ storage.available_quantity }} Stück</label>{% empty %}<span class="text-muted">Kein Bestand</span>{% endfor %}</td><td><span class="packed-quantity fw-semibold">{{ material.packed_quantity }}</span> / {{ material.required_quantity }}</td></tr>{% endfor %}
+</tbody></table></div>{% else %}<p>Alle Materialien sind ausreichend vorhanden.</p>{% endif %}
+<h4>Gesamtgewicht der verfügbaren Materialien: {{ total_weight_available }} kg</h4>
+{% if is_event_manager %}<a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary">Zurück zur Bearbeitung</a>{% else %}<a href="{% url 'show_trip' trip.pk %}" class="btn btn-secondary">Zurück zur Veranstaltung</a>{% endif %} <a href="{% url 'trip' %}" class="btn btn-warning">Zurück zur Übersicht</a>
+<script>document.querySelectorAll('.packing-checkbox').forEach(function(box){box.addEventListener('change',function(){const row=box.closest('.packing-row');const packed=[...row.querySelectorAll('.packing-checkbox:checked')].reduce((sum,item)=>sum+Number(item.dataset.amount),0);row.querySelector('.packed-quantity').textContent=packed;row.classList.toggle('table-success',packed>=Number(row.dataset.required));});});</script>
 {% endblock %}

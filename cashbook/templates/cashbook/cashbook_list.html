@@ -4,6 +4,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h3 class="mb-0">Kassenbücher</h3>
         <div class="d-flex gap-2">
+            <a href="{% url 'reimbursement_list' %}" class="btn btn-outline-primary">Auszahlungsanfragen</a>
             <a href="{% url 'cashbook_export_summary_csv' %}" class="btn btn-outline-secondary">CSV-Übersicht</a>
             <a href="{% url 'cashbook_export_summary_pdf' %}" class="btn btn-outline-secondary">PDF-Übersicht</a>
             <a href="{% url 'cashbook_create' %}" class="btn btn-success">Kassenbuch anlegen</a>
@@ -21,6 +22,7 @@
                 <th>Aktueller Saldo</th>
                 <th>Einträge</th>
                 <th>Status</th>
+                <th>Verantwortlich</th>
                 <th></th>
             </tr>
             </thead>
@@ -45,6 +47,7 @@
                             <span class="badge text-bg-secondary">Inaktiv</span>
                         {% endif %}
                     </td>
+                    <td>{% if row.cashbook.responsible %}{{ row.cashbook.responsible.user.get_full_name|default:row.cashbook.responsible.user.username }}{% else %}-{% endif %}</td>
                     <td class="text-end">
                         <div class="d-flex justify-content-end gap-1">
                             <a href="{% url 'cashbook_detail' row.cashbook.pk %}" class="btn btn-outline-primary btn-sm">Öffnen</a>
@@ -53,7 +56,7 @@
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="8" class="text-center text-muted">Noch keine Kassenbücher vorhanden.</td>
+                    <td colspan="9" class="text-center text-muted">Noch keine Kassenbücher vorhanden.</td>
                 </tr>
             {% endfor %}
             </tbody>

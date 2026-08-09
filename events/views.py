@@ -39,7 +39,7 @@ from buildings.models import Construction, StockMaterial, ConstructionMaterial, 
 from events.forms import TripForm, TripConstructionFormSet, LocationForm, ImportLocationForm, TripGroupFormSet, \
     TripMaterialFormSet, ShoppingListItemForm, TripVacancyForm, EventPlanningChecklistItemForm, ProgrammItemForm, \
     ProgrammItemEditForm
-from events.models import Trip, TripConstruction, Location, PackedMaterial, TripGroup, TripMaterial, ShoppingListItem, \
+from events.models import Trip, TripConstruction, Location, PackedMaterial, PackedStockMaterial, TripGroup, TripMaterial, ShoppingListItem, \
     TripVacancy
 from main.decorators import organization_admin_required, event_manager_required, pro1_required, pro2_required, \
     pro3_required, pro4_required
@@ -216,10 +216,17 @@ def check_trip_material(request, pk=None):
         effective_available_quantity = max(available_quantity - used_in_other_trips, 0)
 
         # Lagerinfo abrufen
+        packed_stock_ids = set(PackedStockMaterial.objects.filter(trip=trip, packed=True, stock_material__in=stock_materials).values_list("stock_material_id", flat=True))
         storage_info = [
-            {'storage_place': m.storage_place, 'available_quantity': m.count}
-            for m in stock_materials
+            {
+                'stock_material_id': stock.pk,
+                'storage_place': stock.effective_storage_place,
+                'available_quantity': stock.count,
+                'packed': stock.pk in packed_stock_ids,
+            }
+            for stock in stock_materials.select_related("container")
         ]
+        packed_quantity = sum(storage["available_quantity"] for storage in storage_info if storage["packed"])
 
         # Verfügbarkeit prüfen
         if effective_available_quantity >= total_required_quantity:
@@ -228,6 +235,8 @@ def check_trip_material(request, pk=None):
                 'required_quantity': total_required_quantity,
                 'available_quantity': effective_available_quantity,
                 'storage_info': storage_info
+                , 'packed_quantity': packed_quantity,
+                'packed_sufficient': packed_quantity >= total_required_quantity,
             })
         else:
             missing_materials.append({
@@ -236,6 +245,8 @@ def check_trip_material(request, pk=None):
                 'available_quantity': effective_available_quantity,
                 'missing_quantity': total_required_quantity - effective_available_quantity,
                 'storage_info': storage_info
+                , 'packed_quantity': packed_quantity,
+                'packed_sufficient': packed_quantity >= total_required_quantity,
             })
             missing = True
 
@@ -1377,6 +1388,19 @@ def change_packed_material(request):
     packed_material.save()
     print(packed_material.packed)
 
+    return JsonResponse({"status": "success", "packed": packed})
+
+
+@require_POST
+@login_required
+@event_manager_required
+def change_packed_stock_material(request):
+    trip = get_object_or_404(Trip, pk=request.POST.get("trip_id"), owner=request.org)
+    stock_material = get_object_or_404(StockMaterial, pk=request.POST.get("stock_material_id"), organization=request.org)
+    packed = request.POST.get("packed", "false").lower() == "true"
+    packed_entry, _ = PackedStockMaterial.objects.get_or_create(trip=trip, stock_material=stock_material)
+    packed_entry.packed = packed
+    packed_entry.save(update_fields=["packed"])
     return JsonResponse({"status": "success", "packed": packed})
 
 
