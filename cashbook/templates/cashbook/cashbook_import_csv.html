@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h3 class="mb-0">Kontoumsätze importieren</h3>
+        <div class="text-muted">{{ cashbook.name }} · {{ cashbook.iban|default:"Keine IBAN hinterlegt" }}</div>
+    </div>
+    <a href="{% url 'cashbook_detail' cashbook.pk %}" class="btn btn-outline-secondary">Zurück zum Kassenbuch</a>
+</div>
+
+{% if not row_formset %}
+<div class="card">
+    <div class="card-body">
+        <h4 class="h5">CSV-Datei auswählen</h4>
+        <p class="text-muted">Zusätzliche Spalten dürfen enthalten sein und werden ignoriert. Vor dem Import können alle erkannten Umsätze einzeln geprüft, angepasst oder abgewählt werden.</p>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% bootstrap_form upload_form %}
+            <button type="submit" name="action" value="preview" class="btn btn-primary">Datei prüfen</button>
+        </form>
+    </div>
+</div>
+{% else %}
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="verification_token" value="{{ verification_token }}">
+    {{ row_formset.management_form }}
+    {% if row_formset.non_form_errors %}<div class="alert alert-danger">{{ row_formset.non_form_errors }}</div>{% endif %}
+    <div class="alert alert-info">Noch wurde nichts importiert. Bitte jeden Umsatz prüfen und nicht gewünschte Zeilen abwählen.</div>
+    {% for row_form in row_formset %}
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center gap-3">
+            <strong>Umsatz {{ forloop.counter }}</strong>
+            <div class="form-check form-switch mb-0">{{ row_form.include }} <label class="form-check-label" for="{{ row_form.include.id_for_label }}">Importieren</label></div>
+        </div>
+        <div class="card-body">
+            {% if row_form.initial.is_duplicate %}
+                <div class="alert alert-danger py-2">
+                    <strong>Möglicher doppelter Import:</strong> Ein übereinstimmender Kontoumsatz ist bereits im Kassenbuch vorhanden. Dieser Umsatz wurde deshalb nicht vorausgewählt.
+                </div>
+            {% endif %}
+            {% if row_form.balance_warning %}
+                <div class="alert alert-warning py-2">
+                    Der CSV-Saldo <strong>{{ row_form.initial.balance_after }} {{ cashbook.currency }}</strong>
+                    stimmt nicht mit dem errechneten Saldo von <strong>{{ row_form.expected_balance }} {{ cashbook.currency }}</strong> nach dieser Buchung überein.
+                </div>
+            {% endif %}
+            {% if row_form.errors %}<div class="alert alert-danger">Bitte die markierten Angaben korrigieren.</div>{% endif %}
+            <div class="row g-3">
+                <div class="col-md-3">{% bootstrap_field row_form.booking_date %}</div>
+                <div class="col-md-3">{% bootstrap_field row_form.value_date %}</div>
+                <div class="col-md-3">{% bootstrap_field row_form.entry_type %}</div>
+                <div class="col-md-3">{% bootstrap_field row_form.amount %}</div>
+                <div class="col-md-6">{% bootstrap_field row_form.title %}</div>
+                <div class="col-md-6">{% bootstrap_field row_form.counterparty %}</div>
+                <div class="col-md-6">{% bootstrap_field row_form.trip %}</div>
+                <div class="col-12">{% bootstrap_field row_form.purpose %}</div>
+                <div class="col-md-4">{% bootstrap_field row_form.balance_after %}</div>
+                <div class="col-md-4">{% bootstrap_field row_form.creditor_id %}</div>
+                <div class="col-md-4">{% bootstrap_field row_form.mandate_reference %}</div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    <div class="d-flex flex-wrap gap-2">
+        <button type="submit" name="action" value="commit" class="btn btn-success">Ausgewählte Umsätze importieren</button>
+        <a href="{% url 'cashbook_import_csv' cashbook.pk %}" class="btn btn-outline-secondary">Andere Datei wählen</a>
+    </div>
+</form>
+{% endif %}
+{% endblock %}

@@ -3,14 +3,17 @@ import io
 import zipfile
 import uuid
 import xml.etree.ElementTree as ET
-from decimal import Decimal
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core import signing
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Q
+from django.forms import formset_factory
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -18,12 +21,162 @@ from django.utils.text import slugify
 from django.utils import timezone
 from PIL import Image, ImageDraw, ImageFont
 
-from cashbook.forms import CashBookEntryForm, CashBookForm, ReimbursementRequestForm, ReimbursementReviewForm
+from cashbook.forms import (
+    CashBookCsvRowForm, CashBookCsvUploadForm, CashBookEntryForm, CashBookForm,
+    ReimbursementRequestForm, ReimbursementReviewForm,
+)
 from cashbook.models import CashBook, CashBookAuditLog, CashBookEntry, ReimbursementRequest
 from cashbook.notifications import notify_requester_about_decision, notify_responsible_about_request
 from main.decorators import cashier_manager_required, organization_admin_required, pro5_required
 
 CASHBOOK_AUDIT_FIELDS = ["name", "description", "currency", "opening_balance", "responsible_id", "account_holder", "iban", "bic", "active"]
+CSV_IMPORT_COLUMNS = (
+    "IBAN Auftragskonto", "BIC Auftragskonto", "Buchungstag", "Valutadatum",
+    "Name Zahlungsbeteiligter", "Buchungstext", "Verwendungszweck", "Betrag",
+    "Saldo nach Buchung", "Glaeubiger ID", "Mandatsreferenz",
+)
+CashBookCsvRowFormSet = formset_factory(CashBookCsvRowForm, extra=0)
+
+
+def _normalized_iban(value):
+    return "".join((value or "").split()).upper()
+
+
+def _parse_bank_date(value, *, required=False):
+    value = (value or "").strip()
+    if not value and not required:
+        return None
+    for date_format in ("%d.%m.%Y", "%d.%m.%y", "%Y-%m-%d", "%d/%m/%Y", "%d/%m/%y"):
+        try:
+            return datetime.strptime(value, date_format).date()
+        except ValueError:
+            pass
+    raise ValueError(f"Ungültiges Datum: {value or '-'}")
+
+
+def _parse_bank_decimal(value):
+    value = (value or "").strip().replace(" ", "").replace("€", "")
+    if not value:
+        return None
+    if "," in value:
+        value = value.replace(".", "").replace(",", ".")
+    try:
+        return Decimal(value)
+    except InvalidOperation as exc:
+        raise ValueError(f"Ungültiger Betrag: {value}") from exc
+
+
+def _decode_bank_csv(csv_file):
+    raw = csv_file.read()
+    for encoding in ("utf-8-sig", "cp1252"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            pass
+    raise ValueError("Die CSV-Datei muss UTF-8- oder Windows-1252-kodiert sein.")
+
+
+def _bank_csv_initial_rows(csv_file, cashbook):
+    text = _decode_bank_csv(csv_file)
+    lines = text.splitlines()
+    if lines and lines[0].strip().lower().startswith("sep="):
+        lines = lines[1:]
+    text = "\n".join(lines)
+    try:
+        dialect = csv.Sniffer().sniff(text[:8192], delimiters=";,\t,")
+    except csv.Error:
+        dialect = csv.excel_semicolon
+    reader = csv.DictReader(io.StringIO(text), dialect=dialect)
+    if not reader.fieldnames:
+        raise ValueError("Die CSV-Datei enthält keine Kopfzeile.")
+    fieldnames = [(name or "").strip() for name in reader.fieldnames]
+    missing = [column for column in CSV_IMPORT_COLUMNS if column not in fieldnames]
+    if missing:
+        raise ValueError("Folgende erforderliche Spalten fehlen: " + ", ".join(missing))
+    reader.fieldnames = fieldnames
+    expected_iban = _normalized_iban(cashbook.iban)
+    if not expected_iban:
+        raise ValueError("Beim Kassenbuch ist keine IBAN hinterlegt.")
+
+    initial_rows = []
+    for row_number, row in enumerate(reader, start=2):
+        if not any((value or "").strip() for value in row.values() if isinstance(value, str)):
+            continue
+        account_iban = _normalized_iban(row.get("IBAN Auftragskonto"))
+        if account_iban != expected_iban:
+            raise ValueError(
+                f"Zeile {row_number}: Die IBAN des Auftragskontos ({account_iban or '-'}) "
+                f"stimmt nicht mit der Kassenbuch-IBAN überein."
+            )
+        try:
+            signed_amount = _parse_bank_decimal(row.get("Betrag"))
+            balance_after = _parse_bank_decimal(row.get("Saldo nach Buchung"))
+            booking_date = _parse_bank_date(row.get("Buchungstag"), required=True)
+            value_date = _parse_bank_date(row.get("Valutadatum"))
+        except ValueError as exc:
+            raise ValueError(f"Zeile {row_number}: {exc}") from exc
+        if signed_amount is None or signed_amount == 0:
+            raise ValueError(f"Zeile {row_number}: Der Betrag darf nicht leer oder 0 sein.")
+        booking_text = (row.get("Buchungstext") or "").strip()
+        purpose = (row.get("Verwendungszweck") or "").strip()
+        counterparty = (row.get("Name Zahlungsbeteiligter") or "").strip()
+        entry_type = CashBookEntry.TYPE_EXPENSE if signed_amount < 0 else CashBookEntry.TYPE_INCOME
+        amount = abs(signed_amount)
+        title = booking_text or purpose or counterparty or "Kontoumsatz"
+        duplicate_entries = cashbook.entries.filter(
+            booking_date=booking_date,
+            entry_type=entry_type,
+            amount=amount,
+            title=title,
+            counterparty=counterparty,
+        )
+        if purpose:
+            duplicate_entries = duplicate_entries.filter(description__startswith=purpose)
+        if balance_after is not None:
+            duplicate_entries = duplicate_entries.filter(
+                description__contains=f"Saldo nach Buchung: {balance_after} {cashbook.currency}"
+            )
+        is_duplicate = duplicate_entries.exists()
+        initial_rows.append({
+            "include": not is_duplicate,
+            "is_duplicate": is_duplicate,
+            "booking_date": booking_date,
+            "value_date": value_date,
+            "entry_type": entry_type,
+            "amount": amount,
+            "title": title,
+            "counterparty": counterparty,
+            "purpose": purpose,
+            "balance_after": balance_after,
+            "creditor_id": (row.get("Glaeubiger ID") or "").strip(),
+            "mandate_reference": (row.get("Mandatsreferenz") or "").strip(),
+        })
+    if not initial_rows:
+        raise ValueError("Die CSV-Datei enthält keine importierbaren Umsätze.")
+    return initial_rows
+
+
+def _annotate_csv_balance_warnings(row_formset, cashbook):
+    timeline = [
+        (entry.booking_date, 0, index, entry.signed_amount, None)
+        for index, entry in enumerate(cashbook.entries.order_by("booking_date", "id"))
+    ]
+    for index, row_form in enumerate(row_formset.forms):
+        data = row_form.cleaned_data if row_form.is_bound and hasattr(row_form, "cleaned_data") else row_form.initial
+        if not data.get("include", True) or not data.get("booking_date") or data.get("amount") is None:
+            continue
+        signed_amount = data["amount"] if data.get("entry_type") == CashBookEntry.TYPE_INCOME else -data["amount"]
+        timeline.append((data["booking_date"], 1, index, signed_amount, row_form))
+
+    balance = cashbook.opening_balance
+    for _, _, _, signed_amount, row_form in sorted(timeline, key=lambda item: item[:3]):
+        balance += signed_amount
+        if row_form is None:
+            continue
+        data = row_form.cleaned_data if row_form.is_bound and hasattr(row_form, "cleaned_data") else row_form.initial
+        imported_balance = data.get("balance_after")
+        row_form.expected_balance = balance
+        row_form.balance_warning = imported_balance is not None and imported_balance != balance
 
 def _can_edit_cashbook(request, cashbook):
     membership = getattr(request, "membership", None)
@@ -255,7 +408,7 @@ def cashbook_category_autocomplete(request):
 @cashier_manager_required
 @pro5_required
 def cashbook_list(request):
-    cashbooks = CashBook.objects.filter(organization=request.org).prefetch_related("entries")
+    cashbooks = CashBook.objects.filter(organization=request.org).prefetch_related("entries").order_by("-active", "name", "id")
     cashbooks_with_balances = []
     for cashbook in cashbooks:
         income_total = sum(entry.amount for entry in cashbook.entries.all() if entry.entry_type == CashBookEntry.TYPE_INCOME)
@@ -393,10 +546,12 @@ def cashbook_detail(request, pk):
         )
         selection_opening_balance += sum(entry.signed_amount for entry in prior_entries)
 
-    running_rows, _ = _cashbook_running_rows(entries, selection_opening_balance)
+    chronological_rows, _ = _cashbook_running_rows(entries, selection_opening_balance)
+    running_rows = list(reversed(chronological_rows))
     filtered_balance = sum(entry.signed_amount for entry in entries)
     income_total = sum(entry.amount for entry in entries if entry.entry_type == CashBookEntry.TYPE_INCOME)
     expense_total = sum(entry.amount for entry in entries if entry.entry_type == CashBookEntry.TYPE_EXPENSE)
+    current_balance = cashbook.opening_balance + sum(entry.signed_amount for entry in all_entries)
 
     return render(request, "cashbook/cashbook_detail.html", {
         "title": cashbook.name,
@@ -406,6 +561,7 @@ def cashbook_detail(request, pk):
         "income_total": income_total,
         "expense_total": expense_total,
         "filtered_balance": filtered_balance,
+        "current_balance": current_balance,
         **filters,
         "trip_options": request.org.trip_set.order_by("-start_date", "name"),
         "entry_types": CashBookEntry.TYPE_CHOICES,
@@ -452,6 +608,116 @@ def cashbook_entry_create(request, cashbook_pk):
         "form": form,
         "cashbook": cashbook,
         "entry": None,
+    })
+
+
+@login_required
+@cashier_manager_required
+@pro5_required
+@transaction.atomic
+def cashbook_import_csv(request, pk):
+    cashbook = get_object_or_404(CashBook, pk=pk, organization=request.org)
+    _require_cashbook_editor(request, cashbook)
+    upload_form = CashBookCsvUploadForm()
+    row_formset = None
+    verification_token = ""
+
+    if request.method == "POST" and request.POST.get("action") == "preview":
+        upload_form = CashBookCsvUploadForm(request.POST, request.FILES)
+        if upload_form.is_valid():
+            try:
+                initial_rows = _bank_csv_initial_rows(upload_form.cleaned_data["csv_file"], cashbook)
+            except ValueError as exc:
+                upload_form.add_error("csv_file", str(exc))
+            else:
+                row_formset = CashBookCsvRowFormSet(
+                    initial=initial_rows,
+                    prefix="transactions",
+                    form_kwargs={"organization": request.org},
+                )
+                _annotate_csv_balance_warnings(row_formset, cashbook)
+                verification_token = signing.dumps({
+                    "cashbook_id": cashbook.pk,
+                    "iban": _normalized_iban(cashbook.iban),
+                }, salt="cashbook-csv-import")
+
+    elif request.method == "POST" and request.POST.get("action") == "commit":
+        row_formset = CashBookCsvRowFormSet(
+            request.POST,
+            prefix="transactions",
+            form_kwargs={"organization": request.org},
+        )
+        rows_are_valid = row_formset.is_valid()
+        verification_token = request.POST.get("verification_token", "")
+        try:
+            verification = signing.loads(verification_token, salt="cashbook-csv-import", max_age=3600)
+            csv_was_verified = (
+                verification.get("cashbook_id") == cashbook.pk
+                and verification.get("iban") == _normalized_iban(cashbook.iban)
+            )
+        except signing.BadSignature:
+            csv_was_verified = False
+        if not csv_was_verified:
+            row_formset._non_form_errors = row_formset.error_class([
+                "Die CSV-Prüfung ist abgelaufen oder ungültig. Bitte die Datei erneut auswählen."
+            ])
+        elif rows_are_valid:
+            imported_count = 0
+            selected_rows = [
+                (index, row_form.cleaned_data)
+                for index, row_form in enumerate(row_formset)
+                if row_form.cleaned_data.get("include")
+            ]
+            selected_rows.sort(key=lambda row: (row[1]["booking_date"], row[0]))
+            for _, data in selected_rows:
+                metadata = []
+                if data.get("value_date"):
+                    metadata.append(f"Valutadatum: {data['value_date'].strftime('%d.%m.%Y')}")
+                if data.get("balance_after") is not None:
+                    metadata.append(f"Saldo nach Buchung: {data['balance_after']} {cashbook.currency}")
+                if data.get("creditor_id"):
+                    metadata.append(f"Gläubiger-ID: {data['creditor_id']}")
+                if data.get("mandate_reference"):
+                    metadata.append(f"Mandatsreferenz: {data['mandate_reference']}")
+                description_parts = [part for part in (data.get("purpose"), *metadata) if part]
+                entry = CashBookEntry.objects.create(
+                    cashbook=cashbook,
+                    entry_type=data["entry_type"],
+                    booking_date=data["booking_date"],
+                    amount=data["amount"],
+                    title=data["title"],
+                    category="Kontoumsatz",
+                    counterparty=data.get("counterparty", ""),
+                    reference=data.get("mandate_reference") or data.get("creditor_id", ""),
+                    description="\n".join(description_parts),
+                    trip=data.get("trip"),
+                    created_by=request.user,
+                )
+                _create_cashbook_audit_log(
+                    organization=request.org,
+                    actor=request.user,
+                    target_type=CashBookAuditLog.TARGET_ENTRY,
+                    action=CashBookAuditLog.ACTION_CREATE,
+                    label=f"#{entry.entry_number} {entry.title}",
+                    cashbook=cashbook,
+                    entry=entry,
+                    changes={"CSV-Import": True, **_cashbook_snapshot(entry, [
+                        "entry_number", "entry_type", "booking_date", "amount", "title",
+                        "category", "counterparty", "reference", "description", "trip_id",
+                    ])},
+                )
+                imported_count += 1
+            if imported_count:
+                messages.success(request, f"{imported_count} Kontoumsatz/Umsätze wurden importiert.")
+                return redirect("cashbook_detail", pk=cashbook.pk)
+            row_formset._non_form_errors = row_formset.error_class(["Es wurde kein Umsatz zum Import ausgewählt."])
+
+    return render(request, "cashbook/cashbook_import_csv.html", {
+        "title": "Kontoumsätze importieren",
+        "cashbook": cashbook,
+        "upload_form": upload_form,
+        "row_formset": row_formset,
+        "verification_token": verification_token,
     })
 
 
@@ -533,8 +799,18 @@ def cashbook_entry_delete(request, cashbook_pk, pk):
 @pro5_required
 def cashbook_export_csv(request, pk):
     cashbook = get_object_or_404(CashBook, pk=pk, organization=request.org)
-    entries = cashbook.entries.select_related("trip").order_by("booking_date", "id")
-    running_rows, _ = _cashbook_running_rows(entries, cashbook.opening_balance)
+    all_entries = cashbook.entries.select_related("trip")
+    entries, _ = _cashbook_filter_entries(all_entries, request)
+    entries = entries.order_by("booking_date", "id")
+    selection_opening_balance = cashbook.opening_balance
+    first_entry = entries.first()
+    if first_entry is not None:
+        prior_entries = all_entries.filter(
+            Q(booking_date__lt=first_entry.booking_date)
+            | (Q(booking_date=first_entry.booking_date) & Q(id__lt=first_entry.id))
+        )
+        selection_opening_balance += sum(entry.signed_amount for entry in prior_entries)
+    running_rows, _ = _cashbook_running_rows(entries, selection_opening_balance)
 
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = f'attachment; filename="{cashbook.name}-entries.csv"'
@@ -628,7 +904,8 @@ def cashbook_export_pdf(request, pk):
 @pro5_required
 def cashbook_export_receipts_zip(request, pk):
     cashbook = get_object_or_404(CashBook, pk=pk, organization=request.org)
-    entries = cashbook.entries.exclude(attachment="").exclude(attachment__isnull=True).order_by("booking_date", "id")
+    entries, _ = _cashbook_filter_entries(cashbook.entries.all(), request)
+    entries = entries.exclude(attachment="").exclude(attachment__isnull=True).order_by("booking_date", "id")
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -800,7 +1077,10 @@ def cashbook_export_sepa(request, pk):
     if cashbook.currency != "EUR" or not cashbook.account_holder or not cashbook.iban:
         messages.error(request, "Für SEPA werden EUR, Kontoinhaber und IBAN am Kassenbuch benötigt.")
         return redirect("cashbook_detail", pk=pk)
-    payments = list(cashbook.reimbursement_requests.filter(status=ReimbursementRequest.STATUS_APPROVED, sepa_exported_at__isnull=True))
+    payments = list(cashbook.reimbursement_requests.filter(
+        status=ReimbursementRequest.STATUS_APPROVED,
+        sepa_exported_at__isnull=True,
+    ))
     if not payments:
         messages.info(request, "Es liegen keine noch nicht exportierten genehmigten Auszahlungen vor.")
         return redirect("cashbook_detail", pk=pk)

@@ -1,4 +1,5 @@
 from django import forms
+from decimal import Decimal
 
 from events.models import Trip
 from cashbook.models import CashBook, CashBookEntry, ReimbursementRequest
@@ -129,3 +130,52 @@ class CashBookEntryForm(forms.ModelForm):
             self.fields["trip"].queryset = Trip.objects.filter(owner=organization).order_by("-start_date", "name")
         else:
             self.fields["trip"].queryset = Trip.objects.none()
+
+
+class CashBookCsvUploadForm(forms.Form):
+    csv_file = forms.FileField(
+        label="CSV-Datei",
+        help_text="Die IBAN des Auftragskontos muss mit der IBAN des Kassenbuchs übereinstimmen.",
+        widget=forms.ClearableFileInput(attrs={"accept": ".csv,text/csv"}),
+    )
+
+    def clean_csv_file(self):
+        csv_file = self.cleaned_data["csv_file"]
+        if csv_file.size > 5 * 1024 * 1024:
+            raise forms.ValidationError("Die CSV-Datei darf höchstens 5 MB groß sein.")
+        return csv_file
+
+
+class CashBookCsvRowForm(forms.Form):
+    include = forms.BooleanField(required=False, initial=True, label="Importieren")
+    booking_date = forms.DateField(
+        label="Buchungstag",
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+    )
+    value_date = forms.DateField(
+        required=False,
+        label="Valutadatum",
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+    )
+    entry_type = forms.ChoiceField(label="Art", choices=CashBookEntry.TYPE_CHOICES)
+    amount = forms.DecimalField(label="Betrag", min_value=Decimal("0.01"), max_digits=12, decimal_places=2)
+    title = forms.CharField(label="Buchungstext / Titel", max_length=255)
+    counterparty = forms.CharField(required=False, label="Zahlungsbeteiligter", max_length=255)
+    purpose = forms.CharField(required=False, label="Verwendungszweck", widget=forms.Textarea(attrs={"rows": 2}))
+    balance_after = forms.DecimalField(required=False, label="Saldo nach Buchung", max_digits=14, decimal_places=2)
+    creditor_id = forms.CharField(required=False, label="Gläubiger-ID", max_length=255)
+    mandate_reference = forms.CharField(required=False, label="Mandatsreferenz", max_length=255)
+    trip = forms.ModelChoiceField(
+        required=False,
+        label="Veranstaltung",
+        queryset=Trip.objects.none(),
+        empty_label="Keine Veranstaltung",
+    )
+
+    def __init__(self, *args, **kwargs):
+        organization = kwargs.pop("organization", None)
+        super().__init__(*args, **kwargs)
+        if organization:
+            self.fields["trip"].queryset = Trip.objects.filter(owner=organization).order_by("-start_date", "name")

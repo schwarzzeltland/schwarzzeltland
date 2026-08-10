@@ -41,9 +41,25 @@
 
         .cashbook-actions {
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             gap: 0.5rem;
             justify-content: flex-end;
+        }
+
+        .current-balance-card {
+            background: linear-gradient(135deg, #243447, #31526f);
+            color: #fff;
+        }
+
+        .selection-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .selection-metric + .selection-metric {
+            border-left: 1px solid #dee2e6;
+            padding-left: 1rem;
         }
 
         .cashbook-header {
@@ -75,7 +91,16 @@
             }
 
             .cashbook-actions .btn {
-                flex: 1 1 100%;
+                flex: 1 1 auto;
+            }
+
+            .selection-metrics {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .selection-metric + .selection-metric {
+                border-left: 0;
+                padding-left: 0;
             }
         }
     </style>
@@ -88,31 +113,43 @@
             {% endif %}
         </div>
         <div class="cashbook-actions">
-            <a href="{% url 'cashbook_export_csv' cashbook.pk %}" class="btn btn-outline-secondary">CSV exportieren</a>
-            <a href="{% url 'cashbook_export_pdf' cashbook.pk %}?search={{ search_query|urlencode }}&trip={{ selected_trip|urlencode }}&entry_type={{ selected_type|urlencode }}&start_date={{ start_date|urlencode }}&end_date={{ end_date|urlencode }}" class="btn btn-outline-secondary">PDF exportieren</a>
-            <a href="{% url 'cashbook_export_receipts_zip' cashbook.pk %}" class="btn btn-outline-secondary">Belege als ZIP</a>
             {% if can_edit %}
-                <a href="{% url 'cashbook_export_sepa' cashbook.pk %}" class="btn btn-outline-success">SEPA-XML</a>
                 <a href="{% url 'cashbook_entry_create' cashbook.pk %}" class="btn btn-success">Eintrag hinzufügen</a>
             {% endif %}
-            {% if can_manage %}
-                <a href="{% url 'cashbook_edit' cashbook.pk %}" class="btn btn-outline-primary">Kassenbuch bearbeiten</a>
-            {% endif %}
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Weitere Aktionen</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    {% if can_edit %}
+                        {% if cashbook.iban %}
+                            <li><a class="dropdown-item" href="{% url 'cashbook_import_csv' cashbook.pk %}">Kontoumsätze importieren</a></li>
+                            <li><a class="dropdown-item" href="{% url 'cashbook_export_sepa' cashbook.pk %}">SEPA-Überweisungen exportieren</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                        {% endif %}
+                    {% endif %}
+                    <li><h6 class="dropdown-header">Kassenbuch exportieren</h6></li>
+                    <li><a class="dropdown-item" href="{% url 'cashbook_export_csv' cashbook.pk %}?search={{ search_query|urlencode }}&trip={{ selected_trip|urlencode }}&entry_type={{ selected_type|urlencode }}&start_date={{ start_date|urlencode }}&end_date={{ end_date|urlencode }}">Auswahl als CSV</a></li>
+                    <li><a class="dropdown-item" href="{% url 'cashbook_export_pdf' cashbook.pk %}?search={{ search_query|urlencode }}&trip={{ selected_trip|urlencode }}&entry_type={{ selected_type|urlencode }}&start_date={{ start_date|urlencode }}&end_date={{ end_date|urlencode }}">Auswahl als PDF</a></li>
+                    <li><a class="dropdown-item" href="{% url 'cashbook_export_receipts_zip' cashbook.pk %}?search={{ search_query|urlencode }}&trip={{ selected_trip|urlencode }}&entry_type={{ selected_type|urlencode }}&start_date={{ start_date|urlencode }}&end_date={{ end_date|urlencode }}">Belege der Auswahl als ZIP</a></li>
+                    {% if can_manage %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'cashbook_edit' cashbook.pk %}">Stammdaten bearbeiten</a></li>
+                    {% endif %}
+                </ul>
+            </div>
         </div>
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card h-100"><div class="card-body"><div class="text-muted small">Startsaldo</div><div class="fs-5">{{ selection_opening_balance }} {{ cashbook.currency }}</div></div></div>
+        <div class="col-lg-4">
+            <div class="card current-balance-card border-0 h-100"><div class="card-body d-flex flex-column justify-content-center"><div class="small opacity-75">Aktueller Saldo des Kassenbuchs</div><div class="display-6 fw-semibold">{{ current_balance }} {{ cashbook.currency }}</div></div></div>
         </div>
-        <div class="col-md-3">
-            <div class="card h-100"><div class="card-body"><div class="text-muted small">Einnahmen</div><div class="fs-5 text-success">{{ income_total }} {{ cashbook.currency }}</div></div></div>
-        </div>
-        <div class="col-md-3">
-            <div class="card h-100"><div class="card-body"><div class="text-muted small">Ausgaben</div><div class="fs-5 text-danger">{{ expense_total }} {{ cashbook.currency }}</div></div></div>
-        </div>
-        <div class="col-md-3">
-            <div class="card h-100"><div class="card-body"><div class="text-muted small">Saldo der Auswahl</div><div class="fs-5 fw-semibold">{{ filtered_balance }} {{ cashbook.currency }}</div></div></div>
+        <div class="col-lg-8">
+            <div class="card h-100"><div class="card-body"><div class="text-muted small fw-semibold mb-3">Aktuelle Auswahl</div><div class="selection-metrics">
+                <div class="selection-metric"><div class="text-muted small">Startsaldo</div><div class="fs-5">{{ selection_opening_balance }} {{ cashbook.currency }}</div></div>
+                <div class="selection-metric"><div class="text-muted small">Einnahmen</div><div class="fs-5 text-success">{{ income_total }} {{ cashbook.currency }}</div></div>
+                <div class="selection-metric"><div class="text-muted small">Ausgaben</div><div class="fs-5 text-danger">{{ expense_total }} {{ cashbook.currency }}</div></div>
+                <div class="selection-metric"><div class="text-muted small">Veränderung</div><div class="fs-5 fw-semibold">{{ filtered_balance }} {{ cashbook.currency }}</div></div>
+            </div></div></div>
         </div>
     </div>
 

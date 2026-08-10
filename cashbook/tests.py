@@ -5,6 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core import mail
 
 from cashbook.models import CashBook, CashBookAuditLog, CashBookEntry, ReimbursementRequest
+from events.models import Trip
 from main.models import Membership
 
 
@@ -39,6 +40,34 @@ class CashbookTests(TestCase):
 
         self.assertEqual(first_entry.entry_number, 1)
         self.assertEqual(second_entry.entry_number, 2)
+
+    def test_cashbook_list_places_inactive_cashbooks_at_the_bottom(self):
+        inactive = CashBook.objects.create(organization=self.owner_org, name="A inaktiv", active=False)
+        active = CashBook.objects.create(organization=self.owner_org, name="Z aktiv", active=True)
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.get("/cashbooks/")
+
+        listed_ids = [row["cashbook"].pk for row in response.context["cashbooks_with_balances"]]
+        self.assertLess(listed_ids.index(active.pk), listed_ids.index(inactive.pk))
+
+    def test_csv_import_action_is_only_shown_for_cashbook_with_iban(self):
+        responsible = self.owner_org.membership_set.get(user=self.owner_user)
+        without_iban = CashBook.objects.create(
+            organization=self.owner_org, name="Bar", responsible=responsible,
+        )
+        with_iban = CashBook.objects.create(
+            organization=self.owner_org, name="Bank", responsible=responsible,
+            iban="DE89370400440532013000",
+        )
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.get(f"/cashbooks/{without_iban.pk}/")
+        self.assertNotContains(response, "Kontoumsätze importieren")
+        self.assertNotContains(response, "SEPA-Überweisungen exportieren")
+        response = self.client.get(f"/cashbooks/{with_iban.pk}/")
+        self.assertContains(response, "Kontoumsätze importieren")
+        self.assertContains(response, "SEPA-Überweisungen exportieren")
 
     def test_cashbook_entry_changes_create_audit_log(self):
         cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse")
@@ -96,6 +125,11 @@ class CashbookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["selection_opening_balance"], Decimal("130.00"))
         self.assertEqual(response.context["filtered_balance"], Decimal("-15.00"))
+        self.assertEqual(response.context["current_balance"], Decimal("115.00"))
+        displayed_entries = [entry for entry, _ in response.context["running_rows"]]
+        self.assertEqual([entry.title for entry in displayed_entries], ["Ausgabe 2", "Ausgabe 1"])
+        self.assertContains(response, "Aktueller Saldo des Kassenbuchs")
+        self.assertContains(response, "Weitere Aktionen")
 
     def test_attachment_name_uses_entry_number_and_title(self):
         cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse")
@@ -143,6 +177,205 @@ class CashbookTests(TestCase):
         })
         self.assertEqual(response.status_code, 403)
         self.assertFalse(cashbook.entries.exists())
+
+    def test_csv_transactions_are_previewed_adjusted_and_selected_before_import(self):
+        responsible = self.owner_org.membership_set.get(user=self.owner_user)
+        cashbook = CashBook.objects.create(
+            organization=self.owner_org,
+            name="Bankkonto",
+            responsible=responsible,
+            iban="DE89 3704 0044 0532 0130 00",
+        )
+        trip = Trip.objects.create(
+            owner=self.owner_org,
+            name="Sommerlager",
+            start_date="2026-08-01T10:00:00Z",
+            end_date="2026-08-15T10:00:00Z",
+        )
+        csv_content = (
+            "IBAN Auftragskonto;BIC Auftragskonto;Buchungstag;Zusatzfeld;Valutadatum;"
+            "Name Zahlungsbeteiligter;Buchungstext;Verwendungszweck;Betrag;"
+            "Saldo nach Buchung;Glaeubiger ID;Mandatsreferenz\n"
+            "DE89370400440532013000;COBADEFFXXX;09.08.26;ignorieren;08.08.26;"
+            "Bäckerei;Kartenzahlung;Verpflegung;-12,50;987,50;;\n"
+            "DE89370400440532013000;COBADEFFXXX;10.08.2026;ignorieren;10.08.2026;"
+            "Förderverein;Überweisung;Spende;100,00;1087,50;DE98ZZZ09999999999;MANDAT-1\n"
+        )
+        self.client.login(username="owner", password="pw")
+
+        preview = self.client.post(f"/cashbooks/{cashbook.pk}/import/csv/", {
+            "action": "preview",
+            "csv_file": SimpleUploadedFile("umsatz.csv", csv_content.encode("utf-8"), content_type="text/csv"),
+        })
+
+        self.assertEqual(preview.status_code, 200)
+        self.assertEqual(len(preview.context["row_formset"].forms), 2)
+        self.assertContains(preview, 'name="transactions-0-booking_date" value="2026-08-09"')
+        self.assertContains(preview, 'name="transactions-0-value_date" value="2026-08-08"')
+        self.assertContains(preview, "stimmt nicht mit dem errechneten Saldo")
+        self.assertEqual(preview.context["row_formset"].forms[0].expected_balance, Decimal("-12.50"))
+        self.assertFalse(cashbook.entries.exists())
+        commit = self.client.post(f"/cashbooks/{cashbook.pk}/import/csv/", {
+            "action": "commit",
+            "verification_token": preview.context["verification_token"],
+            "transactions-TOTAL_FORMS": "2",
+            "transactions-INITIAL_FORMS": "0",
+            "transactions-MIN_NUM_FORMS": "0",
+            "transactions-MAX_NUM_FORMS": "1000",
+            "transactions-0-include": "on",
+            "transactions-0-booking_date": "2026-08-09",
+            "transactions-0-value_date": "2026-08-08",
+            "transactions-0-entry_type": CashBookEntry.TYPE_EXPENSE,
+            "transactions-0-amount": "13.00",
+            "transactions-0-title": "Angepasster Einkauf",
+            "transactions-0-counterparty": "Bäckerei",
+            "transactions-0-purpose": "Verpflegung",
+            "transactions-0-balance_after": "987.50",
+            "transactions-0-creditor_id": "",
+            "transactions-0-mandate_reference": "",
+            "transactions-0-trip": str(trip.pk),
+            "transactions-1-booking_date": "2026-08-10",
+            "transactions-1-value_date": "2026-08-10",
+            "transactions-1-entry_type": CashBookEntry.TYPE_INCOME,
+            "transactions-1-amount": "100.00",
+            "transactions-1-title": "Überweisung",
+            "transactions-1-counterparty": "Förderverein",
+            "transactions-1-purpose": "Spende",
+            "transactions-1-balance_after": "1087.50",
+            "transactions-1-creditor_id": "DE98ZZZ09999999999",
+            "transactions-1-mandate_reference": "MANDAT-1",
+        })
+
+        self.assertRedirects(commit, f"/cashbooks/{cashbook.pk}/")
+        entry = cashbook.entries.get()
+        self.assertEqual(entry.title, "Angepasster Einkauf")
+        self.assertEqual(entry.amount, Decimal("13.00"))
+        self.assertEqual(entry.entry_type, CashBookEntry.TYPE_EXPENSE)
+        self.assertEqual(entry.trip, trip)
+        self.assertIn("Valutadatum: 08.08.2026", entry.description)
+        self.assertIn("Saldo nach Buchung: 987.50", entry.description)
+        self.assertTrue(CashBookAuditLog.objects.get(entry=entry).changes["CSV-Import"])
+
+    def test_csv_import_rejects_different_account_iban(self):
+        responsible = self.owner_org.membership_set.get(user=self.owner_user)
+        cashbook = CashBook.objects.create(
+            organization=self.owner_org, name="Bankkonto", responsible=responsible,
+            iban="DE89370400440532013000",
+        )
+        csv_content = (
+            "IBAN Auftragskonto;BIC Auftragskonto;Buchungstag;Valutadatum;Name Zahlungsbeteiligter;"
+            "Buchungstext;Verwendungszweck;Betrag;Saldo nach Buchung;Glaeubiger ID;Mandatsreferenz\n"
+            "DE12500105170648489890;INGDDEFFXXX;09.08.2026;09.08.2026;Test;Zahlung;Test;-1,00;99,00;;\n"
+        )
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.post(f"/cashbooks/{cashbook.pk}/import/csv/", {
+            "action": "preview",
+            "csv_file": SimpleUploadedFile("umsatz.csv", csv_content.encode("utf-8"), content_type="text/csv"),
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "stimmt nicht mit der Kassenbuch-IBAN überein")
+        self.assertIsNone(response.context["row_formset"])
+        self.assertFalse(cashbook.entries.exists())
+
+    def test_csv_import_marks_existing_transaction_as_duplicate_and_unchecks_it(self):
+        responsible = self.owner_org.membership_set.get(user=self.owner_user)
+        cashbook = CashBook.objects.create(
+            organization=self.owner_org, name="Bankkonto", responsible=responsible,
+            iban="DE89370400440532013000",
+        )
+        CashBookEntry.objects.create(
+            cashbook=cashbook,
+            entry_type=CashBookEntry.TYPE_EXPENSE,
+            booking_date="2026-08-09",
+            amount="12.50",
+            title="Kartenzahlung",
+            counterparty="Bäckerei",
+            category="Kontoumsatz",
+            description="Verpflegung\nValutadatum: 08.08.2026\nSaldo nach Buchung: 987.50 EUR",
+            created_by=self.owner_user,
+        )
+        csv_content = (
+            "IBAN Auftragskonto;BIC Auftragskonto;Buchungstag;Valutadatum;Name Zahlungsbeteiligter;"
+            "Buchungstext;Verwendungszweck;Betrag;Saldo nach Buchung;Glaeubiger ID;Mandatsreferenz\n"
+            "DE89370400440532013000;COBADEFFXXX;09.08.2026;08.08.2026;Bäckerei;"
+            "Kartenzahlung;Verpflegung;-12,50;987,50;;\n"
+        )
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.post(f"/cashbooks/{cashbook.pk}/import/csv/", {
+            "action": "preview",
+            "csv_file": SimpleUploadedFile("umsatz.csv", csv_content.encode("utf-8"), content_type="text/csv"),
+        })
+
+        row_form = response.context["row_formset"].forms[0]
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(row_form.initial["is_duplicate"])
+        self.assertFalse(row_form["include"].value())
+        self.assertContains(response, "Möglicher doppelter Import")
+        self.assertContains(response, "wurde deshalb nicht vorausgewählt")
+
+    def test_cashbook_csv_export_uses_current_filters(self):
+        cashbook = CashBook.objects.create(organization=self.owner_org, name="Filterkasse")
+        CashBookEntry.objects.create(
+            cashbook=cashbook, entry_type=CashBookEntry.TYPE_INCOME,
+            booking_date="2026-08-01", amount="20.00", title="Nur Einnahme",
+            created_by=self.owner_user,
+        )
+        CashBookEntry.objects.create(
+            cashbook=cashbook, entry_type=CashBookEntry.TYPE_EXPENSE,
+            booking_date="2026-08-02", amount="5.00", title="Nur Ausgabe",
+            created_by=self.owner_user,
+        )
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.get(
+            f"/cashbooks/{cashbook.pk}/export/csv/",
+            {"entry_type": CashBookEntry.TYPE_EXPENSE},
+        )
+
+        content = response.content.decode()
+        self.assertIn("Nur Ausgabe", content)
+        self.assertNotIn("Nur Einnahme", content)
+
+    def test_csv_import_assigns_entry_numbers_in_booking_date_order(self):
+        responsible = self.owner_org.membership_set.get(user=self.owner_user)
+        cashbook = CashBook.objects.create(
+            organization=self.owner_org, name="Bankkonto", responsible=responsible,
+            iban="DE89370400440532013000",
+        )
+        csv_content = (
+            "IBAN Auftragskonto;BIC Auftragskonto;Buchungstag;Valutadatum;Name Zahlungsbeteiligter;"
+            "Buchungstext;Verwendungszweck;Betrag;Saldo nach Buchung;Glaeubiger ID;Mandatsreferenz\n"
+            "DE89370400440532013000;COBADEFFXXX;10.08.2026;10.08.2026;Spät;Spätere Buchung;;10,00;20,00;;\n"
+            "DE89370400440532013000;COBADEFFXXX;09.08.2026;09.08.2026;Früh;Frühere Buchung;;10,00;10,00;;\n"
+        )
+        self.client.login(username="owner", password="pw")
+        preview = self.client.post(f"/cashbooks/{cashbook.pk}/import/csv/", {
+            "action": "preview",
+            "csv_file": SimpleUploadedFile("umsatz.csv", csv_content.encode("utf-8"), content_type="text/csv"),
+        })
+        formset = preview.context["row_formset"]
+        post_data = {
+            "action": "commit",
+            "verification_token": preview.context["verification_token"],
+            "transactions-TOTAL_FORMS": "2",
+            "transactions-INITIAL_FORMS": "0",
+            "transactions-MIN_NUM_FORMS": "0",
+            "transactions-MAX_NUM_FORMS": "1000",
+        }
+        for index, form in enumerate(formset.forms):
+            for field_name, value in form.initial.items():
+                if field_name == "is_duplicate" or value is None:
+                    continue
+                post_data[f"transactions-{index}-{field_name}"] = "on" if value is True else value
+
+        response = self.client.post(f"/cashbooks/{cashbook.pk}/import/csv/", post_data)
+
+        self.assertEqual(response.status_code, 302)
+        numbered_entries = list(cashbook.entries.order_by("entry_number").values_list("entry_number", "title"))
+        self.assertEqual(numbered_entries, [(1, "Frühere Buchung"), (2, "Spätere Buchung")])
 
     def test_reimbursement_is_integrated_and_exported_as_sepa(self):
         responsible = self.owner_org.membership_set.get(user=self.owner_user)

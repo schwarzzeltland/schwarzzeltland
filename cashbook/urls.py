@@ -14,6 +14,7 @@ urlpatterns = [
     path("cashbooks/<int:pk>/export/csv/", views.cashbook_export_csv, name="cashbook_export_csv"),
     path("cashbooks/<int:pk>/export/pdf/", views.cashbook_export_pdf, name="cashbook_export_pdf"),
     path("cashbooks/<int:pk>/export/receipts-zip/", views.cashbook_export_receipts_zip, name="cashbook_export_receipts_zip"),
+    path("cashbooks/<int:pk>/import/csv/", views.cashbook_import_csv, name="cashbook_import_csv"),
     path("cashbooks/autocomplete/category/", views.cashbook_category_autocomplete, name="cashbook_category_autocomplete"),
     path("cashbooks/<int:cashbook_pk>/entries/create/", views.cashbook_entry_create, name="cashbook_entry_create"),
     path("cashbooks/<int:cashbook_pk>/entries/<int:pk>/edit/", views.cashbook_entry_edit, name="cashbook_entry_edit"),
