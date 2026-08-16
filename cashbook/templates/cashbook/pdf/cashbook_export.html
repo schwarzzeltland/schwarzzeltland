@@ -54,9 +54,7 @@
                 <td>{{ entry.booking_date|date:"d.m.Y" }}</td>
                 <td>{% if entry.attachment %}{{ entry.attachment_filename }}{% else %}-{% endif %}</td>
                 <td>{{ entry.get_entry_type_display }}</td>
-                <td class="wrap">
-                    {{ entry.title }}
-                </td>
+                <td class="wrap">{{ entry.title }}</td>
                 <td class="wrap">{{ entry.category|default:"-" }}</td>
                 <td class="wrap">{{ entry.counterparty|default:"-" }}</td>
                 <td class="wrap">{{ entry.reference|default:"-" }}</td>

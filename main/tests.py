@@ -101,6 +101,30 @@ class ProtectedMediaTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    def test_leiterrundenmitglied_role_is_available_with_pro5(self):
+        self.owner_org.pro5 = True
+        self.owner_org.pro6 = False
+        self.owner_org.save(update_fields=["pro5", "pro6"])
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.get("/main/organization")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Leiterrundenmitglied")
+        self.assertContains(response, 'name="leiterrundenmitglied"')
+
+    def test_leiterrundenmitglied_role_is_available_with_pro6(self):
+        self.owner_org.pro5 = False
+        self.owner_org.pro6 = True
+        self.owner_org.save(update_fields=["pro5", "pro6"])
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.get("/main/organization")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Leiterrundenmitglied")
+        self.assertContains(response, 'name="leiterrundenmitglied"')
+
     def test_cashbook_attachment_requires_cashier_membership(self):
         attachment_path = "cashbooks/receipt.pdf"
         self._write_media_file(attachment_path)

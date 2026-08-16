@@ -51,7 +51,7 @@
                     {% if organization.pro5 %}
                         <th scope="col">Kassenwart</th>
                     {% endif %}
-                    {% if organization.pro6 %}
+                    {% if organization.pro5 or organization.pro6 %}
                         <th scope="col">Leiterrundenmitglied</th>
                     {% endif %}
                     <th scope="col"></th>
@@ -95,7 +95,7 @@
                                            style="vertical-align: middle"
                                            type="checkbox"/></td>
                             {% endif %}
-                            {% if organization.pro6 %}
+                            {% if organization.pro5 or organization.pro6 %}
                                 <td><input name="leiterrundenmitglied" class="form-check-input"
                                            style="vertical-align: middle" type="checkbox"/></td>
                             {% endif %}
