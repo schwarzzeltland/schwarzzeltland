@@ -99,6 +99,12 @@ class CashBookEntry(models.Model):
         return f"{self.title} ({self.get_entry_type_display()})"
 
     @property
+    def attachment_filename(self):
+        if not self.attachment:
+            return ""
+        return Path(self.attachment.name).name
+
+    @property
     def signed_amount(self):
         if self.entry_type == self.TYPE_EXPENSE:
             return -self.amount

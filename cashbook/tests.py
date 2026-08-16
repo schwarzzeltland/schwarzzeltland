@@ -164,6 +164,20 @@ class CashbookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/pdf")
 
+    def test_cashbook_entry_exposes_attachment_filename_for_pdf_export(self):
+        cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse")
+        entry = CashBookEntry.objects.create(
+            cashbook=cashbook,
+            entry_type=CashBookEntry.TYPE_EXPENSE,
+            booking_date="2026-03-24",
+            amount="12.50",
+            title="Langer Belegname",
+            attachment=SimpleUploadedFile("rechnung.pdf", b"pdf-data", content_type="application/pdf"),
+            created_by=self.owner_user,
+        )
+
+        self.assertEqual(entry.attachment_filename, "1_langer-belegname.pdf")
+
     def test_only_responsible_cashier_can_change_entries(self):
         responsible = self.owner_org.membership_set.get(user=self.owner_user)
         cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse", responsible=responsible)

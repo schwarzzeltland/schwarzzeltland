@@ -347,7 +347,7 @@ def _build_cashbook_fallback_pdf(cashbook, running_rows):
             f"#{entry.entry_number} | {entry.booking_date} | {entry.get_entry_type_display()} | {_pdf_safe_text(entry.title)}",
             f"Betrag: {_pdf_safe_text(entry.signed_amount)} {cashbook.currency} | Saldo: {_pdf_safe_text(balance)} {cashbook.currency}",
             f"Kategorie: {_pdf_safe_text(entry.category)} | Zahlungspartner: {_pdf_safe_text(entry.counterparty)}",
-            f"Belegdatum: {_pdf_safe_text(entry.receipt_date)} | Referenz: {_pdf_safe_text(entry.reference)} | Veranstaltung: {_pdf_safe_text(entry.trip.name if entry.trip else '')}",
+            f"Belegname: {_pdf_safe_text(entry.attachment_filename)} | Referenz: {_pdf_safe_text(entry.reference)} | Veranstaltung: {_pdf_safe_text(entry.trip.name if entry.trip else '')}",
             f"Beschreibung: {_pdf_safe_text(entry.description)}",
             "",
         ])
@@ -889,11 +889,11 @@ def cashbook_export_pdf(request, pk):
             .summary { width: 100%; border-collapse: collapse; margin-bottom: 3mm; table-layout: fixed; }
             .summary td { border: 1px solid #d1d5db; padding: 1.2mm; }
             table.entries { width: 100%; border-collapse: collapse; table-layout: fixed; }
-            table.entries th, table.entries td { border: 1px solid #d1d5db; padding: 0.8mm; vertical-align: top; }
+            table.entries th, table.entries td { border: 1px solid #d1d5db; padding: 0.8mm; vertical-align: top; overflow-wrap: anywhere; word-break: break-word; }
             table.entries th { background: #f3f4f6; text-align: left; }
             .amount { text-align: right; white-space: nowrap; font-size: 10px; }
             .muted { color: #6b7280; }
-            .wrap { white-space: pre-wrap; word-break: break-word; }
+            .wrap { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
             .small { font-size: 7px; }
         """,
     )
