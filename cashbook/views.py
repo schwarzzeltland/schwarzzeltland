@@ -1030,8 +1030,12 @@ def reimbursement_review(request, pk):
     reimbursement = get_object_or_404(ReimbursementRequest.objects.select_for_update(), pk=pk, cashbook__organization=request.org)
     _require_cashbook_editor(request, reimbursement.cashbook)
     if reimbursement.status != ReimbursementRequest.STATUS_PENDING:
-        messages.info(request, "Diese Anfrage wurde bereits geprüft.")
-        return redirect("reimbursement_list")
+        if request.method == "POST":
+            messages.info(request, "Diese Anfrage wurde bereits geprüft.")
+            return redirect("reimbursement_list")
+        return render(request, "cashbook/reimbursement_review.html", {
+            "title": "Auszahlungsanfrage ansehen", "reimbursement": reimbursement, "form": None,
+        })
     form = ReimbursementReviewForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         reimbursement.review_note = form.cleaned_data["review_note"]

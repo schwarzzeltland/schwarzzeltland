@@ -431,6 +431,29 @@ class CashbookTests(TestCase):
         reimbursement.refresh_from_db()
         self.assertIsNotNone(reimbursement.sepa_exported_at)
 
+    def test_responsible_cashier_can_open_approved_request_bank_details(self):
+        responsible = self.owner_org.membership_set.get(user=self.owner_user)
+        cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse", responsible=responsible)
+        leader = User.objects.create_user(username="leader-details", password="pw")
+        Membership.objects.create(user=leader, organization=self.owner_org, leiterrundenmitglied=True)
+        reimbursement = ReimbursementRequest.objects.create(
+            cashbook=cashbook, requester=leader, title="Materialeinkauf", expense_date="2026-08-08",
+            amount="42.50", attachment=SimpleUploadedFile("beleg.pdf", b"pdf"),
+            recipient_name="Leiter Beispiel", recipient_iban="DE12500105170648489890",
+            recipient_bic="INGDDEFFXXX", status=ReimbursementRequest.STATUS_APPROVED,
+        )
+        self.client.login(username="owner", password="pw")
+
+        overview = self.client.get("/cashbooks/reimbursements/")
+        detail = self.client.get(f"/cashbooks/reimbursements/{reimbursement.pk}/review/")
+
+        self.assertContains(overview, "Überweisungsdaten")
+        self.assertEqual(detail.status_code, 200)
+        self.assertContains(detail, "Leiter Beispiel")
+        self.assertContains(detail, "DE12500105170648489890")
+        self.assertContains(detail, "INGDDEFFXXX")
+        self.assertNotContains(detail, "Entscheidung speichern")
+
     def test_new_request_notifies_responsible_and_leader_only_sees_own_requests(self):
         self.owner_user.email = "cashier@example.org"
         self.owner_user.save(update_fields=["email"])
