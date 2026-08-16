@@ -47,7 +47,6 @@ class ReimbursementRequestForm(forms.ModelForm):
         self.fields["recipient_name"].required = False
         self.fields["recipient_iban"].required = False
         self.fields["recipient_bic"].required = False
-        self.fields["recipient_iban"].help_text = "Nur erforderlich, wenn beim ausgewählten Kassenbuch Bankdaten hinterlegt sind."
 
     def clean(self):
         cleaned_data = super().clean()
