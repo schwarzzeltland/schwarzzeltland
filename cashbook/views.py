@@ -1048,7 +1048,8 @@ def reimbursement_review(request, pk):
                 amount=reimbursement.amount, title=reimbursement.title,
                 category="Auslagenerstattung",
                 counterparty=reimbursement.recipient_name,
-                reference=f"Auszahlungsanfrage #{reimbursement.pk}", description=reimbursement.description,
+                reference=f"Auszahlungsanfrage von {reimbursement.requester.username}",
+                description=reimbursement.description,
                 created_by=request.user,
             )
             old_attachment_name = reimbursement.attachment.name

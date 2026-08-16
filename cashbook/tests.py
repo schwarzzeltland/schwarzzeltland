@@ -415,6 +415,7 @@ class CashbookTests(TestCase):
         self.assertEqual(reimbursement.status, ReimbursementRequest.STATUS_APPROVED)
         self.assertEqual(reimbursement.cashbook_entry.amount, Decimal("42.50"))
         self.assertEqual(reimbursement.cashbook_entry.category, "Auslagenerstattung")
+        self.assertEqual(reimbursement.cashbook_entry.reference, "Auszahlungsanfrage von leader")
         self.assertNotEqual(reimbursement.attachment.name, old_attachment_name)
         self.assertEqual(reimbursement.attachment.name, reimbursement.cashbook_entry.attachment.name)
         self.assertTrue(reimbursement.attachment.name.startswith("cashbooks/"))
