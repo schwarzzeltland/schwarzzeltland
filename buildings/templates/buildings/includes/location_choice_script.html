@@ -1,0 +1,27 @@
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('input[name="location_type"]').forEach(function (radio) {
+        const form = radio.closest('form');
+        if (!form || form.dataset.locationChoiceReady) return;
+        form.dataset.locationChoiceReady = 'true';
+        const fieldBox = function (name) {
+            const field = form.querySelector('[name="' + name + '"]');
+            return field ? (field.closest('[data-location-field]') || field.closest('.mb-3')) : null;
+        };
+        const update = function () {
+            const selected = form.querySelector('input[name="location_type"]:checked');
+            const type = selected ? selected.value : 'free';
+            const containerBox = fieldBox('container');
+            const planBox = fieldBox('storage_area');
+            const freeBox = fieldBox('storage_place');
+            if (containerBox) containerBox.classList.toggle('d-none', type !== 'container');
+            if (planBox) planBox.classList.toggle('d-none', type !== 'plan');
+            if (freeBox) freeBox.classList.toggle('d-none', type !== 'free');
+        };
+        form.querySelectorAll('input[name="location_type"]').forEach(function (item) {
+            item.addEventListener('change', update);
+        });
+        update();
+    });
+});
+</script>

@@ -6,6 +6,35 @@ from main.models import Organization
 import uuid
 
 
+class StoragePlan(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="storage_plans")
+    name = CharField(max_length=255, verbose_name="Bezeichnung")
+    image = models.ImageField(upload_to="storage_plans/", verbose_name="Plan")
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [models.UniqueConstraint(fields=["organization", "name"], name="unique_storage_plan_name_per_org")]
+
+    def __str__(self):
+        return self.name
+
+
+class StorageArea(models.Model):
+    plan = models.ForeignKey(StoragePlan, on_delete=models.CASCADE, related_name="areas", verbose_name="Lagerplan")
+    name = CharField(max_length=255, verbose_name="Bereich")
+    x = DecimalField(max_digits=6, decimal_places=3, validators=[MinValueValidator(0)])
+    y = DecimalField(max_digits=6, decimal_places=3, validators=[MinValueValidator(0)])
+    width = DecimalField(max_digits=6, decimal_places=3, validators=[MinValueValidator(0)])
+    height = DecimalField(max_digits=6, decimal_places=3, validators=[MinValueValidator(0)])
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [models.UniqueConstraint(fields=["plan", "name"], name="unique_storage_area_name_per_plan")]
+
+    def __str__(self):
+        return f"{self.plan.name} – {self.name}"
+
+
 class Material(models.Model):
     TYPE_ROOF = 0
     TYPE_PLANE = 1
@@ -51,6 +80,7 @@ class MaterialContainer(models.Model):
     storage_place = CharField(max_length=1024, default="", blank=True, verbose_name="Lagerort")
     description = models.TextField(default="", blank=True, verbose_name="Beschreibung")
     scan_code = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, verbose_name="QR-Code")
+    storage_area = models.ForeignKey(StorageArea, on_delete=models.SET_NULL, null=True, blank=True, related_name="containers", verbose_name="Bereich im Lagerplan")
 
     class Meta:
         ordering = ["name"]
@@ -78,6 +108,7 @@ class StockMaterial(models.Model):
     count = models.IntegerField(verbose_name="Anzahl",validators=[MinValueValidator(0)])
     storage_place = CharField(max_length=1024, default="", blank=True,verbose_name="Lagerort")
     container = models.ForeignKey(MaterialContainer, on_delete=models.SET_NULL, null=True, blank=True, related_name="stock_items", verbose_name="Materialkiste")
+    storage_area = models.ForeignKey(StorageArea, on_delete=models.SET_NULL, null=True, blank=True, related_name="stock_items", verbose_name="Bereich im Lagerplan")
     condition_healthy=models.IntegerField(verbose_name="Davon in Ordnung",validators=[MinValueValidator(0)], default=0)
     condition_medium_healthy=models.IntegerField(verbose_name="Davon wartungsbedürftig",validators=[MinValueValidator(0)], default=0)
     condition_broke=models.IntegerField(verbose_name="Davon defekt",validators=[MinValueValidator(0)], default=0)
@@ -97,6 +128,12 @@ class StockMaterial(models.Model):
         if self.container_id:
             return self.container.stock_storage_place
         return self.storage_place
+
+    @property
+    def effective_storage_area(self):
+        if self.container_id:
+            return self.container.storage_area
+        return self.storage_area
 
 class Construction(models.Model):
     name = CharField(max_length=255)

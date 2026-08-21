@@ -7,6 +7,8 @@
         {% csrf_token %}
         {% bootstrap_form mat_form %}
         {% bootstrap_form form %}
+        {% include "buildings/includes/location_choice_script.html" %}
+        {% include "buildings/includes/tom_select_location.html" %}
         {% buttons %}
             <div class="mb-2">
                 <button type="submit" name="save" class="btn btn-success btn-save">
@@ -19,6 +21,7 @@
                 </button>
             </div>
             <div class="mb-2">
+                {% if material.effective_storage_area %}<a href="{% url 'storage_plan_show' material.effective_storage_area.plan_id %}?area={{ material.effective_storage_area.pk }}" class="btn btn-warning">Auf Lagerplan anzeigen</a>{% endif %}
                 <a href="{% url 'material' %}" class="btn btn-secondary">Abbrechen</a>
             </div>
         {% endbuttons %}
@@ -56,15 +59,8 @@
 
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         $(document).ready(function () {
-            $('#id_container').select2({
-                width: '100%',
-                placeholder: 'Materialkiste suchen',
-                allowClear: true
-            });
             function updateHealthy() {
                 let total = parseInt($("#id_count").val()) || 0;
                 let mediumHealthy = parseInt($("#id_condition_medium_healthy").val()) || 0;

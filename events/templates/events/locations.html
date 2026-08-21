@@ -77,21 +77,9 @@
             </div>
         </form>
     {% endif %}
-    <!-- Include jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Include Select2 Library -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script>
-        $(document).ready(function () {
-            $('#id_location').select2({
-                placeholder: "--------",
-                allowClear: true,
-                width: $(window).width() < 1000 ? '100%' : '70%'
-            });
-        });
-    </script>
+    {% include "buildings/includes/tom_select.html" %}
     <style>
+        .input-group .ts-wrapper { flex: 1 1 auto; min-width: 0; }
         .select2-container--default .select2-selection--single {
             height: 38px; /* Abstimmung mit Bootstrap-Form-Höhe */
             font-size: 16px;

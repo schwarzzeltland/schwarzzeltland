@@ -1,0 +1,20 @@
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+<script>
+window.initializeTomSelect = function (root) {
+    (root || document).querySelectorAll('select.tom-select').forEach(function (select) {
+        if (select.tomselect) return;
+        new TomSelect(select, {
+            allowEmptyOption: true,
+            create: false,
+            maxItems: select.multiple ? null : 1,
+            openOnFocus: true,
+            dropdownParent: 'body',
+            placeholder: select.dataset.placeholder || 'Suchen und auswählen',
+            plugins: select.multiple ? {remove_button: {title: 'Entfernen'}} : {clear_button: {title: 'Auswahl löschen'}},
+        });
+    });
+};
+document.addEventListener('DOMContentLoaded', function () { window.initializeTomSelect(document); });
+</script>
+<style>.ts-dropdown{z-index:1080}</style>

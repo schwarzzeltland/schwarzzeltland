@@ -22,5 +22,10 @@ urlpatterns = [
     path('material/containers/<int:pk>/delete/', views.material_container_delete, name='material_container_delete'),
     path('material/containers/<int:pk>/qr/', views.material_container_qr, name='material_container_qr'),
     path('material/containers/qr-sheet/', views.material_container_qr_sheet, name='material_container_qr_sheet'),
+    path('material/storage-plans/', views.storage_plan_list, name='storage_plan_list'),
+    path('material/storage-plans/<int:pk>/', views.storage_plan_detail, name='storage_plan_detail'),
+    path('material/storage-plans/<int:pk>/show/', views.storage_plan_show, name='storage_plan_show'),
+    path('material/storage-plans/<int:pk>/delete/', views.storage_plan_delete, name='storage_plan_delete'),
+    path('material/storage-areas/<int:pk>/delete/', views.storage_area_delete, name='storage_area_delete'),
     path('material/scan/<uuid:scan_code>/', views.material_container_scan, name='material_container_scan'),
 ]

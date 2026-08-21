@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% load bootstrap5 %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><h3>Lagerpläne</h3><a class="btn btn-secondary" href="{% url 'material' %}">Zum Materiallager</a></div>
+<div class="row g-3 mb-4">{% for plan in plans %}<div class="col-md-6 col-xl-4"><div class="card h-100"><img src="{{ plan.image.url }}" class="card-img-top" style="height:220px;object-fit:contain;background:#f8f9fa" alt="{{ plan.name }}"><div class="card-body"><h5 class="card-title">{{ plan.name }}</h5><div class="text-muted mb-3">{{ plan.areas.count }} Bereich{{ plan.areas.count|pluralize:"e" }}</div>{% if is_material_manager %}<a class="btn btn-sm btn-primary" href="{% url 'storage_plan_detail' plan.pk %}">Bereiche verwalten</a> <a class="btn btn-sm btn-outline-danger" href="{% url 'storage_plan_delete' plan.pk %}">Löschen</a>{% endif %}</div></div></div>{% empty %}<div class="col-12"><div class="alert alert-light border">Noch kein Lagerplan vorhanden.</div></div>{% endfor %}</div>
+{% if form %}<div class="card"><div class="card-body"><h4 class="h5">Lagerplan hochladen</h4><form method="post" enctype="multipart/form-data">{% csrf_token %}{% bootstrap_form form %}<button class="btn btn-success">Plan anlegen</button></form></div></div>{% endif %}
+{% endblock %}

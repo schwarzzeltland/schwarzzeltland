@@ -16,8 +16,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 
 from buildings.forms import AddMaterialStockForm, MaterialForm, ConstructionForm, ImportConstructionForm, \
-    ConstructionMaterialFormSet, StockMaterialForm, PlainMaterialForm, MaterialContainerForm, MaterialContainerContentsForm, MaterialContainerQrSheetForm
-from buildings.models import StockMaterial, Construction, ConstructionMaterial, Material, MaterialContainer
+    ConstructionMaterialFormSet, StockMaterialForm, PlainMaterialForm, MaterialContainerForm, MaterialContainerContentsForm, MaterialContainerQrSheetForm, StoragePlanForm, StorageAreaForm
+from buildings.models import StockMaterial, Construction, ConstructionMaterial, Material, MaterialContainer, StoragePlan, StorageArea
 from events.models import ShoppingListItem, Trip, TripMaterial
 from main.models import Membership
 from main.decorators import material_manager_required
@@ -432,9 +432,9 @@ def material(request):
             Q(container__name__icontains=search_query) |
             Q(container__storage_place__icontains=search_query),
             organization=request.org
-        ).select_related("container", "material").order_by('material__name')
+        ).select_related("container", "container__storage_area__plan", "storage_area__plan", "material").order_by('material__name')
     else:
-        materials = StockMaterial.objects.filter(organization=request.org).select_related("container", "material").order_by('material__name')
+        materials = StockMaterial.objects.filter(organization=request.org).select_related("container", "container__storage_area__plan", "storage_area__plan", "material").order_by('material__name')
     # Filterung nach Materialtyp
     if selected_material_type:
         materials = materials.filter(material__type=selected_material_type).order_by('material__name')
@@ -511,6 +511,7 @@ def material(request):
                     count=form.cleaned_data['count'],
                     storage_place=form.cleaned_data['storage_place'],
                     container=form.cleaned_data.get('container'),
+                    storage_area=form.cleaned_data.get('storage_area'),
                     condition_healthy=form.cleaned_data['count'],
                     condition_medium_healthy=0,
                     condition_broke=0)
@@ -547,6 +548,8 @@ def create_material(request):
             StockMaterial.objects.create(material=material, organization=request.org,
                                          count=form.cleaned_data['count'],
                                          storage_place=form.cleaned_data['storage_place'],
+                                         container=form.cleaned_data.get('container'),
+                                         storage_area=form.cleaned_data.get('storage_area'),
                                          condition_healthy=form.cleaned_data['count'],
                                          condition_medium_healthy=0,
                                          condition_broke=0)
@@ -581,6 +584,7 @@ def edit_material(request, pk=None):
                                              count=form.cleaned_data['count'],
                                              storage_place=form.cleaned_data['storage_place'],
                                              container=form.cleaned_data.get('container'),
+                                             storage_area=form.cleaned_data.get('storage_area'),
                                              condition_healthy=form.cleaned_data['condition_healthy'],
                                              condition_medium_healthy=form.cleaned_data['condition_medium_healthy'],
                                              condition_broke=form.cleaned_data['condition_broke'],
@@ -597,6 +601,7 @@ def edit_material(request, pk=None):
         'title': 'Material berabeiten',
         'form': form,
         'mat_form': mat_form,
+        'material': mat,
     })
 
 
@@ -665,7 +670,7 @@ def material_container_list(request):
 @login_required
 @material_manager_required
 def material_container_create(request):
-    form = MaterialContainerForm(request.POST or None)
+    form = MaterialContainerForm(request.POST or None, organization=request.org)
     if request.method == "POST" and form.is_valid():
         container = form.save(commit=False)
         container.organization = request.org
@@ -688,7 +693,7 @@ def material_container_detail(request, pk):
 @material_manager_required
 def material_container_edit(request, pk):
     container = get_object_or_404(MaterialContainer, pk=pk, organization=request.org)
-    form = MaterialContainerForm(request.POST or None, instance=container)
+    form = MaterialContainerForm(request.POST or None, instance=container, organization=request.org)
     contents_form = MaterialContainerContentsForm(request.POST or None, organization=request.org, container=container)
     if request.method == "POST" and form.is_valid() and contents_form.is_valid():
         form.save()
@@ -708,6 +713,76 @@ def material_container_delete(request, pk):
         messages.success(request, f'Materialkiste „{name}“ gelöscht. Die Materialbestände bleiben erhalten.')
         return redirect("material_container_list")
     return render(request, "buildings/material_container_delete.html", {"title": "Materialkiste löschen", "container": container})
+
+
+@login_required
+def storage_plan_list(request):
+    plans = StoragePlan.objects.filter(organization=request.org).prefetch_related("areas")
+    form = None
+    if request.membership and request.membership.material_manager:
+        form = StoragePlanForm(request.POST or None, request.FILES or None)
+        if request.method == "POST" and form.is_valid():
+            plan = form.save(commit=False)
+            plan.organization = request.org
+            plan.save()
+            messages.success(request, f'Lagerplan „{plan.name}“ angelegt.')
+            return redirect("storage_plan_detail", pk=plan.pk)
+    return render(request, "buildings/storage_plan_list.html", {
+        "title": "Lagerpläne", "plans": plans, "form": form,
+        "is_material_manager": bool(request.membership and request.membership.material_manager),
+    })
+
+
+@login_required
+@material_manager_required
+def storage_plan_detail(request, pk):
+    plan = get_object_or_404(StoragePlan.objects.prefetch_related("areas"), pk=pk, organization=request.org)
+    highlighted_area = None
+    area_id = request.GET.get("area")
+    if area_id:
+        highlighted_area = plan.areas.filter(pk=area_id).first()
+    form = StorageAreaForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        area = form.save(commit=False)
+        area.plan = plan
+        area.save()
+        messages.success(request, f'Bereich „{area.name}“ angelegt.')
+        return redirect("storage_plan_detail", pk=plan.pk)
+    return render(request, "buildings/storage_plan_detail.html", {
+        "title": plan.name, "plan": plan, "form": form, "highlighted_area": highlighted_area,
+        "is_material_manager": bool(request.membership and request.membership.material_manager),
+    })
+
+
+@login_required
+def storage_plan_show(request, pk):
+    plan = get_object_or_404(StoragePlan, pk=pk, organization=request.org)
+    highlighted_area = get_object_or_404(StorageArea, pk=request.GET.get("area"), plan=plan)
+    return render(request, "buildings/storage_plan_show.html", {
+        "title": highlighted_area.name, "plan": plan, "highlighted_area": highlighted_area,
+    })
+
+
+@login_required
+@material_manager_required
+def storage_area_delete(request, pk):
+    area = get_object_or_404(StorageArea, pk=pk, plan__organization=request.org)
+    plan_pk = area.plan_id
+    if request.method == "POST":
+        area.delete()
+        messages.success(request, "Lagerbereich gelöscht.")
+    return redirect("storage_plan_detail", pk=plan_pk)
+
+
+@login_required
+@material_manager_required
+def storage_plan_delete(request, pk):
+    plan = get_object_or_404(StoragePlan, pk=pk, organization=request.org)
+    if request.method == "POST":
+        plan.delete()
+        messages.success(request, "Lagerplan gelöscht. Bestehende Materialzuordnungen wurden entfernt.")
+        return redirect("storage_plan_list")
+    return render(request, "buildings/storage_plan_delete.html", {"title": "Lagerplan löschen", "plan": plan})
 
 
 @login_required

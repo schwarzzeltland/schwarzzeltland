@@ -4,6 +4,7 @@ from django.db import models
 from django.db.models import CharField, BooleanField, TextField
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from datetime import timedelta
 
 from buildings.models import Construction, Material, StockMaterial
 from knowledgebase.models import Recipe
@@ -202,8 +203,17 @@ class EventPlanningChecklistItem(models.Model):
 def create_default_checklist(sender, instance, created, **kwargs):
     if created:
         defaults = instance.owner.default_checklist if instance.owner else []
-        for title in defaults:
-            EventPlanningChecklistItem.objects.create(trip=instance, title=title)
+        for default in defaults:
+            if isinstance(default, dict):
+                title = str(default.get("title", "")).strip()
+                days_from_start = default.get("days_from_start")
+            else:
+                title = str(default).strip()
+                days_from_start = None
+            if not title:
+                continue
+            due_date = instance.start_date + timedelta(days=int(days_from_start)) if days_from_start is not None else None
+            EventPlanningChecklistItem.objects.create(trip=instance, title=title, due_date=due_date)
 
 
 class ProgrammItem(models.Model):

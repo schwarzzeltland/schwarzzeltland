@@ -6,6 +6,7 @@
     <form method="post" class="form" enctype="multipart/form-data">
         {% csrf_token %}
         {% bootstrap_form form %}
+        {% include "buildings/includes/location_choice_script.html" %}
         {% buttons %}
             <div class="mb-2">
                 <button type="submit" class="btn btn-success">
@@ -21,4 +22,5 @@
             </div>
         {% endbuttons %}
     </form>
+    {% include "buildings/includes/tom_select_location.html" %}
 {% endblock %}

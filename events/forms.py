@@ -169,6 +169,10 @@ class ImportLocationForm(Form):
 
         # Setze das Queryset für das `ModelChoiceField`
         self.fields['location'].queryset = combined_queryset
+        self.fields['location'].widget.attrs.update({
+            "class": "form-select tom-select",
+            "data-placeholder": "Ort suchen und auswählen",
+        })
         self.fields['location'].empty_label = "---------"
         # Erstelle Optiongroups
         choices = [

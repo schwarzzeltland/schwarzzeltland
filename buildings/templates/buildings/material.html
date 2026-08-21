@@ -2,7 +2,7 @@
 {% load bootstrap5 %}
 
 {% block content %}
-    <div class="d-flex flex-wrap gap-2 mb-3"><a href="{% url 'material_container_list' %}" class="btn btn-outline-primary">Materialkisten</a>{% if form %}<a href="{% url 'create_material' %}" class="btn btn-outline-success">Material anlegen</a>{% endif %}</div>
+    <div class="d-flex flex-wrap gap-2 mb-3"><a href="{% url 'material_container_list' %}" class="btn btn-outline-primary">Materialkisten</a><a href="{% url 'storage_plan_list' %}" class="btn btn-outline-primary">Lagerpläne</a>{% if form %}<a href="{% url 'create_material' %}" class="btn btn-outline-success">Material anlegen</a>{% endif %}</div>
     <form method="get" action="" class="mb-3">
     <div class="input-group">
         <!-- Suchleiste -->
@@ -35,8 +35,8 @@
 </form>
     <div class="table-responsive mb-3"><table class="table table-hover align-middle"><thead><tr><th>Material</th><th class="text-end">Gesamt</th><th class="text-end">In Ordnung</th><th class="text-end">Wartung</th><th class="text-end">Defekt</th><th>Lagerort(e)</th><th></th></tr></thead><tbody>
     {% for group in material_groups %}
-        <tr><td class="fw-semibold">{{ group.material.name }}</td><td class="text-end fw-semibold">{{ group.total_count }}</td><td class="text-end text-success">{{ group.condition_healthy }}</td><td class="text-end {% if group.condition_medium_healthy %}text-warning fw-semibold{% else %}text-muted{% endif %}">{{ group.condition_medium_healthy }}</td><td class="text-end {% if group.condition_broke %}text-danger fw-semibold{% else %}text-muted{% endif %}">{{ group.condition_broke }}</td><td>{% if group.stocks|length == 1 %}{% with stock=group.stocks.0 %}{% if stock.container %}<a href="{% url 'material_container_detail' stock.container.pk %}">{{ stock.effective_storage_place }}</a>{% else %}{{ stock.storage_place|default:"Ohne Lagerort" }}{% endif %}{% endwith %}{% else %}<span class="text-muted">{{ group.stocks|length }} Lagerorte</span>{% endif %}</td><td class="text-end"><div class="d-flex justify-content-end gap-1">{% if group.stocks|length == 1 %}{% with stock=group.stocks.0 %}{% if is_material_manager %}<a href="{% url 'edit_material' stock.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a><a href="{% url 'delete_material' stock.pk %}" class="btn btn-sm btn-outline-danger">Löschen</a>{% else %}<a href="{% url 'show_material' stock.pk %}" class="btn btn-sm btn-outline-primary">Anzeigen</a>{% endif %}{% endwith %}{% else %}<button class="btn btn-sm btn-outline-primary collapse-label-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#material-stocks-{{ group.material.pk }}" aria-expanded="false" data-open-label="Details" data-close-label="Schließen">Details</button>{% endif %}</div></td></tr>
-        {% if group.stocks|length > 1 %}<tr><td colspan="7" class="p-0 border-0"><div class="collapse fast-collapse" id="material-stocks-{{ group.material.pk }}"><div class="bg-light p-3"><table class="table table-sm align-middle mb-0"><thead><tr><th>Anzahl</th><th>Lagerort/Kiste</th><th>Zustand</th><th></th></tr></thead><tbody>{% for stock in group.stocks %}<tr><td>{{ stock.count }}</td><td>{% if stock.container %}<a href="{% url 'material_container_detail' stock.container.pk %}">{{ stock.effective_storage_place }}</a>{% else %}{{ stock.storage_place|default:"Ohne Lagerort" }}{% endif %}</td><td><span class="text-success">{{ stock.condition_healthy }} in Ordnung</span>{% if stock.condition_medium_healthy %}, <span class="text-warning">{{ stock.condition_medium_healthy }} Wartung</span>{% endif %}{% if stock.condition_broke %}, <span class="text-danger">{{ stock.condition_broke }} defekt</span>{% endif %}</td><td class="text-end">{% if is_material_manager %}<a href="{% url 'edit_material' stock.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a> <a href="{% url 'delete_material' stock.pk %}" class="btn btn-sm btn-outline-danger">Löschen</a>{% else %}<a href="{% url 'show_material' stock.pk %}" class="btn btn-sm btn-outline-primary">Anzeigen</a>{% endif %}</td></tr>{% endfor %}</tbody></table></div></div></td></tr>{% endif %}
+        <tr><td class="fw-semibold">{{ group.material.name }}</td><td class="text-end fw-semibold">{{ group.total_count }}</td><td class="text-end text-success">{{ group.condition_healthy }}</td><td class="text-end {% if group.condition_medium_healthy %}text-warning fw-semibold{% else %}text-muted{% endif %}">{{ group.condition_medium_healthy }}</td><td class="text-end {% if group.condition_broke %}text-danger fw-semibold{% else %}text-muted{% endif %}">{{ group.condition_broke }}</td><td>{% if group.stocks|length == 1 %}{% with stock=group.stocks.0 %}{% include "buildings/includes/stock_location.html" %}{% endwith %}{% else %}<span class="text-muted">{{ group.stocks|length }} Lagerorte</span>{% endif %}</td><td class="text-end"><div class="d-flex justify-content-end gap-1">{% if group.stocks|length == 1 %}{% with stock=group.stocks.0 %}{% if is_material_manager %}<a href="{% url 'edit_material' stock.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a><a href="{% url 'delete_material' stock.pk %}" class="btn btn-sm btn-outline-danger">Löschen</a>{% else %}<a href="{% url 'show_material' stock.pk %}" class="btn btn-sm btn-outline-primary">Anzeigen</a>{% endif %}{% endwith %}{% else %}<button class="btn btn-sm btn-outline-primary collapse-label-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#material-stocks-{{ group.material.pk }}" aria-expanded="false" data-open-label="Details" data-close-label="Schließen">Details</button>{% endif %}</div></td></tr>
+        {% if group.stocks|length > 1 %}<tr><td colspan="7" class="p-0 border-0"><div class="collapse fast-collapse" id="material-stocks-{{ group.material.pk }}"><div class="bg-light p-3"><table class="table table-sm align-middle mb-0"><thead><tr><th>Anzahl</th><th>Lagerort/Kiste</th><th>Zustand</th><th></th></tr></thead><tbody>{% for stock in group.stocks %}<tr><td>{{ stock.count }}</td><td>{% include "buildings/includes/stock_location.html" %}</td><td><span class="text-success">{{ stock.condition_healthy }} in Ordnung</span>{% if stock.condition_medium_healthy %}, <span class="text-warning">{{ stock.condition_medium_healthy }} Wartung</span>{% endif %}{% if stock.condition_broke %}, <span class="text-danger">{{ stock.condition_broke }} defekt</span>{% endif %}</td><td class="text-end">{% if is_material_manager %}<a href="{% url 'edit_material' stock.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a> <a href="{% url 'delete_material' stock.pk %}" class="btn btn-sm btn-outline-danger">Löschen</a>{% else %}<a href="{% url 'show_material' stock.pk %}" class="btn btn-sm btn-outline-primary">Anzeigen</a>{% endif %}</td></tr>{% endfor %}</tbody></table></div></div></td></tr>{% endif %}
     {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">Keine passenden Materialien vorhanden.</td></tr>{% endfor %}
     </tbody></table></div>
     {% if form %}
@@ -57,36 +57,21 @@
                             {% for error in form.material.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
                         </div>
                         <div class="col-12 col-sm-4 col-lg-2">{% bootstrap_field form.count %}</div>
-                        <div class="col-12 col-sm-8 col-lg-5">{% bootstrap_field form.storage_place %}</div>
-                        <div class="col-12">
+                        <div class="col-12">{% bootstrap_field form.location_type %}</div>
+                        <div class="col-12" data-location-field>
                             {% bootstrap_field form.container %}
                             <div class="form-text">Bei Auswahl einer Kiste wird deren Lagerort automatisch im Bestand gespeichert.</div>
                         </div>
+                        <div class="col-12" data-location-field>{% bootstrap_field form.storage_area %}</div>
+                        <div class="col-12" data-location-field>{% bootstrap_field form.storage_place %}</div>
                     </div>
                     <div class="d-flex justify-content-end mt-3"><button type="submit" class="btn btn-success px-4">Ins Lager einsortieren</button></div>
                 </form>
             </div>
         </div></div>
     {% endif %}
-    <!-- Include jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Include Select2 Library -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script>
-        $(document).ready(function () {
-            $('#id_material').select2({
-                placeholder: "Material suchen und auswählen",
-                allowClear: true,
-                width: '100%'
-            });
-            $('#id_container').select2({
-                placeholder: 'Materialkiste suchen',
-                allowClear: true,
-                width: '100%'
-            });
-        });
-    </script>
+    {% include "buildings/includes/location_choice_script.html" %}
+    {% include "buildings/includes/tom_select_location.html" %}
     <script>
         document.querySelectorAll('.collapse-label-toggle').forEach(function (button) {
             const target = document.querySelector(button.dataset.bsTarget);

@@ -1,0 +1,17 @@
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('select.tom-select-location').forEach(function (select) {
+        if (select.tomselect) return;
+        new TomSelect(select, {
+            allowEmptyOption: true,
+            create: false,
+            maxItems: 1,
+            openOnFocus: true,
+            placeholder: select.dataset.placeholder || (select.name === 'container' ? 'Materialkiste suchen' : 'Lagerplanposition suchen'),
+            plugins: {clear_button: {title: 'Auswahl löschen'}},
+        });
+    });
+});
+</script>

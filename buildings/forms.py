@@ -6,13 +6,68 @@ from django.core.validators import MinValueValidator
 from django.db.models import Q
 from urllib3.filepost import iter_field_objects
 
-from buildings.models import Material, StockMaterial, Construction, ConstructionMaterial, MaterialContainer
+from buildings.models import Material, StockMaterial, Construction, ConstructionMaterial, MaterialContainer, StoragePlan, StorageArea
 
 from django.forms import IntegerField, CharField, ModelForm, Form, ModelChoiceField, inlineformset_factory, \
     BaseModelFormSet, BaseModelForm
 
 
-class AddMaterialStockForm(ModelForm):
+class LocationChoiceMixin:
+    LOCATION_CONTAINER = "container"
+    LOCATION_PLAN = "plan"
+    LOCATION_FREE = "free"
+    supports_container = True
+
+    def configure_location_choice(self):
+        if not self.supports_container:
+            self.fields["location_type"].choices = (
+                (self.LOCATION_PLAN, "Bereich im Lagerplan"),
+                (self.LOCATION_FREE, "Freier Lagerort"),
+            )
+        field_order = list(self.fields)
+        field_order.remove("location_type")
+        location_index = field_order.index("storage_place") if "storage_place" in field_order else len(field_order)
+        field_order.insert(location_index, "location_type")
+        self.order_fields(field_order)
+        if self.is_bound:
+            return
+        if self.supports_container and getattr(self.instance, "container_id", None):
+            self.initial["location_type"] = self.LOCATION_CONTAINER
+        elif getattr(self.instance, "storage_area_id", None):
+            self.initial["location_type"] = self.LOCATION_PLAN
+        else:
+            self.initial["location_type"] = self.LOCATION_FREE
+
+    def clean(self):
+        cleaned = super().clean()
+        location_type = cleaned.get("location_type")
+        if location_type == self.LOCATION_CONTAINER and self.supports_container:
+            container = cleaned.get("container")
+            if not container:
+                self.add_error("container", "Bitte eine Materialkiste auswählen.")
+            cleaned["storage_area"] = None
+            if container:
+                cleaned["storage_place"] = container.stock_storage_place
+        elif location_type == self.LOCATION_PLAN:
+            area = cleaned.get("storage_area")
+            if not area:
+                self.add_error("storage_area", "Bitte einen Bereich im Lagerplan auswählen.")
+            if self.supports_container:
+                cleaned["container"] = None
+            if area:
+                cleaned["storage_place"] = f"{area.plan.name} / {area.name}"
+        elif location_type == self.LOCATION_FREE:
+            if self.supports_container:
+                cleaned["container"] = None
+            cleaned["storage_area"] = None
+        return cleaned
+
+
+class AddMaterialStockForm(LocationChoiceMixin, ModelForm):
+    location_type = forms.ChoiceField(
+        label="Art des Lagerorts", choices=(("container", "Materialkiste"), ("plan", "Bereich im Lagerplan"), ("free", "Freier Lagerort")),
+        widget=forms.RadioSelect, initial="free",
+    )
 
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop('organization', None)
@@ -21,6 +76,10 @@ class AddMaterialStockForm(ModelForm):
 
         self.fields['container'].queryset = MaterialContainer.objects.filter(organization=organization)
         self.fields['container'].label_from_instance = lambda container: container.name
+        self.fields['container'].widget.attrs["class"] = "form-select tom-select-location"
+        self.fields['storage_area'].queryset = StorageArea.objects.filter(plan__organization=organization).select_related("plan")
+        self.fields['storage_area'].widget.attrs["class"] = "form-select tom-select-location"
+        self.configure_location_choice()
 
         # Konstruktionen der eigenen Organisation
         org_material = Material.objects.filter(owner=organization).order_by('name')
@@ -33,6 +92,10 @@ class AddMaterialStockForm(ModelForm):
 
         # Setze das Queryset für das `ModelChoiceField`
         self.fields['material'].queryset = combined_queryset
+        self.fields['material'].widget.attrs.update({
+            "class": "form-select tom-select-location",
+            "data-placeholder": "Material suchen und auswählen",
+        })
         self.fields['material'].empty_label = "---------"
         # Erstelle Optiongroups
         choices = [
@@ -50,14 +113,22 @@ class AddMaterialStockForm(ModelForm):
         exclude = ['organization',"condition_healthy","condition_medium_healthy","condition_broke","material_condition_description"]
 
 
-class MaterialForm(ModelForm):
+class MaterialForm(LocationChoiceMixin, ModelForm):
+    location_type = forms.ChoiceField(label="Art des Lagerorts", choices=(("container", "Materialkiste"), ("plan", "Bereich im Lagerplan"), ("free", "Freier Lagerort")), widget=forms.RadioSelect, initial="free")
     count = IntegerField(required=True, validators=[MinValueValidator(0)],label='Anzahl')
     storage_place = CharField(required=False,label='Lagerort')
+    container = ModelChoiceField(queryset=MaterialContainer.objects.none(), required=False, label="Materialkiste")
+    storage_area = ModelChoiceField(queryset=StorageArea.objects.none(), required=False, label="Bereich im Lagerplan")
 
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop('organization', None)
         super(MaterialForm, self).__init__(*args, **kwargs)
         self.instance.organization = organization
+        self.fields["container"].queryset = MaterialContainer.objects.filter(organization=organization) if organization else MaterialContainer.objects.none()
+        self.fields["container"].widget.attrs["class"] = "form-select tom-select-location"
+        self.fields["storage_area"].queryset = StorageArea.objects.filter(plan__organization=organization).select_related("plan") if organization else StorageArea.objects.none()
+        self.fields["storage_area"].widget.attrs["class"] = "form-select tom-select-location"
+        self.configure_location_choice()
 
     class Meta:
         model = Material
@@ -65,22 +136,67 @@ class MaterialForm(ModelForm):
         exclude = ['owner']
 
 
-class StockMaterialForm(ModelForm):
+class StockMaterialForm(LocationChoiceMixin, ModelForm):
+    location_type = forms.ChoiceField(
+        label="Art des Lagerorts", choices=(("container", "Materialkiste"), ("plan", "Bereich im Lagerplan"), ("free", "Freier Lagerort")),
+        widget=forms.RadioSelect, initial="free",
+    )
     class Meta:
         model = StockMaterial
-        fields = ["count", "storage_place", "container", "condition_healthy","condition_medium_healthy","condition_broke","material_condition_description"]
+        fields = ["count", "storage_place", "container", "storage_area", "condition_healthy","condition_medium_healthy","condition_broke","material_condition_description"]
 
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop("organization", None)
         super().__init__(*args, **kwargs)
         self.fields["container"].queryset = MaterialContainer.objects.filter(organization=organization) if organization else MaterialContainer.objects.none()
         self.fields["container"].label_from_instance = lambda container: container.name
+        self.fields["container"].widget.attrs["class"] = "form-select tom-select-location"
+        self.fields["storage_area"].queryset = StorageArea.objects.filter(plan__organization=organization).select_related("plan") if organization else StorageArea.objects.none()
+        self.fields["storage_area"].widget.attrs["class"] = "form-select tom-select-location"
         self.fields['condition_healthy'].widget.attrs['readonly'] = True  # Nutzer kann es nicht direkt ändern
+        self.configure_location_choice()
 
-class MaterialContainerForm(ModelForm):
+class MaterialContainerForm(LocationChoiceMixin, ModelForm):
+    supports_container = False
+    location_type = forms.ChoiceField(label="Art des Lagerorts", choices=(("plan", "Bereich im Lagerplan"), ("free", "Freier Lagerort")), widget=forms.RadioSelect, initial="free")
     class Meta:
         model = MaterialContainer
-        fields = ["name", "storage_place", "description"]
+        fields = ["name", "storage_place", "storage_area", "description"]
+
+    def __init__(self, *args, **kwargs):
+        organization = kwargs.pop("organization", None)
+        super().__init__(*args, **kwargs)
+        self.fields["storage_area"].queryset = StorageArea.objects.filter(plan__organization=organization).select_related("plan") if organization else StorageArea.objects.none()
+        self.fields["storage_area"].widget.attrs["class"] = "form-select tom-select-location"
+        self.configure_location_choice()
+
+
+class StoragePlanForm(ModelForm):
+    class Meta:
+        model = StoragePlan
+        fields = ["name", "image"]
+
+
+class StorageAreaForm(ModelForm):
+    class Meta:
+        model = StorageArea
+        fields = ["name", "x", "y", "width", "height"]
+        widgets = {field: forms.HiddenInput() for field in ("x", "y", "width", "height")}
+
+    def clean(self):
+        cleaned = super().clean()
+        for position in ("x", "y"):
+            value = cleaned.get(position)
+            if value is not None and value > 100:
+                self.add_error(position, "Die Position muss innerhalb des Plans liegen.")
+        for size in ("width", "height"):
+            value = cleaned.get(size)
+            if value is not None and (value <= 0 or value > 100):
+                self.add_error(size, "Die Größe muss zwischen 0 und 100 Prozent liegen.")
+        if all(cleaned.get(field) is not None for field in ("x", "y", "width", "height")):
+            if cleaned["x"] + cleaned["width"] > 100 or cleaned["y"] + cleaned["height"] > 100:
+                raise ValidationError("Der Bereich muss vollständig innerhalb des Plans liegen.")
+        return cleaned
 
 
 class MaterialContainerContentsForm(forms.Form):
@@ -165,6 +281,10 @@ class ImportConstructionForm(Form):
 
         # Setze das Queryset für das `ModelChoiceField`
         self.fields['construction'].queryset = combined_queryset
+        self.fields['construction'].widget.attrs.update({
+            "class": "form-select tom-select",
+            "data-placeholder": "Konstruktion suchen und auswählen",
+        })
         self.fields['construction'].empty_label = "---------"
         # Erstelle Optiongroups
         choices = [

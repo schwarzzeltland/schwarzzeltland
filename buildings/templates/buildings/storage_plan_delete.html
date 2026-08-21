@@ -1,0 +1,2 @@
+{% extends "base.html" %}
+{% block content %}<h3>Lagerplan löschen</h3><p>Soll der Lagerplan <strong>„{{ plan.name }}“</strong> wirklich gelöscht werden? Die darauf angelegten Bereiche werden ebenfalls gelöscht. Zugeordnete Kisten und Materialbestände bleiben erhalten, verlieren aber ihre Planposition.</p><form method="post">{% csrf_token %}<button class="btn btn-danger">Lagerplan löschen</button> <a class="btn btn-secondary" href="{% url 'storage_plan_detail' plan.pk %}">Abbrechen</a></form>{% endblock %}

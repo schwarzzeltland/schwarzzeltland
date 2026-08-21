@@ -60,6 +60,7 @@
                             <td><strong>Lagerplatz:</strong></td>
                             <td>{% if material.container %}<a href="{% url 'material_container_detail' material.container.pk %}">{{ material.effective_storage_place }}</a>{% else %}{{ material.storage_place }}{% endif %}</td>
                         </tr>
+                        {% if material.effective_storage_area %}<tr><td><strong>Lagerplan:</strong></td><td><a class="btn btn-sm btn-warning" href="{% url 'storage_plan_show' material.effective_storage_area.plan_id %}?area={{ material.effective_storage_area.pk }}">{{ material.effective_storage_area }} anzeigen</a></td></tr>{% endif %}
                     </tbody>
                 </table>
                 <button type="button" class="btn btn-secondary" onclick="history.back()">Zurück</button>

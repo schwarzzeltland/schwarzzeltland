@@ -10,7 +10,7 @@
             <input type="text" class="form-control" name="search"
                    value="{{ search_query|default:'' }}" placeholder="Suche nach Programmpunkt">
 
-            <select id="type-select" name="type" multiple class="form-select">
+            <select id="type-select" name="type" multiple class="form-select tom-select" data-placeholder="Typen suchen">
                 {% for t in types %}
                     <option value="{{ t.id }}" {% if t.id in selected_type_list %}selected{% endif %}>
                         {{ t.text }}
@@ -22,21 +22,7 @@
     </form>
 
 
-    <!-- Select2 CSS & JS -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
-    <script>
-        $(document).ready(function () {
-            $('#type-select').select2({
-                placeholder: "Wähle Typen aus",
-                allowClear: true,
-                tags: false,
-                width: 'resolve'
-            });
-        });
-    </script>
+    {% include "buildings/includes/tom_select.html" %}
 
 
     <div id="programm-wrapper"

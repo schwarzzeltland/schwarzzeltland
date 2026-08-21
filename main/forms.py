@@ -9,12 +9,53 @@ from main.models import Message, Organization
 
 
 class OrganizationForm(ModelForm):
+    default_checklist = forms.CharField(
+        required=False,
+        label="Standard-To-dos bei neuen Veranstaltungen",
+        help_text="Eine Zeile pro To-do: Titel | Tage relativ zum Veranstaltungsbeginn. Negative Werte liegen vor, positive nach dem Beginn. Die Tageszahl ist optional.",
+        widget=forms.Textarea(attrs={
+            "class": "form-control",
+            "rows": 7,
+            "placeholder": "Anmeldung schließen | -14\nMaterial packen | -1\nNachbereitung | 3",
+        }),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.is_bound and self.instance and self.instance.pk:
+            lines = []
+            for item in self.instance.default_checklist or []:
+                if isinstance(item, dict):
+                    title = str(item.get("title", "")).strip()
+                    days = item.get("days_from_start")
+                    lines.append(f"{title} | {days}" if days is not None else title)
+                else:
+                    lines.append(str(item))
+            self.initial["default_checklist"] = "\n".join(lines)
+
+    def clean_default_checklist(self):
+        entries = []
+        for line_number, raw_line in enumerate(self.cleaned_data.get("default_checklist", "").splitlines(), start=1):
+            line = raw_line.strip()
+            if not line:
+                continue
+            title, separator, raw_days = line.rpartition("|")
+            if not separator:
+                entries.append({"title": line, "days_from_start": None})
+                continue
+            title = title.strip()
+            if not title:
+                raise ValidationError(f"In Zeile {line_number} fehlt der Titel des To-dos.")
+            try:
+                days = int(raw_days.strip())
+            except ValueError as exc:
+                raise ValidationError(f"In Zeile {line_number} muss nach dem | eine ganze Tageszahl stehen.") from exc
+            entries.append({"title": title, "days_from_start": days})
+        return entries
+
     class Meta:
         model = Organization
         fields = ["name", "image", "recipientcode", "default_checklist"]
-        widgets = {
-            "default_checklist": forms.TextInput(attrs={"class": "form-control"}),
-        }
 
 
 class MembershipForm(ModelForm):

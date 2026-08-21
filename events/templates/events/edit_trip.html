@@ -383,7 +383,7 @@
             <tr>
                 <td>
                     <div class="mb-3">
-                        <select name="tripconstruction_set-__prefix__-material" class="form-select select2">
+                        <select name="tripconstruction_set-__prefix__-material" class="form-select tom-select" data-placeholder="Konstruktion suchen">
                             <option value="" selected>---------</option>
                             <optgroup label="Eigene Konstruktionen">
                                 {% for construction in constructions.organization %}
@@ -451,7 +451,7 @@
             <tr>
                 <td>
                     <div class="mb-3">
-                        <select name="tripmaterial_set-__prefix__-material" class="form-select select2">
+                        <select name="tripmaterial_set-__prefix__-material" class="form-select tom-select" data-placeholder="Material suchen">
                             <option value="" selected>---------</option>
                             <optgroup label="Eigenes Material">
                                 {% for material in materials.organization %}
@@ -492,24 +492,22 @@
             </tr>
 
         </script>
-        <!-- Include Select2 Library -->
-        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+        {% include "buildings/includes/tom_select.html" %}
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const addRowButton = document.getElementById('add-row');
                 const formContainer = document.getElementById('form-container');
                 const totalFormsInput = document.querySelector(`#id_tripconstruction_set-TOTAL_FORMS`);
                 const template = document.getElementById('empty-form-template').innerHTML;
-                initializeSelect2()
+                initializeTripSelects()
                 addRowButton.addEventListener('click', function () {
                     const formIndex = totalFormsInput.value; // Aktuelle Anzahl der Formulare
                     const newRow = template.replace(/__prefix__/g, formIndex);
                     formContainer.insertAdjacentHTML('beforeend', newRow);
                     totalFormsInput.value = parseInt(formIndex) + 1; // Anzahl erhöhen
                     // Wendet Select2 auf das neue Dropdown-Menü an
-                    initializeSelect2()
+                    initializeTripSelects()
                 });
 
                 const addRowButton_group = document.getElementById('add-row-group');
@@ -533,7 +531,7 @@
                     formContainer_material.insertAdjacentHTML('beforeend', newRow_material);
                     totalFormsInput_material.value = parseInt(formIndex_material) + 1; // Anzahl erhöhen
                     // Wendet Select2 auf das neue Dropdown-Menü an
-                    initializeSelect2()
+                    initializeTripSelects()
 
                 });
                 // Event-Listener für Konstruktionen
@@ -630,37 +628,20 @@
                 });
             });
 
-            function initializeSelect2() {
-                $('#id_planners').select2({
-                    placeholder: "Wähle Planer aus",
-                    allowClear: true
-                });
-                $('#id_location').each(function () {
-                    const $select = $(this);
-                    $select.select2({
-                        placeholder: "---------",
-                        allowClear: true,
-                        width: '100%'
+            function initializeTripSelects() {
+                const selectors = [
+                    ['#id_location', 'Ort suchen'],
+                    ['#id_planners', 'Planer suchen'],
+                    ['select[name^="tripconstruction_set-"]', 'Konstruktion suchen'],
+                    ['select[name^="tripmaterial_set-"]', 'Material suchen']
+                ];
+                selectors.forEach(function(config) {
+                    document.querySelectorAll(config[0]).forEach(function(select) {
+                        select.classList.add('tom-select');
+                        select.dataset.placeholder = config[1];
                     });
                 });
-                $('select[name^="tripconstruction_set"]').each(function () {
-                    const $select = $(this);
-                    $select.select2({
-                        placeholder: "---------",
-                        allowClear: true,
-                        width: '250px'
-                    });
-                });
-                $('select[name^="tripmaterial_set"]').each(function () {
-                    const $select = $(this);
-                    $select.select2({
-                        placeholder: "---------",
-                        allowClear: true,
-                        width: '250px'
-                    });
-                });
-
-
+                window.initializeTomSelect(document);
             }
 
 

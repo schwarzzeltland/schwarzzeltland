@@ -50,7 +50,7 @@ class Organization(models.Model):
     default_checklist = models.JSONField(
         default=default_checklist_items,
         blank=True,
-        verbose_name="""Standard To-Do's bei neuen Veranstaltungen (Format: ["To-Do1","To-Do2"])""",
+        verbose_name="Standard-To-dos bei neuen Veranstaltungen",
     )
 
     def get_owner(self) -> "Membership":

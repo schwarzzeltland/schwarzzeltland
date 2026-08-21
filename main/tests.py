@@ -5,8 +5,9 @@ from pathlib import Path
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 
-from buildings.models import Construction
+from buildings.models import Construction, StoragePlan
 from cashbook.models import CashBook, CashBookEntry
+from main.forms import OrganizationForm
 
 TEST_MEDIA_ROOT = tempfile.mkdtemp()
 
@@ -73,6 +74,22 @@ class ProtectedMediaTests(TestCase):
         member_response = self.client.get(f"/uploads/{image_path}")
         self.assertEqual(member_response.status_code, 200)
 
+    def test_storage_plan_image_is_accessible_only_to_organization_members(self):
+        image_path = "storage_plans/lager.png"
+        self._write_media_file(image_path, b"plan-image")
+        StoragePlan.objects.create(organization=self.owner_org, name="Lager", image=image_path)
+
+        anonymous_response = self.client.get(f"/uploads/{image_path}")
+        self.assertEqual(anonymous_response.status_code, 404)
+
+        self.client.login(username="other", password="pw")
+        outsider_response = self.client.get(f"/uploads/{image_path}")
+        self.assertEqual(outsider_response.status_code, 404)
+
+        self.client.login(username="owner", password="pw")
+        member_response = self.client.get(f"/uploads/{image_path}")
+        self.assertEqual(member_response.status_code, 200)
+
     def test_cached_public_construction_thumbnail_inherits_access(self):
         source_path = "constructions/public-thumb.jpg"
         cache_path = "CACHE/images/constructions/public-thumb/preview.webp"
@@ -124,6 +141,21 @@ class ProtectedMediaTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Leiterrundenmitglied")
         self.assertContains(response, 'name="leiterrundenmitglied"')
+
+    def test_organization_form_parses_default_todo_day_offsets(self):
+        form = OrganizationForm({
+            "name": self.owner_org.name,
+            "recipientcode": self.owner_org.recipientcode,
+            "default_checklist": "Anmeldung schließen | -14\nMaterial packen | -1\nNachbereitung | 3\nOhne Termin",
+        }, instance=self.owner_org)
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["default_checklist"], [
+            {"title": "Anmeldung schließen", "days_from_start": -14},
+            {"title": "Material packen", "days_from_start": -1},
+            {"title": "Nachbereitung", "days_from_start": 3},
+            {"title": "Ohne Termin", "days_from_start": None},
+        ])
 
     def test_cashbook_attachment_requires_cashier_membership(self):
         attachment_path = "cashbooks/receipt.pdf"

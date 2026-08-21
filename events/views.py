@@ -223,8 +223,10 @@ def check_trip_material(request, pk=None):
                 'storage_place': stock.effective_storage_place,
                 'available_quantity': stock.count,
                 'packed': stock.pk in packed_stock_ids,
+                'storage_plan_id': stock.effective_storage_area.plan_id if stock.effective_storage_area else None,
+                'storage_area_id': stock.effective_storage_area.pk if stock.effective_storage_area else None,
             }
-            for stock in stock_materials.select_related("container")
+            for stock in stock_materials.select_related("container", "container__storage_area__plan", "storage_area__plan")
         ]
         packed_quantity = sum(storage["available_quantity"] for storage in storage_info if storage["packed"])
 
