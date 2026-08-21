@@ -764,6 +764,23 @@ def storage_plan_show(request, pk):
 
 
 @login_required
+def storage_area_contents(request, pk):
+    area = get_object_or_404(
+        StorageArea.objects.select_related("plan").prefetch_related(
+            "containers__stock_items__material", "stock_items__material",
+        ),
+        pk=pk,
+        plan__organization=request.org,
+    )
+    return render(request, "buildings/storage_area_contents.html", {
+        "title": area.name,
+        "area": area,
+        "containers": area.containers.all(),
+        "loose_stock_items": area.stock_items.filter(container__isnull=True).select_related("material"),
+    })
+
+
+@login_required
 @material_manager_required
 def storage_area_delete(request, pk):
     area = get_object_or_404(StorageArea, pk=pk, plan__organization=request.org)

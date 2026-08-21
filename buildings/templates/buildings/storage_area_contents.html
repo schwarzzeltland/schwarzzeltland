@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div><h3>{{ area.name }}</h3><div class="text-muted">{{ area.plan.name }}</div></div>
+    <a class="btn btn-secondary" href="{% url 'storage_plan_detail' area.plan.pk %}?area={{ area.pk }}">Zum Lagerplan</a>
+</div>
+<h4 class="h5">Materialkisten</h4>
+<div class="list-group mb-4">
+{% for container in containers %}
+    <a class="list-group-item list-group-item-action" href="{% url 'material_container_detail' container.pk %}">
+        <div class="d-flex justify-content-between gap-3"><strong>{{ container.name }}</strong><span>{{ container.total_count }} Stück</span></div>
+        <div class="text-muted small">{% for stock in container.stock_items.all %}{{ stock.material.name }}: {{ stock.count }}{% if not forloop.last %} · {% endif %}{% empty %}Kiste ist leer{% endfor %}</div>
+    </a>
+{% empty %}<div class="text-muted">Keine Materialkisten in diesem Bereich.</div>{% endfor %}
+</div>
+<h4 class="h5">Lose Materialbestände</h4>
+<div class="list-group">
+{% for stock in loose_stock_items %}
+    <a class="list-group-item list-group-item-action d-flex justify-content-between gap-3" href="{% url 'show_material' stock.pk %}"><strong>{{ stock.material.name }}</strong><span>{{ stock.count }} Stück</span></a>
+{% empty %}<div class="text-muted">Keine losen Materialbestände in diesem Bereich.</div>{% endfor %}
+</div>
+{% endblock %}

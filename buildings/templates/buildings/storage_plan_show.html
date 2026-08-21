@@ -1,2 +1,15 @@
 {% extends "base.html" %}
-{% block content %}<div class="d-flex justify-content-between align-items-center gap-2 mb-3"><div><h3>{{ highlighted_area.name }}</h3><div class="text-muted">{{ plan.name }}</div></div><button type="button" class="btn btn-secondary" onclick="history.back()">Zurück</button></div><div class="storage-plan-canvas position-relative border rounded overflow-hidden"><img src="{{ plan.image.url }}" alt="{{ plan.name }}" draggable="false"><div class="storage-highlight" style="left:{{ highlighted_area.x|stringformat:'f' }}%;top:{{ highlighted_area.y|stringformat:'f' }}%;width:{{ highlighted_area.width|stringformat:'f' }}%;height:{{ highlighted_area.height|stringformat:'f' }}%"><span>{{ highlighted_area.name }}</span></div></div><style>.storage-plan-canvas{display:inline-block;max-width:100%;line-height:0;background:#f8f9fa}.storage-plan-canvas>img{display:block;max-width:100%;max-height:75vh;width:auto;height:auto;object-fit:contain;user-select:none;-webkit-user-drag:none}.storage-highlight{position:absolute;display:flex;align-items:center;justify-content:center;border:3px solid #dc3545;background:rgba(255,193,7,.42);line-height:1.2;animation:storage-pulse 1s ease-in-out infinite alternate}.storage-highlight span{background:rgba(255,255,255,.92);padding:.25rem .5rem;border-radius:.25rem;color:#212529;font-weight:600;text-align:center}@media(max-width:576px){.storage-highlight span{display:none}}@keyframes storage-pulse{from{box-shadow:0 0 0 0 rgba(220,53,69,.75)}to{box-shadow:0 0 0 12px rgba(220,53,69,0)}}</style>{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div><h3>{{ highlighted_area.name }}</h3><div class="text-muted">{{ plan.name }}</div></div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-primary" href="{% url 'storage_area_contents' highlighted_area.pk %}">Kisten und Materialbestände</a>
+        <button type="button" class="btn btn-secondary" onclick="history.back()">Zurück</button>
+    </div>
+</div>
+<div class="storage-plan-canvas position-relative border rounded overflow-hidden">
+    <img src="{{ plan.image.url }}" alt="{{ plan.name }}" draggable="false">
+    <div class="storage-highlight" style="left:{{ highlighted_area.x|stringformat:'f' }}%;top:{{ highlighted_area.y|stringformat:'f' }}%;width:{{ highlighted_area.width|stringformat:'f' }}%;height:{{ highlighted_area.height|stringformat:'f' }}%"><span>{{ highlighted_area.name }}</span></div>
+</div>
+<style>.storage-plan-canvas{display:inline-block;max-width:100%;line-height:0;background:#f8f9fa}.storage-plan-canvas>img{display:block;max-width:100%;max-height:75vh;width:auto;height:auto;object-fit:contain;user-select:none;-webkit-user-drag:none}.storage-highlight{position:absolute;display:flex;align-items:center;justify-content:center;border:3px solid #dc3545;background:rgba(255,193,7,.42);line-height:1.2;animation:storage-pulse 1s ease-in-out infinite alternate}.storage-highlight span{background:rgba(255,255,255,.92);padding:.25rem .5rem;border-radius:.25rem;color:#212529;font-weight:600;text-align:center}@media(max-width:576px){.storage-highlight span{display:none}}@keyframes storage-pulse{from{box-shadow:0 0 0 0 rgba(220,53,69,.75)}to{box-shadow:0 0 0 12px rgba(220,53,69,0)}}</style>
+{% endblock %}

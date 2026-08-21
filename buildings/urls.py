@@ -26,6 +26,7 @@ urlpatterns = [
     path('material/storage-plans/<int:pk>/', views.storage_plan_detail, name='storage_plan_detail'),
     path('material/storage-plans/<int:pk>/show/', views.storage_plan_show, name='storage_plan_show'),
     path('material/storage-plans/<int:pk>/delete/', views.storage_plan_delete, name='storage_plan_delete'),
+    path('material/storage-areas/<int:pk>/', views.storage_area_contents, name='storage_area_contents'),
     path('material/storage-areas/<int:pk>/delete/', views.storage_area_delete, name='storage_area_delete'),
     path('material/scan/<uuid:scan_code>/', views.material_container_scan, name='material_container_scan'),
 ]

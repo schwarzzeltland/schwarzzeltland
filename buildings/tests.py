@@ -168,6 +168,25 @@ class MaterialContainerTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(StoragePlan.objects.filter(pk=plan.pk).exists())
 
+    def test_selected_storage_area_links_to_its_containers_and_stock(self):
+        plan = StoragePlan.objects.create(organization=self.organization, name="Lager", image="storage_plans/lager.png")
+        area = StorageArea.objects.create(plan=plan, name="Regal A", x=0, y=0, width=10, height=10)
+        self.container.storage_area = area
+        self.container.save()
+        loose_stock = StockMaterial.objects.create(
+            organization=self.organization, material=self.material, count=3, storage_area=area,
+            condition_healthy=3,
+        )
+
+        plan_response = self.client.get(f"/buildings/material/storage-plans/{plan.pk}/?org={self.organization.pk}&area={area.pk}")
+        contents_response = self.client.get(f"/buildings/material/storage-areas/{area.pk}/?org={self.organization.pk}")
+
+        self.assertContains(plan_response, "Kisten und Materialbestände anzeigen")
+        self.assertContains(contents_response, self.container.name)
+        self.assertContains(contents_response, self.material.name)
+        self.assertContains(contents_response, f'/buildings/material/containers/{self.container.pk}/')
+        self.assertContains(contents_response, f'/buildings/material/show/{loose_stock.pk}/')
+
     def test_storage_area_choices_are_limited_to_current_organization(self):
         own_plan = StoragePlan.objects.create(organization=self.organization, name="Eigen", image="storage_plans/eigen.png")
         own_area = StorageArea.objects.create(plan=own_plan, name="Eigenes Regal", x=0, y=0, width=10, height=10)
