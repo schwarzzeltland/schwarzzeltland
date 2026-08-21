@@ -2,7 +2,8 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 
 from buildings.models import Material, MaterialContainer, StockMaterial, StoragePlan, StorageArea, Construction
-from buildings.forms import MaterialContainerContentsForm, StockMaterialForm, MaterialContainerForm, ImportConstructionForm
+from buildings.forms import AddMaterialStockForm, ConstructionMaterialForm, MaterialContainerContentsForm, \
+    StockMaterialForm, MaterialContainerForm, ImportConstructionForm
 from buildings.views import _load_qr_pdf_font
 
 # Create your tests here.
@@ -247,6 +248,23 @@ class MaterialContainerTests(TestCase):
 
         response = self.client.get(f"/buildings/construction?org={self.organization.pk}")
         self.assertContains(response, own.name)
+        self.assertContains(response, basic.name)
+        self.assertContains(response, "tom-select.complete.min.js")
+        self.assertNotContains(response, "select2.min.js")
+
+    def test_ownerless_private_material_is_basic_material_in_tom_selects(self):
+        basic = Material.objects.create(owner=None, public=False, name="Grundplane")
+
+        for form in (
+            AddMaterialStockForm(organization=self.organization),
+            ConstructionMaterialForm(organization=self.organization),
+        ):
+            material_field = form.fields["material"]
+            self.assertIn("tom-select", material_field.widget.attrs["class"])
+            self.assertIn(basic, material_field.queryset)
+            self.assertIn((basic.id, basic.name), material_field.choices[2][1])
+
+        response = self.client.get(f"/buildings/construction/edit/?org={self.organization.pk}")
         self.assertContains(response, basic.name)
         self.assertContains(response, "tom-select.complete.min.js")
         self.assertNotContains(response, "select2.min.js")

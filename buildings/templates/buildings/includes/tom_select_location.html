@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
             create: false,
             maxItems: 1,
             openOnFocus: true,
+            dropdownParent: 'body',
             placeholder: select.dataset.placeholder || (select.name === 'container' ? 'Materialkiste suchen' : 'Lagerplanposition suchen'),
             plugins: {clear_button: {title: 'Auswahl löschen'}},
         });

@@ -322,6 +322,10 @@ class ConstructionMaterialForm(ModelForm):
 
         # Setze das Queryset für das `ModelChoiceField`
         self.fields['material'].queryset = combined_queryset
+        self.fields['material'].widget.attrs.update({
+            "class": "form-select tom-select",
+            "data-placeholder": "Material suchen und auswählen",
+        })
         self.fields['material'].empty_label = "---------"
         # Erstelle Optiongroups
         choices = [
