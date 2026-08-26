@@ -4,6 +4,13 @@ from cashbook import views
 
 
 urlpatterns = [
+    path("events/<int:trip_pk>/settlement/", views.event_settlement, name="event_settlement"),
+    path("events/<int:trip_pk>/settlement/expenses/create/", views.event_expense_create, name="event_expense_create"),
+    path("events/<int:trip_pk>/settlement/expenses/<int:pk>/edit/", views.event_expense_edit, name="event_expense_edit"),
+    path("events/<int:trip_pk>/settlement/expenses/<int:pk>/delete/", views.event_expense_delete, name="event_expense_delete"),
+    path("events/<int:trip_pk>/settlement/expenses/<int:pk>/review/", views.event_expense_review, name="event_expense_review"),
+    path("events/<int:trip_pk>/settlement/budgets/create/", views.advance_budget_create, name="advance_budget_create"),
+    path("events/<int:trip_pk>/settlement/budgets/<int:pk>/settle/", views.advance_budget_settle, name="advance_budget_settle"),
     path("cashbooks/", views.cashbook_list, name="cashbook_list"),
     path("cashbooks/create/", views.cashbook_create, name="cashbook_create"),
     path("cashbooks/export/summary/", views.cashbook_export_summary_csv, name="cashbook_export_summary_csv"),

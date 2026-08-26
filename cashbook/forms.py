@@ -2,7 +2,7 @@ from django import forms
 from decimal import Decimal
 
 from events.models import Trip
-from cashbook.models import CashBook, CashBookEntry, ReimbursementRequest
+from cashbook.models import AdvanceBudget, CashBook, CashBookEntry, EventExpense, ReimbursementRequest
 from main.models import Membership
 
 
@@ -37,7 +37,7 @@ class ReimbursementRequestForm(forms.ModelForm):
     class Meta:
         model = ReimbursementRequest
         fields = ["cashbook", "title", "expense_date", "amount", "description", "attachment", "recipient_name", "recipient_iban", "recipient_bic"]
-        widgets = {"expense_date": forms.DateInput(attrs={"type": "date"}), "description": forms.Textarea(attrs={"rows": 3})}
+        widgets = {"expense_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}), "description": forms.Textarea(attrs={"rows": 3})}
 
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop("organization", None)
@@ -143,6 +143,67 @@ class CashBookCsvUploadForm(forms.Form):
         if csv_file.size > 5 * 1024 * 1024:
             raise forms.ValidationError("Die CSV-Datei darf höchstens 5 MB groß sein.")
         return csv_file
+
+
+class AdvanceBudgetForm(forms.ModelForm):
+    class Meta:
+        model = AdvanceBudget
+        fields = ["name", "cashbook", "assigned_to", "amount"]
+
+    def __init__(self, *args, **kwargs):
+        trip = kwargs.pop("trip")
+        organization = kwargs.pop("organization")
+        super().__init__(*args, **kwargs)
+        self.fields["cashbook"].queryset = CashBook.objects.filter(organization=organization, active=True)
+        self.fields["assigned_to"].queryset = Membership.objects.filter(
+            organization=organization, user__in=trip.planners.all()
+        ).select_related("user")
+
+    def clean_amount(self):
+        amount = self.cleaned_data["amount"]
+        if amount < 0:
+            raise forms.ValidationError("Das Budget darf nicht negativ sein.")
+        return amount
+
+
+class EventExpenseForm(forms.ModelForm):
+    payment_source = forms.ChoiceField(label="Zahlungsquelle")
+
+    class Meta:
+        model = EventExpense
+        fields = ["expense_date", "amount", "title", "category", "counterparty", "reference", "description", "attachment"]
+        widgets = {
+            "expense_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        trip = kwargs.pop("trip")
+        user = kwargs.pop("user")
+        kwargs.pop("can_manage", False)
+        super().__init__(*args, **kwargs)
+        self.fields["expense_date"].input_formats = ["%Y-%m-%d"]
+        self.fields["expense_date"].widget.format = "%Y-%m-%d"
+        self.fields["attachment"].required = True
+        cashbooks = CashBook.objects.filter(organization=trip.owner, active=True).order_by("name")
+        budgets = AdvanceBudget.objects.filter(trip=trip, settled_at__isnull=True, assigned_to__user=user)
+        choices = [(f"cashbook:{item.pk}", f"Kassenbuch: {item.name}") for item in cashbooks]
+        choices += [(f"budget:{item.pk}", f"Vorschussbudget: {item.name} ({item.remaining_amount} {item.cashbook.currency} verfügbar)") for item in budgets]
+        self.fields["payment_source"].choices = choices
+
+    def clean_payment_source(self):
+        value = self.cleaned_data["payment_source"]
+        source_type, source_id = value.split(":", 1)
+        try:
+            return source_type, int(source_id)
+        except ValueError:
+            raise forms.ValidationError("Ungültige Zahlungsquelle.")
+
+    def clean_amount(self):
+        amount = self.cleaned_data["amount"]
+        if amount <= 0:
+            raise forms.ValidationError("Der Betrag muss größer als 0 sein.")
+        return amount
 
 
 class CashBookCsvRowForm(forms.Form):

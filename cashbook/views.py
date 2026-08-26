@@ -9,6 +9,7 @@ from pathlib import Path
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.files.base import ContentFile
 from django.core import signing
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -22,10 +23,11 @@ from django.utils import timezone
 from PIL import Image, ImageDraw, ImageFont
 
 from cashbook.forms import (
-    CashBookCsvRowForm, CashBookCsvUploadForm, CashBookEntryForm, CashBookForm,
+    AdvanceBudgetForm, CashBookCsvRowForm, CashBookCsvUploadForm, CashBookEntryForm, CashBookForm,
+    EventExpenseForm,
     ReimbursementRequestForm, ReimbursementReviewForm,
 )
-from cashbook.models import CashBook, CashBookAuditLog, CashBookEntry, ReimbursementRequest
+from cashbook.models import AdvanceBudget, CashBook, CashBookAuditLog, CashBookEntry, EventExpense, ReimbursementRequest
 from cashbook.notifications import notify_requester_about_decision, notify_responsible_about_request
 from main.decorators import cashier_manager_required, organization_admin_required, pro5_required
 
@@ -195,6 +197,32 @@ def _require_cashbook_editor(request, cashbook):
         raise PermissionDenied("Nur der verantwortliche Kassenwart darf dieses Kassenbuch bearbeiten.")
 
 
+def _event_settlement_access(request, trip):
+    membership = request.user.membership_set.filter(organization=request.org).first()
+    if not membership or trip.owner_id != request.org.id:
+        raise PermissionDenied("Sie haben keine Berechtigung für diese Abrechnung.")
+    is_cashier = membership.cashier_manager
+    is_planner = trip.planners.filter(pk=request.user.pk).exists()
+    if not (is_cashier or is_planner):
+        raise PermissionDenied("Nur ausgewählte Planer und Kassenwarte dürfen diese Abrechnung sehen.")
+    return membership, is_cashier
+
+
+def _require_responsible_cashier(request, cashbook):
+    if not _can_edit_cashbook(request, cashbook):
+        raise PermissionDenied("Nur der zuständige Kassenwart darf diese Buchung freigeben.")
+
+
+def _can_change_event_expense(request, expense):
+    if expense.created_by_id != request.user.id:
+        return False
+    if expense.cashbook_entry_id:
+        return False
+    if expense.advance_budget_id and expense.advance_budget.settled_at:
+        return False
+    return True
+
+
 def _cashbook_running_rows(entries, opening_balance):
     balance = Decimal(opening_balance)
     rows = []
@@ -352,6 +380,22 @@ def _build_cashbook_fallback_pdf(cashbook, running_rows):
             "",
         ])
     return _build_text_pdf(f"Kassenbuch {cashbook.name}", lines or ["Keine Einträge vorhanden."])
+
+
+def _build_advance_budget_pdf(budget, expenses):
+    balance = Decimal(budget.amount)
+    lines = [
+        f"Vorschussabrechnung: {budget.name}",
+        f"Veranstaltung: {budget.trip.name}",
+        f"Zugewiesen an: {budget.assigned_to.user.get_full_name() or budget.assigned_to.user.username}",
+        f"Vorschuss: {budget.amount} {budget.cashbook.currency} | Saldo: {balance} {budget.cashbook.currency}",
+        "",
+    ]
+    for expense in expenses:
+        balance -= expense.amount
+        lines.append(f"{expense.expense_date:%d.%m.%Y} | {expense.title} | -{expense.amount} {budget.cashbook.currency} | Saldo: {balance} {budget.cashbook.currency}")
+    lines.extend(["", f"Endsaldo: {balance} {budget.cashbook.currency}"])
+    return _build_text_pdf(f"Vorschussbudget {budget.name}", lines)
 
 
 def _build_cashbook_summary_fallback_pdf(rows):
@@ -906,21 +950,38 @@ def cashbook_export_receipts_zip(request, pk):
     cashbook = get_object_or_404(CashBook, pk=pk, organization=request.org)
     entries, _ = _cashbook_filter_entries(cashbook.entries.all(), request)
     entries = entries.exclude(attachment="").exclude(attachment__isnull=True).order_by("booking_date", "id")
+    settled_budgets = AdvanceBudget.objects.filter(
+        cashbook=cashbook, settlement_entry__isnull=False,
+    ).select_related("settlement_entry").prefetch_related("expenses")
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        for entry in entries:
-            attachment_field = entry.attachment
+        written_names = set()
+
+        def add_attachment(attachment_field, zip_name):
             if not attachment_field:
-                continue
+                return
             try:
                 if not attachment_field.storage.exists(attachment_field.name):
-                    continue
+                    return
             except Exception:
-                continue
-            zip_name = Path(attachment_field.name).name
+                return
+            unique_name = zip_name
+            counter = 2
+            while unique_name in written_names:
+                stem, suffix = Path(zip_name).stem, Path(zip_name).suffix
+                unique_name = f"{stem}-{counter}{suffix}"
+                counter += 1
             with attachment_field.open("rb") as uploaded_file:
-                archive.writestr(zip_name, uploaded_file.read())
+                archive.writestr(unique_name, uploaded_file.read())
+            written_names.add(unique_name)
+
+        for entry in entries:
+            add_attachment(entry.attachment, Path(entry.attachment.name).name)
+        for budget in settled_budgets:
+            folder = f"Sammelbuchung-{budget.settlement_entry.entry_number or budget.settlement_entry_id}"
+            for expense in budget.expenses.exclude(attachment="").exclude(attachment__isnull=True):
+                add_attachment(expense.attachment, f"{folder}/{Path(expense.attachment.name).name}")
 
     response = HttpResponse(buffer.getvalue(), content_type="application/zip")
     response["Content-Disposition"] = f'attachment; filename="{slugify(cashbook.name) or "kassenbuch"}-belege.zip"'
@@ -1071,6 +1132,182 @@ def reimbursement_review(request, pk):
         messages.success(request, "Auszahlungsanfrage wurde geprüft.")
         return redirect("reimbursement_list")
     return render(request, "cashbook/reimbursement_review.html", {"title": "Auszahlungsanfrage prüfen", "reimbursement": reimbursement, "form": form})
+
+
+@login_required
+@pro5_required
+def event_settlement(request, trip_pk):
+    from events.models import Trip
+    trip = get_object_or_404(Trip, pk=trip_pk, owner=request.org)
+    membership, is_cashier = _event_settlement_access(request, trip)
+    expenses = list(trip.event_expenses.select_related("cashbook", "advance_budget__cashbook", "created_by", "cashbook_entry"))
+    totals = {}
+    pending_totals = {}
+    for expense in expenses:
+        if expense.status == EventExpense.STATUS_REJECTED:
+            continue
+        currency = expense.cashbook.currency if expense.cashbook_id else expense.advance_budget.cashbook.currency
+        totals[currency] = totals.get(currency, Decimal("0.00")) + expense.amount
+        if expense.status == EventExpense.STATUS_PENDING:
+            pending_totals[currency] = pending_totals.get(currency, Decimal("0.00")) + expense.amount
+    return render(request, "cashbook/event_settlement.html", {
+        "title": f"Abrechnung: {trip.name}", "trip": trip,
+        "expenses": expenses,
+        "budgets": trip.advance_budgets.select_related("cashbook", "assigned_to__user", "settlement_entry"),
+        "expense_totals": totals.items(), "pending_expense_totals": pending_totals.items(),
+        "is_cashier": is_cashier,
+    })
+
+
+@login_required
+@pro5_required
+def event_expense_create(request, trip_pk):
+    from events.models import Trip
+    trip = get_object_or_404(Trip, pk=trip_pk, owner=request.org)
+    membership, is_cashier = _event_settlement_access(request, trip)
+    form = EventExpenseForm(request.POST or None, request.FILES or None, trip=trip, user=request.user, can_manage=is_cashier)
+    if request.method == "POST" and form.is_valid():
+        source_type, source_id = form.cleaned_data["payment_source"]
+        expense = form.save(commit=False)
+        expense.trip, expense.created_by = trip, request.user
+        if source_type == "cashbook":
+            expense.cashbook = get_object_or_404(CashBook, pk=source_id, organization=request.org, active=True)
+        else:
+            budget = get_object_or_404(AdvanceBudget, pk=source_id, trip=trip, settled_at__isnull=True)
+            if budget.assigned_to_id != membership.id:
+                raise PermissionDenied("Dieses Vorschussbudget ist Ihnen nicht zugewiesen.")
+            expense.advance_budget, expense.status = budget, EventExpense.STATUS_APPROVED
+        expense.full_clean()
+        expense.save()
+        messages.success(request, "Ausgabe erfasst." if expense.advance_budget_id else "Ausgabe zur Freigabe eingereicht.")
+        return redirect("event_settlement", trip_pk=trip.pk)
+    return render(request, "cashbook/event_expense_form.html", {"title": "Ausgabe erfassen", "trip": trip, "form": form})
+
+
+@login_required
+@pro5_required
+def event_expense_review(request, trip_pk, pk):
+    from events.models import Trip
+    trip = get_object_or_404(Trip, pk=trip_pk, owner=request.org)
+    _event_settlement_access(request, trip)
+    expense = get_object_or_404(EventExpense.objects.select_related("cashbook"), pk=pk, trip=trip, cashbook__isnull=False)
+    _require_responsible_cashier(request, expense.cashbook)
+    if request.method == "POST" and expense.status == EventExpense.STATUS_PENDING:
+        if request.POST.get("decision") == "approve":
+            with transaction.atomic():
+                entry = CashBookEntry.objects.create(cashbook=expense.cashbook, trip=trip, entry_type=CashBookEntry.TYPE_EXPENSE, booking_date=expense.expense_date, receipt_date=expense.expense_date, amount=expense.amount, title=expense.title, category=expense.category, counterparty=expense.counterparty, reference=expense.reference, description=expense.description, created_by=expense.created_by)
+                with expense.attachment.open("rb") as source_file:
+                    entry.attachment.save(Path(expense.attachment.name).name, source_file, save=True)
+                expense.status, expense.reviewed_by, expense.reviewed_at, expense.cashbook_entry = EventExpense.STATUS_APPROVED, request.user, timezone.now(), entry
+                expense.save(update_fields=["status", "reviewed_by", "reviewed_at", "cashbook_entry"])
+            messages.success(request, "Ausgabe freigegeben und ins Kassenbuch übertragen.")
+        elif request.POST.get("decision") == "reject":
+            expense.status, expense.reviewed_by, expense.reviewed_at = EventExpense.STATUS_REJECTED, request.user, timezone.now()
+            expense.save(update_fields=["status", "reviewed_by", "reviewed_at"])
+            messages.success(request, "Ausgabe abgelehnt.")
+    return redirect("event_settlement", trip_pk=trip.pk)
+
+
+@login_required
+@pro5_required
+def event_expense_edit(request, trip_pk, pk):
+    from events.models import Trip
+    trip = get_object_or_404(Trip, pk=trip_pk, owner=request.org)
+    membership, is_cashier = _event_settlement_access(request, trip)
+    expense = get_object_or_404(EventExpense.objects.select_related("advance_budget"), pk=pk, trip=trip)
+    if not _can_change_event_expense(request, expense):
+        raise PermissionDenied("Diese Ausgabe kann nicht mehr bearbeitet werden.")
+    source = f"cashbook:{expense.cashbook_id}" if expense.cashbook_id else f"budget:{expense.advance_budget_id}"
+    form = EventExpenseForm(
+        request.POST or None, request.FILES or None, instance=expense, trip=trip, user=request.user,
+        can_manage=is_cashier,
+        initial={"payment_source": source, "expense_date": expense.expense_date},
+    )
+    if request.method == "POST" and form.is_valid():
+        source_type, source_id = form.cleaned_data["payment_source"]
+        expense = form.save(commit=False)
+        expense.cashbook = None
+        expense.advance_budget = None
+        if source_type == "cashbook":
+            expense.cashbook = get_object_or_404(CashBook, pk=source_id, organization=request.org, active=True)
+            expense.status = EventExpense.STATUS_PENDING
+        else:
+            budget = get_object_or_404(AdvanceBudget, pk=source_id, trip=trip, settled_at__isnull=True, assigned_to=membership)
+            expense.advance_budget = budget
+            expense.status = EventExpense.STATUS_APPROVED
+        expense.full_clean()
+        expense.save()
+        messages.success(request, "Ausgabe gespeichert.")
+        return redirect("event_settlement", trip_pk=trip.pk)
+    return render(request, "cashbook/event_expense_form.html", {"title": "Ausgabe bearbeiten", "trip": trip, "form": form})
+
+
+@login_required
+@pro5_required
+def event_expense_delete(request, trip_pk, pk):
+    from events.models import Trip
+    trip = get_object_or_404(Trip, pk=trip_pk, owner=request.org)
+    _event_settlement_access(request, trip)
+    expense = get_object_or_404(EventExpense.objects.select_related("advance_budget"), pk=pk, trip=trip)
+    if not _can_change_event_expense(request, expense):
+        raise PermissionDenied("Diese Ausgabe kann nicht mehr gelöscht werden.")
+    if request.method == "POST":
+        expense.delete()
+        messages.success(request, "Ausgabe gelöscht.")
+    return redirect("event_settlement", trip_pk=trip.pk)
+
+
+@login_required
+@pro5_required
+def advance_budget_create(request, trip_pk):
+    from events.models import Trip
+    trip = get_object_or_404(Trip, pk=trip_pk, owner=request.org)
+    _, is_cashier = _event_settlement_access(request, trip)
+    if not is_cashier:
+        raise PermissionDenied("Nur Kassenwarte dürfen Vorschussbudgets anlegen.")
+    form = AdvanceBudgetForm(request.POST or None, trip=trip, organization=request.org)
+    if request.method == "POST" and form.is_valid():
+        budget = form.save(commit=False)
+        budget.trip = trip
+        _require_responsible_cashier(request, budget.cashbook)
+        with transaction.atomic():
+            if budget.amount > 0:
+                budget.advance_entry = CashBookEntry.objects.create(
+                    cashbook=budget.cashbook, trip=trip, entry_type=CashBookEntry.TYPE_EXPENSE,
+                    booking_date=timezone.localdate(), amount=budget.amount,
+                    title=f"Vorschuss: {budget.name}", category="Vorschussbudget",
+                    description=f"Vorschussbudget für {budget.assigned_to.user.get_full_name() or budget.assigned_to.user.username}.",
+                    created_by=request.user,
+                )
+            budget.save()
+        messages.success(request, "Vorschussbudget angelegt.")
+        return redirect("event_settlement", trip_pk=trip.pk)
+    return render(request, "cashbook/advance_budget_form.html", {"title": "Vorschussbudget anlegen", "trip": trip, "form": form})
+
+
+@login_required
+@pro5_required
+def advance_budget_settle(request, trip_pk, pk):
+    from events.models import Trip
+    trip = get_object_or_404(Trip, pk=trip_pk, owner=request.org)
+    _event_settlement_access(request, trip)
+    budget = get_object_or_404(AdvanceBudget.objects.select_related("cashbook"), pk=pk, trip=trip)
+    _require_responsible_cashier(request, budget.cashbook)
+    if request.method == "POST" and not budget.settled_at:
+        expenses = budget.expenses.filter(status=EventExpense.STATUS_APPROVED)
+        total = sum((item.amount for item in expenses), Decimal("0.00"))
+        if not expenses.exists():
+            messages.error(request, "Ein Vorschussbudget ohne Ausgaben kann nicht abgerechnet werden.")
+        else:
+            with transaction.atomic():
+                difference = total - budget.amount
+                entry = CashBookEntry.objects.create(cashbook=budget.cashbook, trip=trip, entry_type=CashBookEntry.TYPE_EXPENSE if difference >= 0 else CashBookEntry.TYPE_INCOME, booking_date=timezone.localdate(), amount=abs(difference), title=f"Sammelabrechnung: {budget.name}", category="Vorschussbudget", description=f"Sammelabrechnung der Ausgaben #{', '.join(str(item.pk) for item in expenses)}. {'Nachzahlung an den Planer.' if difference > 0 else 'Rückzahlung des nicht benötigten Vorschusses.' if difference < 0 else 'Vorschuss und Ausgaben gleichen sich aus.'} Die zugehörigen Belege sind in der Veranstaltungsabrechnung hinterlegt.", created_by=request.user)
+                pdf_filename = f"sammelabrechnung-{slugify(budget.name) or budget.pk}.pdf"
+                entry.attachment.save(pdf_filename, ContentFile(_build_advance_budget_pdf(budget, expenses)), save=True)
+                budget.settlement_entry, budget.settled_at, budget.settled_by = entry, timezone.now(), request.user
+                budget.save(update_fields=["settlement_entry", "settled_at", "settled_by"])
+            messages.success(request, "Vorschussbudget als Sammelbuchung ins Kassenbuch übernommen.")
+    return redirect("event_settlement", trip_pk=trip.pk)
 
 
 @login_required

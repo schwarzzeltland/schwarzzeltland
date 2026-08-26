@@ -146,6 +146,67 @@ class CashBookAuditLog(models.Model):
         return f"{self.get_action_display()} {self.label}"
 
 
+class AdvanceBudget(models.Model):
+    trip = models.ForeignKey("events.Trip", on_delete=models.CASCADE, related_name="advance_budgets", verbose_name="Veranstaltung")
+    cashbook = models.ForeignKey(CashBook, on_delete=models.PROTECT, related_name="advance_budgets", verbose_name="Zielkassenbuch")
+    assigned_to = models.ForeignKey("main.Membership", on_delete=models.PROTECT, related_name="assigned_advance_budgets", verbose_name="Zugewiesener Planer")
+    name = models.CharField(max_length=255, verbose_name="Bezeichnung")
+    amount = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Budget")
+    settled_at = models.DateTimeField(null=True, blank=True, verbose_name="Abgerechnet am")
+    settled_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="settled_advance_budgets", verbose_name="Abgerechnet von")
+    advance_entry = models.OneToOneField(CashBookEntry, on_delete=models.SET_NULL, null=True, blank=True, related_name="advance_budget_payment", verbose_name="Auszahlung")
+    settlement_entry = models.OneToOneField(CashBookEntry, on_delete=models.SET_NULL, null=True, blank=True, related_name="advance_budget_settlement", verbose_name="Sammelbuchung")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    @property
+    def spent_amount(self):
+        return sum(expense.amount for expense in self.expenses.exclude(status=EventExpense.STATUS_REJECTED))
+
+    @property
+    def remaining_amount(self):
+        return self.amount - self.spent_amount
+
+
+class EventExpense(models.Model):
+    STATUS_PENDING = "pending"
+    STATUS_APPROVED = "approved"
+    STATUS_REJECTED = "rejected"
+    STATUS_CHOICES = ((STATUS_PENDING, "Offen"), (STATUS_APPROVED, "Freigegeben"), (STATUS_REJECTED, "Abgelehnt"))
+
+    trip = models.ForeignKey("events.Trip", on_delete=models.CASCADE, related_name="event_expenses", verbose_name="Veranstaltung")
+    cashbook = models.ForeignKey(CashBook, on_delete=models.PROTECT, null=True, blank=True, related_name="event_expenses", verbose_name="Kassenbuch")
+    advance_budget = models.ForeignKey(AdvanceBudget, on_delete=models.PROTECT, null=True, blank=True, related_name="expenses", verbose_name="Vorschussbudget")
+    expense_date = models.DateField(verbose_name="Belegdatum")
+    amount = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Betrag")
+    title = models.CharField(max_length=255, verbose_name="Titel")
+    category = models.CharField(max_length=255, blank=True, verbose_name="Kategorie")
+    counterparty = models.CharField(max_length=255, blank=True, verbose_name="Zahlungspartner")
+    reference = models.CharField(max_length=255, blank=True, verbose_name="Belegnummer / Referenz")
+    description = models.TextField(blank=True, verbose_name="Beschreibung")
+    attachment = models.FileField(upload_to="cashbooks/event-expenses/%Y/%m/", verbose_name="Beleg")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING, verbose_name="Status")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="event_expenses", verbose_name="Erstellt von")
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_event_expenses", verbose_name="Freigegeben von")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    cashbook_entry = models.OneToOneField(CashBookEntry, on_delete=models.SET_NULL, null=True, blank=True, related_name="event_expense", verbose_name="Kassenbucheintrag")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-expense_date", "-id"]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.cashbook_id and self.advance_budget_id:
+            raise ValidationError("Bitte genau eine Zahlungsquelle auswählen.")
+        if self.cashbook_id and self.cashbook.organization_id != self.trip.owner_id:
+            raise ValidationError("Das Kassenbuch gehört nicht zur Organisation der Veranstaltung.")
+        if self.advance_budget_id and self.advance_budget.trip_id != self.trip_id:
+            raise ValidationError("Das Vorschussbudget gehört nicht zu dieser Veranstaltung.")
+
+
 class ReimbursementRequest(models.Model):
     STATUS_PENDING = "pending"
     STATUS_APPROVED = "approved"

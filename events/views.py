@@ -115,6 +115,12 @@ def trip(request):
 def show_trip(request, pk=None):
     request.session['previous_url'] = request.build_absolute_uri()
     trip = get_object_or_404(Trip, pk=pk, owner=request.org)
+    membership = request.user.membership_set.filter(organization=request.org).first()
+    can_access_settlement = bool(
+        request.org.pro5 and membership and (
+            membership.cashier_manager or trip.planners.filter(pk=request.user.pk).exists()
+        )
+    )
     tripconstruction = TripConstruction.objects.filter(trip=trip)
     tripgroups = TripGroup.objects.filter(trip=trip)
     tripmaterials = TripMaterial.objects.filter(trip=trip)
@@ -127,6 +133,7 @@ def show_trip(request, pk=None):
         'tripmaterials': tripmaterials,
         'tripgroups': tripgroups,
         'total_tn_count': total_tn_count,
+        'can_access_settlement': can_access_settlement,
     })
 
 
@@ -767,6 +774,12 @@ def edit_trip(request, pk=None):
         "public": public_materials,
         "external": external_materials,
     }
+    membership = request.user.membership_set.filter(organization=request.org).first()
+    can_access_settlement = bool(
+        trip_d and request.org.pro5 and membership and (
+            membership.cashier_manager or trip_d.planners.filter(pk=request.user.pk).exists()
+        )
+    )
     return render(request, 'events/edit_trip.html', {
         'title': 'Veranstaltung bearbeiten',
         'trip_form': trip_form,
@@ -777,6 +790,7 @@ def edit_trip(request, pk=None):
         'constructions': constructions,
         'materials': materials,
         'total_tn_count': total_tn_count,
+        'can_access_settlement': can_access_settlement,
     })
 
 

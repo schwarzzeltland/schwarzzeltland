@@ -103,13 +103,17 @@
                         </tbody>
                     </table>
                 </div>
+                <h4 class="mt-4">Zusatzfunktionen</h4>
                 <div class="mb-2">
                     <a href="{% url 'check_trip_material' trip.pk %}" class="btn btn-outline-success">Materialverfügbarkeit
                         im Lager prüfen</a>
                     <a href="{% url 'construction_summary' trip.pk %}" class="btn btn-outline-success">Konstruktions-Zusammenfassung</a>
                     {% if trip.owner.pro4 %}
                         <a href="{% url 'programm' trip.pk %}" class="btn btn-primary">Programm</a>
-                {% endif %}
+                    {% endif %}
+                    {% if can_access_settlement %}
+                        <a href="{% url 'event_settlement' trip.pk %}" class="btn btn-outline-success">Abrechnung</a>
+                    {% endif %}
                 </div>
                 <div class="mb-2">
                     <button id="download-ics-btn" type="button" class="btn btn-outline-primary"

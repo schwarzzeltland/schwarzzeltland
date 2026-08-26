@@ -3,8 +3,10 @@ from django.test import TestCase
 from decimal import Decimal
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core import mail
+import io
+import zipfile
 
-from cashbook.models import CashBook, CashBookAuditLog, CashBookEntry, ReimbursementRequest
+from cashbook.models import AdvanceBudget, CashBook, CashBookAuditLog, CashBookEntry, EventExpense, ReimbursementRequest
 from events.models import Trip
 from main.models import Membership
 
@@ -491,6 +493,29 @@ class CashbookTests(TestCase):
         self.client.login(username="owner", password="pw")
         receipt_response = self.client.get(own_request.attachment.url)
         self.assertEqual(receipt_response.status_code, 200)
+
+    def test_advance_budget_settlement_attaches_pdf_and_exports_all_receipts(self):
+        membership = self.owner_org.membership_set.get(user=self.owner_user)
+        cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse", responsible=membership)
+        trip = Trip.objects.create(name="Sommerlager", owner=self.owner_org, start_date="2026-07-01T10:00:00Z", end_date="2026-07-10T10:00:00Z")
+        trip.planners.add(self.owner_user)
+        budget = AdvanceBudget.objects.create(trip=trip, cashbook=cashbook, assigned_to=membership, name="Einkauf", amount="0.00")
+        EventExpense.objects.create(
+            trip=trip, advance_budget=budget, expense_date="2026-07-02", amount="12.50", title="Lebensmittel",
+            attachment=SimpleUploadedFile("einkauf.pdf", b"receipt"), status=EventExpense.STATUS_APPROVED, created_by=self.owner_user,
+        )
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.post(f"/events/{trip.pk}/settlement/budgets/{budget.pk}/settle/")
+
+        self.assertEqual(response.status_code, 302)
+        budget.refresh_from_db()
+        self.assertIsNotNone(budget.settlement_entry)
+        self.assertTrue(budget.settlement_entry.attachment.name.endswith(".pdf"))
+        zip_response = self.client.get(f"/cashbooks/{cashbook.pk}/export/receipts-zip/")
+        exported_names = zipfile.ZipFile(io.BytesIO(zip_response.content)).namelist()
+        self.assertTrue(any(name.endswith(".pdf") for name in exported_names))
+        self.assertTrue(any("einkauf" in name and name.endswith(".pdf") for name in exported_names))
 
     def test_request_requires_recipient_bank_data_for_cashbook_with_iban(self):
         responsible = self.owner_org.membership_set.get(user=self.owner_user)
