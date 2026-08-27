@@ -5,6 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core import mail
 import io
 import zipfile
+from PIL import Image
 
 from cashbook.models import AdvanceBudget, CashBook, CashBookAuditLog, CashBookEntry, EventExpense, ReimbursementRequest
 from events.models import Trip
@@ -52,6 +53,29 @@ class CashbookTests(TestCase):
 
         listed_ids = [row["cashbook"].pk for row in response.context["cashbooks_with_balances"]]
         self.assertLess(listed_ids.index(active.pk), listed_ids.index(inactive.pk))
+
+    def test_category_autocomplete_is_available_to_planners_and_organization_scoped(self):
+        own_cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse")
+        CashBookEntry.objects.create(cashbook=own_cashbook, entry_type=CashBookEntry.TYPE_EXPENSE, booking_date="2026-08-01", amount="1.00", title="Material", category="Lagermaterial")
+        trip = Trip.objects.create(name="Sommerlager", owner=self.owner_org, start_date="2026-07-01T10:00:00Z", end_date="2026-07-10T10:00:00Z")
+        EventExpense.objects.create(trip=trip, expense_date="2026-07-02", amount="2.00", title="Fahrt", category="Fahrtkosten", attachment=SimpleUploadedFile("fahrt.pdf", b"receipt"), created_by=self.owner_user)
+        other_user = User.objects.create_user(username="other-owner", password="pw")
+        other_org = other_user.organization_set.first()
+        other_cashbook = CashBook.objects.create(organization=other_org, name="Andere Kasse")
+        CashBookEntry.objects.create(cashbook=other_cashbook, entry_type=CashBookEntry.TYPE_EXPENSE, booking_date="2026-08-01", amount="1.00", title="Fremd", category="Geheime Kategorie")
+        other_trip = Trip.objects.create(name="Fremdes Lager", owner=other_org, start_date="2026-07-01T10:00:00Z", end_date="2026-07-10T10:00:00Z")
+        EventExpense.objects.create(trip=other_trip, expense_date="2026-07-02", amount="2.00", title="Fremd", category="Geheime Ausgabenkategorie", attachment=SimpleUploadedFile("fremd.pdf", b"receipt"), created_by=other_user)
+        planner = User.objects.create_user(username="planner", password="pw")
+        Membership.objects.create(user=planner, organization=self.owner_org)
+        self.client.login(username="planner", password="pw")
+
+        response = self.client.get("/cashbooks/autocomplete/category/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Lagermaterial", response.json())
+        self.assertIn("Fahrtkosten", response.json())
+        self.assertNotIn("Geheime Kategorie", response.json())
+        self.assertNotIn("Geheime Ausgabenkategorie", response.json())
 
     def test_csv_import_action_is_only_shown_for_cashbook_with_iban(self):
         responsible = self.owner_org.membership_set.get(user=self.owner_user)
@@ -178,7 +202,35 @@ class CashbookTests(TestCase):
             created_by=self.owner_user,
         )
 
-        self.assertEqual(entry.attachment_filename, "1_langer-belegname.pdf")
+        self.assertTrue(entry.attachment_filename.startswith("1_langer-belegname"))
+        self.assertTrue(entry.attachment_filename.endswith(".pdf"))
+
+    def test_print_receipts_pdf_places_booking_numbers_above_receipts(self):
+        import pymupdf
+
+        cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse")
+        image_buffer = io.BytesIO()
+        Image.new("RGB", (800, 300), "white").save(image_buffer, format="PNG")
+        booking_dates = ["2026-08-02", "2026-08-01"]
+        for index in range(2):
+            CashBookEntry.objects.create(
+                cashbook=cashbook, entry_type=CashBookEntry.TYPE_EXPENSE,
+                booking_date=booking_dates[index], amount="1.00", title=f"Beleg {index + 1}",
+                attachment=SimpleUploadedFile(f"beleg-{index + 1}.png", image_buffer.getvalue(), content_type="image/png"),
+            )
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.get(f"/cashbooks/{cashbook.pk}/export/receipts-print/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        document = pymupdf.open(stream=response.content, filetype="pdf")
+        self.assertEqual(len(document), 1)
+        page_text = document[0].get_text()
+        self.assertIn("Buchung #1 - Beleg 1", page_text)
+        self.assertIn("Buchung #2 - Beleg 2", page_text)
+        self.assertLess(page_text.index("Buchung #1"), page_text.index("Buchung #2"))
+        document.close()
 
     def test_only_responsible_cashier_can_change_entries(self):
         responsible = self.owner_org.membership_set.get(user=self.owner_user)
@@ -331,6 +383,63 @@ class CashbookTests(TestCase):
         self.assertFalse(row_form["include"].value())
         self.assertContains(response, "Möglicher doppelter Import")
         self.assertContains(response, "wurde deshalb nicht vorausgewählt")
+
+    def test_csv_import_reconciles_expected_entry_instead_of_creating_duplicate(self):
+        responsible = self.owner_org.membership_set.get(user=self.owner_user)
+        cashbook = CashBook.objects.create(
+            organization=self.owner_org, name="Bankkonto", responsible=responsible,
+            iban="DE89370400440532013000",
+        )
+        expected = CashBookEntry.objects.create(
+            cashbook=cashbook, entry_type=CashBookEntry.TYPE_EXPENSE,
+            booking_date="2026-08-08", amount="42.50", title="Vorschuss: Einkauf",
+            counterparty="Leiter Beispiel", source=CashBookEntry.SOURCE_AUTOMATIC,
+            reconciliation_status=CashBookEntry.RECONCILIATION_EXPECTED,
+        )
+        csv_content = (
+            "IBAN Auftragskonto;BIC Auftragskonto;Buchungstag;Valutadatum;Name Zahlungsbeteiligter;"
+            "Buchungstext;Verwendungszweck;Betrag;Saldo nach Buchung;Glaeubiger ID;Mandatsreferenz\n"
+            "DE89370400440532013000;COBADEFFXXX;09.08.2026;09.08.2026;Leiter Beispiel;"
+            "Überweisung;Vorschuss Einkauf;-42,50;957,50;;\n"
+        )
+        self.client.login(username="owner", password="pw")
+        preview = self.client.post(f"/cashbooks/{cashbook.pk}/import/csv/", {
+            "action": "preview",
+            "csv_file": SimpleUploadedFile("umsatz.csv", csv_content.encode("utf-8"), content_type="text/csv"),
+        })
+        form = preview.context["row_formset"].forms[0]
+        self.assertEqual(form.initial["match_entry"], expected)
+        self.assertContains(preview, "Passende erwartete Buchung gefunden")
+        commit_data = {
+            "action": "commit", "verification_token": preview.context["verification_token"],
+            "transactions-TOTAL_FORMS": "1", "transactions-INITIAL_FORMS": "0",
+            "transactions-MIN_NUM_FORMS": "0", "transactions-MAX_NUM_FORMS": "1000",
+            "transactions-0-include": "on", "transactions-0-booking_date": "2026-08-09",
+            "transactions-0-value_date": "2026-08-09", "transactions-0-entry_type": CashBookEntry.TYPE_EXPENSE,
+            "transactions-0-amount": "42.50", "transactions-0-title": "Überweisung",
+            "transactions-0-counterparty": "Leiter Beispiel", "transactions-0-purpose": "Vorschuss Einkauf",
+            "transactions-0-balance_after": "957.50", "transactions-0-creditor_id": "",
+            "transactions-0-mandate_reference": "", "transactions-0-trip": "",
+            "transactions-0-match_entry": str(expected.pk),
+        }
+
+        response = self.client.post(f"/cashbooks/{cashbook.pk}/import/csv/", commit_data)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(cashbook.entries.count(), 1)
+        expected.refresh_from_db()
+        self.assertEqual(expected.booking_date.isoformat(), "2026-08-09")
+        self.assertEqual(expected.reconciliation_status, CashBookEntry.RECONCILIATION_BOOKED)
+        self.assertIsNotNone(expected.bank_reconciled_at)
+        self.assertTrue(expected.bank_import_fingerprint)
+
+        repeated_preview = self.client.post(f"/cashbooks/{cashbook.pk}/import/csv/", {
+            "action": "preview",
+            "csv_file": SimpleUploadedFile("umsatz.csv", csv_content.encode("utf-8"), content_type="text/csv"),
+        })
+        repeated_form = repeated_preview.context["row_formset"].forms[0]
+        self.assertTrue(repeated_form.initial["is_duplicate"])
+        self.assertFalse(repeated_form["include"].value())
 
     def test_cashbook_csv_export_uses_current_filters(self):
         cashbook = CashBook.objects.create(organization=self.owner_org, name="Filterkasse")
@@ -511,11 +620,63 @@ class CashbookTests(TestCase):
         self.assertEqual(response.status_code, 302)
         budget.refresh_from_db()
         self.assertIsNotNone(budget.settlement_entry)
+        self.assertEqual(budget.settlement_entry.counterparty, self.owner_user.get_full_name() or self.owner_user.username)
+        self.assertNotIn(f"#{budget.expenses.get().pk}", budget.settlement_entry.description)
         self.assertTrue(budget.settlement_entry.attachment.name.endswith(".pdf"))
         zip_response = self.client.get(f"/cashbooks/{cashbook.pk}/export/receipts-zip/")
         exported_names = zipfile.ZipFile(io.BytesIO(zip_response.content)).namelist()
         self.assertTrue(any(name.endswith(".pdf") for name in exported_names))
-        self.assertTrue(any("einkauf" in name and name.endswith(".pdf") for name in exported_names))
+        expected_prefix = f"Sammelbuchung-{budget.settlement_entry.entry_number}/{budget.settlement_entry.entry_number}_Sammelbuchung_"
+        self.assertTrue(any(name.startswith(expected_prefix) and "einkauf" in name and name.endswith(".pdf") for name in exported_names))
+
+    def test_advance_budget_payment_uses_assigned_planner_as_counterparty(self):
+        membership = self.owner_org.membership_set.get(user=self.owner_user)
+        cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse", responsible=membership)
+        trip = Trip.objects.create(name="Sommerlager", owner=self.owner_org, start_date="2026-07-01T10:00:00Z", end_date="2026-07-10T10:00:00Z")
+        trip.planners.add(self.owner_user)
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.post(f"/events/{trip.pk}/settlement/budgets/create/", {
+            "name": "Einkauf", "cashbook": cashbook.pk, "assigned_to": membership.pk, "amount": "100.00",
+        })
+
+        self.assertEqual(response.status_code, 302)
+        budget = AdvanceBudget.objects.get(trip=trip, name="Einkauf")
+        self.assertEqual(budget.advance_entry.counterparty, self.owner_user.get_full_name() or self.owner_user.username)
+
+    def test_advance_budget_without_expenses_can_be_settled(self):
+        membership = self.owner_org.membership_set.get(user=self.owner_user)
+        cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse", responsible=membership)
+        trip = Trip.objects.create(name="Sommerlager", owner=self.owner_org, start_date="2026-07-01T10:00:00Z", end_date="2026-07-10T10:00:00Z")
+        trip.planners.add(self.owner_user)
+        budget = AdvanceBudget.objects.create(trip=trip, cashbook=cashbook, assigned_to=membership, name="Material", amount="100.00")
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.post(f"/events/{trip.pk}/settlement/budgets/{budget.pk}/settle/")
+
+        self.assertEqual(response.status_code, 302)
+        budget.refresh_from_db()
+        self.assertIsNotNone(budget.settled_at)
+        self.assertEqual(budget.settlement_entry.entry_type, CashBookEntry.TYPE_INCOME)
+        self.assertEqual(budget.settlement_entry.amount, Decimal("100.00"))
+        self.assertIn("ohne Ausgaben", budget.settlement_entry.description)
+        self.assertTrue(budget.settlement_entry.attachment.name.endswith(".pdf"))
+
+    def test_zero_advance_budget_without_expenses_settles_without_cashbook_entry(self):
+        membership = self.owner_org.membership_set.get(user=self.owner_user)
+        cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse", responsible=membership)
+        trip = Trip.objects.create(name="Sommerlager", owner=self.owner_org, start_date="2026-07-01T10:00:00Z", end_date="2026-07-10T10:00:00Z")
+        trip.planners.add(self.owner_user)
+        budget = AdvanceBudget.objects.create(trip=trip, cashbook=cashbook, assigned_to=membership, name="Ohne Vorschuss", amount="0.00")
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.post(f"/events/{trip.pk}/settlement/budgets/{budget.pk}/settle/")
+
+        self.assertEqual(response.status_code, 302)
+        budget.refresh_from_db()
+        self.assertIsNotNone(budget.settled_at)
+        self.assertIsNone(budget.settlement_entry)
+        self.assertFalse(cashbook.entries.exists())
 
     def test_request_requires_recipient_bank_data_for_cashbook_with_iban(self):
         responsible = self.owner_org.membership_set.get(user=self.owner_user)

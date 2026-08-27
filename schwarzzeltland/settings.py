@@ -17,6 +17,12 @@ from celery.schedules import crontab
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# WeasyPrint needs the native Pango libraries on Windows. The local development
+# setup installs them through MSYS2; Linux containers discover them normally.
+MSYS2_WEASYPRINT_DLLS = Path("C:/msys64/mingw64/bin")
+if os.name == "nt" and MSYS2_WEASYPRINT_DLLS.exists():
+    os.environ.setdefault("WEASYPRINT_DLL_DIRECTORIES", str(MSYS2_WEASYPRINT_DLLS))
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 

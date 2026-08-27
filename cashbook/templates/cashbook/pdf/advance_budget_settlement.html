@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <title>Sammelabrechnung {{ budget.name }}</title>
+    <style>
+        @page { size: A4; margin: 16mm 12mm; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body { width: 100%; color: #243447; font: 10pt Arial, sans-serif; }
+        h1 { margin: 0 0 4mm; font-size: 20pt; }
+        .meta, .summary { width: 100%; margin-bottom: 7mm; border-collapse: collapse; }
+        .meta td { padding: 1.2mm 0; vertical-align: top; }
+        .meta td:first-child { width: 34%; color: #667085; }
+        .summary td { width: 33.33%; padding: 3mm; border: 1px solid #d0d5dd; background: #f8fafc; }
+        .summary strong { display: block; margin-bottom: 1mm; color: #667085; font-size: 8pt; text-transform: uppercase; }
+        .entries { width: 100%; max-width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .entries th { padding: 2.4mm 2mm; background: #243447; color: white; text-align: left; font-size: 8.5pt; }
+        .entries td { padding: 2.4mm 2mm; border-bottom: 1px solid #e4e7ec; vertical-align: top; overflow-wrap: anywhere; }
+        .entries tbody tr:nth-child(even) { background: #f8fafc; }
+        .entries .amount { text-align: right; white-space: nowrap; font-size: 8pt; }
+        .entries tfoot td { border-top: 2px solid #243447; border-bottom: 0; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Sammelabrechnung</h1>
+    <table class="meta">
+        <tr><td>Vorschussbudget</td><td><strong>{{ budget.name }}</strong></td></tr>
+        <tr><td>Veranstaltung</td><td>{{ budget.trip.name }}</td></tr>
+        <tr><td>Zugewiesener Planer</td><td>{{ budget.assigned_to.user.get_full_name|default:budget.assigned_to.user.username }}</td></tr>
+        <tr><td>Zielkassenbuch</td><td>{{ budget.cashbook.name }}</td></tr>
+    </table>
+    <table class="summary">
+        <tr>
+            <td><strong>Vorschuss</strong>{{ budget.amount }} {{ budget.cashbook.currency }}</td>
+            <td><strong>Ausgaben</strong>{{ total }} {{ budget.cashbook.currency }}</td>
+            <td><strong>Verbleibender Saldo</strong>{{ balance }} {{ budget.cashbook.currency }}</td>
+        </tr>
+    </table>
+    <table class="entries">
+        <colgroup><col style="width: 14%"><col style="width: 29%"><col style="width: 21%"><col style="width: 18%"><col style="width: 18%"></colgroup>
+        <thead><tr><th>Datum</th><th>Ausgabe</th><th>Zahlungspartner</th><th class="amount">Betrag</th><th class="amount">Saldo</th></tr></thead>
+        <tbody>
+        {% for expense, running_balance in rows %}
+            <tr><td>{{ expense.expense_date|date:"d.m.Y" }}</td><td>{{ expense.title }}</td><td>{{ expense.counterparty|default:"-" }}</td><td class="amount">−{{ expense.amount }} {{ budget.cashbook.currency }}</td><td class="amount">{{ running_balance }} {{ budget.cashbook.currency }}</td></tr>
+        {% endfor %}
+        </tbody>
+        <tfoot><tr><td colspan="3">Summe</td><td class="amount">−{{ total }} {{ budget.cashbook.currency }}</td><td class="amount">{{ balance }} {{ budget.cashbook.currency }}</td></tr></tfoot>
+    </table>
+</body>
+</html>

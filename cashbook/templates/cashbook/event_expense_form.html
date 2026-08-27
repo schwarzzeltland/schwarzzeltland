@@ -1,1 +1,40 @@
-{% extends "base.html" %}{% load bootstrap5 %}{% block content %}<h3>Ausgabe für {{ trip.name }} erfassen</h3><form method="post" enctype="multipart/form-data">{% csrf_token %}{% bootstrap_form form %}<button class="btn btn-primary">Speichern</button> <a class="btn btn-secondary" href="{% url 'event_settlement' trip.pk %}">Abbrechen</a></form>{% endblock %}
+{% extends "base.html" %}{% load bootstrap5 %}{% block content %}<h3>Ausgabe für {{ trip.name }} erfassen</h3><form method="post" enctype="multipart/form-data">{% csrf_token %}{% bootstrap_form form %}<button class="btn btn-primary">Speichern</button> <a class="btn btn-secondary" href="{% url 'event_settlement' trip.pk %}">Abbrechen</a></form>
+<script>
+    const categoryInput = document.getElementById("category-input");
+    if (categoryInput) {
+        const wrapper = categoryInput.parentElement;
+        wrapper.classList.add("position-relative");
+        const suggestionsList = document.createElement("ul");
+        suggestionsList.className = "list-group position-absolute w-100";
+        suggestionsList.style.zIndex = "1000";
+        suggestionsList.style.maxHeight = "160px";
+        suggestionsList.style.overflowY = "auto";
+        wrapper.appendChild(suggestionsList);
+
+        function loadCategorySuggestions(query = "") {
+            fetch(`{% url 'cashbook_category_autocomplete' %}?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(categories => {
+                    suggestionsList.innerHTML = "";
+                    categories.forEach(category => {
+                        const item = document.createElement("li");
+                        item.className = "list-group-item list-group-item-action";
+                        item.textContent = category;
+                        item.addEventListener("click", () => {
+                            categoryInput.value = category;
+                            suggestionsList.innerHTML = "";
+                        });
+                        suggestionsList.appendChild(item);
+                    });
+                });
+        }
+
+        categoryInput.addEventListener("focus", () => loadCategorySuggestions(categoryInput.value.trim()));
+        categoryInput.addEventListener("input", () => loadCategorySuggestions(categoryInput.value.trim()));
+        document.addEventListener("click", event => {
+            if (!categoryInput.contains(event.target) && !suggestionsList.contains(event.target)) {
+                suggestionsList.innerHTML = "";
+            }
+        });
+    }
+</script>{% endblock %}

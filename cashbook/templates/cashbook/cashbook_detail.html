@@ -130,6 +130,7 @@
                     <li><a class="dropdown-item" href="{% url 'cashbook_export_csv' cashbook.pk %}?search={{ search_query|urlencode }}&trip={{ selected_trip|urlencode }}&entry_type={{ selected_type|urlencode }}&start_date={{ start_date|urlencode }}&end_date={{ end_date|urlencode }}">Auswahl als CSV</a></li>
                     <li><a class="dropdown-item" href="{% url 'cashbook_export_pdf' cashbook.pk %}?search={{ search_query|urlencode }}&trip={{ selected_trip|urlencode }}&entry_type={{ selected_type|urlencode }}&start_date={{ start_date|urlencode }}&end_date={{ end_date|urlencode }}">Auswahl als PDF</a></li>
                     <li><a class="dropdown-item" href="{% url 'cashbook_export_receipts_zip' cashbook.pk %}?search={{ search_query|urlencode }}&trip={{ selected_trip|urlencode }}&entry_type={{ selected_type|urlencode }}&start_date={{ start_date|urlencode }}&end_date={{ end_date|urlencode }}">Belege der Auswahl als ZIP</a></li>
+                    <li><a class="dropdown-item" href="{% url 'cashbook_print_receipts' cashbook.pk %}?search={{ search_query|urlencode }}&trip={{ selected_trip|urlencode }}&entry_type={{ selected_type|urlencode }}&start_date={{ start_date|urlencode }}&end_date={{ end_date|urlencode }}">Belege drucken</a></li>
                     {% if can_manage %}
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'cashbook_edit' cashbook.pk %}">Stammdaten bearbeiten</a></li>
@@ -217,6 +218,11 @@
                     <td>{{ entry.get_entry_type_display }}</td>
                     <td>
                         <div class="fw-semibold">{{ entry.title }}</div>
+                        {% if entry.reconciliation_status == "expected" %}
+                            <span class="badge text-bg-warning">Erwartete Kontobewegung</span>
+                        {% elif entry.bank_reconciled_at %}
+                            <span class="badge text-bg-success">Bankabgleich erfolgt</span>
+                        {% endif %}
                         {% if entry.counterparty %}
                             <small class="text-muted">{{ entry.counterparty }}</small>
                         {% endif %}

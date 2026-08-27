@@ -174,6 +174,11 @@ class EventExpenseForm(forms.ModelForm):
         fields = ["expense_date", "amount", "title", "category", "counterparty", "reference", "description", "attachment"]
         widgets = {
             "expense_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+            "category": forms.TextInput(attrs={
+                "id": "category-input",
+                "autocomplete": "off",
+                "placeholder": "Kategorie",
+            }),
             "description": forms.Textarea(attrs={"rows": 3}),
         }
 
@@ -227,6 +232,12 @@ class CashBookCsvRowForm(forms.Form):
     balance_after = forms.DecimalField(required=False, label="Saldo nach Buchung", max_digits=14, decimal_places=2)
     creditor_id = forms.CharField(required=False, label="Gläubiger-ID", max_length=255)
     mandate_reference = forms.CharField(required=False, label="Mandatsreferenz", max_length=255)
+    match_entry = forms.ModelChoiceField(
+        required=False,
+        label="Mit vorhandener Buchung abgleichen",
+        queryset=CashBookEntry.objects.none(),
+        empty_label="Als neuen Kontoumsatz anlegen",
+    )
     trip = forms.ModelChoiceField(
         required=False,
         label="Veranstaltung",
@@ -236,6 +247,11 @@ class CashBookCsvRowForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop("organization", None)
+        cashbook = kwargs.pop("cashbook", None)
         super().__init__(*args, **kwargs)
         if organization:
             self.fields["trip"].queryset = Trip.objects.filter(owner=organization).order_by("-start_date", "name")
+        if cashbook:
+            self.fields["match_entry"].queryset = cashbook.entries.filter(
+                reconciliation_status=CashBookEntry.RECONCILIATION_EXPECTED,
+            ).order_by("booking_date", "entry_number")

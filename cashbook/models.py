@@ -63,6 +63,20 @@ class CashBookEntry(models.Model):
         (TYPE_INCOME, "Einnahme"),
         (TYPE_EXPENSE, "Ausgabe"),
     )
+    SOURCE_MANUAL = "manual"
+    SOURCE_AUTOMATIC = "automatic"
+    SOURCE_BANK_IMPORT = "bank_import"
+    SOURCE_CHOICES = (
+        (SOURCE_MANUAL, "Manuell"),
+        (SOURCE_AUTOMATIC, "Automatisch erzeugt"),
+        (SOURCE_BANK_IMPORT, "Bankimport"),
+    )
+    RECONCILIATION_BOOKED = "booked"
+    RECONCILIATION_EXPECTED = "expected"
+    RECONCILIATION_CHOICES = (
+        (RECONCILIATION_BOOKED, "Verbucht"),
+        (RECONCILIATION_EXPECTED, "Erwartete Kontobewegung"),
+    )
 
     cashbook = models.ForeignKey(CashBook, on_delete=models.CASCADE, related_name="entries", verbose_name="Kassenbuch")
     entry_number = models.PositiveIntegerField(verbose_name="Nummer", editable=False, null=True, blank=True)
@@ -77,6 +91,10 @@ class CashBookEntry(models.Model):
     reference = models.CharField(max_length=255, blank=True, verbose_name="Belegnummer / Referenz")
     description = models.TextField(blank=True, verbose_name="Beschreibung")
     attachment = models.FileField(upload_to=cashbook_attachment_upload_to, blank=True, null=True, verbose_name="Beleg")
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default=SOURCE_MANUAL, verbose_name="Quelle")
+    reconciliation_status = models.CharField(max_length=20, choices=RECONCILIATION_CHOICES, default=RECONCILIATION_BOOKED, verbose_name="Bankabgleich")
+    bank_import_fingerprint = models.CharField(max_length=64, blank=True, default="", verbose_name="Bankimport-Fingerabdruck")
+    bank_reconciled_at = models.DateTimeField(null=True, blank=True, verbose_name="Mit Bankumsatz abgeglichen am")
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="cashbook_cashbook_entries", verbose_name="Erstellt von")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -85,6 +103,7 @@ class CashBookEntry(models.Model):
         ordering = ["booking_date", "id"]
         constraints = [
             models.UniqueConstraint(fields=["cashbook", "entry_number"], name="cashbook_unique_entry_number"),
+            models.UniqueConstraint(fields=["cashbook", "bank_import_fingerprint"], condition=~models.Q(bank_import_fingerprint=""), name="cashbook_unique_bank_import"),
         ]
 
     def save(self, *args, **kwargs):
@@ -161,6 +180,9 @@ class AdvanceBudget(models.Model):
     class Meta:
         ordering = ["-created_at", "-id"]
 
+    def __str__(self):
+        return f"{self.name} ({self.trip.name})"
+
     @property
     def spent_amount(self):
         return sum(expense.amount for expense in self.expenses.exclude(status=EventExpense.STATUS_REJECTED))
@@ -196,6 +218,9 @@ class EventExpense(models.Model):
 
     class Meta:
         ordering = ["-expense_date", "-id"]
+
+    def __str__(self):
+        return f"{self.title} – {self.amount}"
 
     def clean(self):
         from django.core.exceptions import ValidationError

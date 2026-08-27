@@ -41,6 +41,12 @@
                     <strong>Möglicher doppelter Import:</strong> Ein übereinstimmender Kontoumsatz ist bereits im Kassenbuch vorhanden. Dieser Umsatz wurde deshalb nicht vorausgewählt.
                 </div>
             {% endif %}
+            {% if row_form.initial.match_entry %}
+                <div class="alert alert-success py-2">
+                    <strong>Passende erwartete Buchung gefunden:</strong>
+                    {{ row_form.initial.match_entry }}. Beim Import wird diese Buchung mit dem Bankumsatz abgeglichen und kein Duplikat angelegt.
+                </div>
+            {% endif %}
             {% if row_form.balance_warning %}
                 <div class="alert alert-warning py-2">
                     Der CSV-Saldo <strong>{{ row_form.initial.balance_after }} {{ cashbook.currency }}</strong>
@@ -55,6 +61,7 @@
                 <div class="col-md-3">{% bootstrap_field row_form.amount %}</div>
                 <div class="col-md-6">{% bootstrap_field row_form.title %}</div>
                 <div class="col-md-6">{% bootstrap_field row_form.counterparty %}</div>
+                <div class="col-md-6">{% bootstrap_field row_form.match_entry %}</div>
                 <div class="col-md-6">{% bootstrap_field row_form.trip %}</div>
                 <div class="col-12">{% bootstrap_field row_form.purpose %}</div>
                 <div class="col-md-4">{% bootstrap_field row_form.balance_after %}</div>

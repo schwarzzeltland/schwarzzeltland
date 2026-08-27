@@ -1,9 +1,10 @@
 import csv
+import hashlib
 import io
 import zipfile
 import uuid
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
@@ -68,6 +69,61 @@ def _parse_bank_decimal(value):
         raise ValueError(f"Ungültiger Betrag: {value}") from exc
 
 
+def _bank_transaction_fingerprint(cashbook, data):
+    parts = (
+        _normalized_iban(cashbook.iban),
+        str(data.get("booking_date") or ""),
+        data.get("entry_type") or "",
+        str(data.get("amount") or ""),
+        (data.get("counterparty") or "").strip().casefold(),
+        (data.get("purpose") or "").strip().casefold(),
+        (data.get("creditor_id") or "").strip().casefold(),
+        (data.get("mandate_reference") or "").strip().casefold(),
+    )
+    return hashlib.sha256("\x1f".join(parts).encode("utf-8")).hexdigest()
+
+
+def _automatic_entry_reconciliation(cashbook):
+    return {
+        "source": CashBookEntry.SOURCE_AUTOMATIC,
+        "reconciliation_status": (
+            CashBookEntry.RECONCILIATION_EXPECTED if cashbook.iban
+            else CashBookEntry.RECONCILIATION_BOOKED
+        ),
+    }
+
+
+def _suggest_bank_match(cashbook, row):
+    candidates = list(cashbook.entries.filter(
+        reconciliation_status=CashBookEntry.RECONCILIATION_EXPECTED,
+        entry_type=row["entry_type"],
+        amount=row["amount"],
+        booking_date__range=(row["booking_date"] - timedelta(days=14), row["booking_date"] + timedelta(days=14)),
+    ))
+    if not candidates:
+        return None
+    bank_counterparty = (row.get("counterparty") or "").strip().casefold()
+    bank_text = " ".join((row.get("purpose") or "", row.get("title") or "")).casefold()
+
+    def score(entry):
+        result = 0
+        entry_counterparty = (entry.counterparty or "").strip().casefold()
+        if bank_counterparty and entry_counterparty:
+            if bank_counterparty == entry_counterparty:
+                result += 4
+            elif bank_counterparty in entry_counterparty or entry_counterparty in bank_counterparty:
+                result += 2
+        if entry.title and entry.title.casefold() in bank_text:
+            result += 2
+        result -= abs((entry.booking_date - row["booking_date"]).days) / 100
+        return result
+
+    ranked = sorted(candidates, key=score, reverse=True)
+    if len(ranked) == 1 or score(ranked[0]) > score(ranked[1]):
+        return ranked[0]
+    return None
+
+
 def _decode_bank_csv(csv_file):
     raw = csv_file.read()
     for encoding in ("utf-8-sig", "cp1252"):
@@ -125,7 +181,21 @@ def _bank_csv_initial_rows(csv_file, cashbook):
         entry_type = CashBookEntry.TYPE_EXPENSE if signed_amount < 0 else CashBookEntry.TYPE_INCOME
         amount = abs(signed_amount)
         title = booking_text or purpose or counterparty or "Kontoumsatz"
+        row_data = {
+            "booking_date": booking_date,
+            "value_date": value_date,
+            "entry_type": entry_type,
+            "amount": amount,
+            "title": title,
+            "counterparty": counterparty,
+            "purpose": purpose,
+            "balance_after": balance_after,
+            "creditor_id": (row.get("Glaeubiger ID") or "").strip(),
+            "mandate_reference": (row.get("Mandatsreferenz") or "").strip(),
+        }
+        fingerprint = _bank_transaction_fingerprint(cashbook, row_data)
         duplicate_entries = cashbook.entries.filter(
+            reconciliation_status=CashBookEntry.RECONCILIATION_BOOKED,
             booking_date=booking_date,
             entry_type=entry_type,
             amount=amount,
@@ -138,20 +208,13 @@ def _bank_csv_initial_rows(csv_file, cashbook):
             duplicate_entries = duplicate_entries.filter(
                 description__contains=f"Saldo nach Buchung: {balance_after} {cashbook.currency}"
             )
-        is_duplicate = duplicate_entries.exists()
+        is_duplicate = cashbook.entries.filter(bank_import_fingerprint=fingerprint).exists() or duplicate_entries.exists()
+        match_entry = None if is_duplicate else _suggest_bank_match(cashbook, row_data)
         initial_rows.append({
+            **row_data,
             "include": not is_duplicate,
             "is_duplicate": is_duplicate,
-            "booking_date": booking_date,
-            "value_date": value_date,
-            "entry_type": entry_type,
-            "amount": amount,
-            "title": title,
-            "counterparty": counterparty,
-            "purpose": purpose,
-            "balance_after": balance_after,
-            "creditor_id": (row.get("Glaeubiger ID") or "").strip(),
-            "mandate_reference": (row.get("Mandatsreferenz") or "").strip(),
+            "match_entry": match_entry,
         })
     if not initial_rows:
         raise ValueError("Die CSV-Datei enthält keine importierbaren Umsätze.")
@@ -159,9 +222,15 @@ def _bank_csv_initial_rows(csv_file, cashbook):
 
 
 def _annotate_csv_balance_warnings(row_formset, cashbook):
+    matched_entry_ids = {
+        getattr((row_form.cleaned_data if row_form.is_bound and hasattr(row_form, "cleaned_data") else row_form.initial).get("match_entry"), "pk", None)
+        or (row_form.cleaned_data if row_form.is_bound and hasattr(row_form, "cleaned_data") else row_form.initial).get("match_entry")
+        for row_form in row_formset.forms
+    }
+    matched_entry_ids.discard(None)
     timeline = [
         (entry.booking_date, 0, index, entry.signed_amount, None)
-        for index, entry in enumerate(cashbook.entries.order_by("booking_date", "id"))
+        for index, entry in enumerate(cashbook.entries.exclude(pk__in=matched_entry_ids).order_by("booking_date", "id"))
     ]
     for index, row_form in enumerate(row_formset.forms):
         data = row_form.cleaned_data if row_form.is_bound and hasattr(row_form, "cleaned_data") else row_form.initial
@@ -319,6 +388,8 @@ def _cashbook_audit_field_label(field):
         "reference": "Belegnummer / Referenz",
         "attachment": "Beleg",
         "trip_id": "Veranstaltung",
+        "reconciliation_status": "Bankabgleich",
+        "bank_import_fingerprint": "Bankimport-Fingerabdruck",
     }
     return labels.get(field, field)
 
@@ -383,19 +454,39 @@ def _build_cashbook_fallback_pdf(cashbook, running_rows):
 
 
 def _build_advance_budget_pdf(budget, expenses):
-    balance = Decimal(budget.amount)
-    lines = [
-        f"Vorschussabrechnung: {budget.name}",
-        f"Veranstaltung: {budget.trip.name}",
-        f"Zugewiesen an: {budget.assigned_to.user.get_full_name() or budget.assigned_to.user.username}",
-        f"Vorschuss: {budget.amount} {budget.cashbook.currency} | Saldo: {balance} {budget.cashbook.currency}",
-        "",
-    ]
+    expenses = list(expenses)
+    running_balance = Decimal(budget.amount)
+    rows = []
     for expense in expenses:
-        balance -= expense.amount
-        lines.append(f"{expense.expense_date:%d.%m.%Y} | {expense.title} | -{expense.amount} {budget.cashbook.currency} | Saldo: {balance} {budget.cashbook.currency}")
-    lines.extend(["", f"Endsaldo: {balance} {budget.cashbook.currency}"])
-    return _build_text_pdf(f"Vorschussbudget {budget.name}", lines)
+        running_balance -= expense.amount
+        rows.append((expense, running_balance))
+
+    context = {
+        "budget": budget,
+        "rows": rows,
+        "total": sum((expense.amount for expense in expenses), Decimal("0.00")),
+        "balance": running_balance,
+    }
+    try:
+        from weasyprint import HTML
+    except (ImportError, OSError):
+        lines = [
+            f"Vorschussabrechnung: {budget.name}",
+            f"Veranstaltung: {budget.trip.name}",
+            f"Zugewiesen an: {budget.assigned_to.user.get_full_name() or budget.assigned_to.user.username}",
+            f"Vorschuss: {budget.amount} {budget.cashbook.currency}",
+            "",
+        ]
+        for expense, balance in rows:
+            lines.append(
+                f"{expense.expense_date:%d.%m.%Y} | {expense.title} | "
+                f"-{expense.amount} {budget.cashbook.currency} | Saldo: {balance} {budget.cashbook.currency}"
+            )
+        lines.extend(["", f"Endsaldo: {running_balance} {budget.cashbook.currency}"])
+        return _build_text_pdf(f"Vorschussbudget {budget.name}", lines)
+
+    html = render_to_string("cashbook/pdf/advance_budget_settlement.html", context)
+    return HTML(string=html).write_pdf()
 
 
 def _build_cashbook_summary_fallback_pdf(rows):
@@ -434,17 +525,18 @@ def _render_pdf_response(*, request, template_name, context, filename, css):
 
 
 @login_required
-@cashier_manager_required
 @pro5_required
 def cashbook_category_autocomplete(request):
     query = request.GET.get("q", "").strip()
-    categories = CashBookEntry.objects.filter(
+    cashbook_categories = CashBookEntry.objects.filter(
         cashbook__organization=request.org
-    ).exclude(category="").values_list("category", flat=True).distinct().order_by("category")
+    ).exclude(category="").values_list("category", flat=True)
+    expense_categories = EventExpense.objects.filter(
+        trip__owner=request.org
+    ).exclude(category="").values_list("category", flat=True)
+    categories = sorted(set(cashbook_categories).union(expense_categories), key=str.casefold)
     if query:
         categories = [category for category in categories if query.lower() in category.lower()]
-    else:
-        categories = list(categories[:20])
     return JsonResponse(list(categories[:20]), safe=False)
 
 
@@ -677,7 +769,7 @@ def cashbook_import_csv(request, pk):
                 row_formset = CashBookCsvRowFormSet(
                     initial=initial_rows,
                     prefix="transactions",
-                    form_kwargs={"organization": request.org},
+                    form_kwargs={"organization": request.org, "cashbook": cashbook},
                 )
                 _annotate_csv_balance_warnings(row_formset, cashbook)
                 verification_token = signing.dumps({
@@ -689,7 +781,7 @@ def cashbook_import_csv(request, pk):
         row_formset = CashBookCsvRowFormSet(
             request.POST,
             prefix="transactions",
-            form_kwargs={"organization": request.org},
+            form_kwargs={"organization": request.org, "cashbook": cashbook},
         )
         rows_are_valid = row_formset.is_valid()
         verification_token = request.POST.get("verification_token", "")
@@ -713,6 +805,16 @@ def cashbook_import_csv(request, pk):
                 if row_form.cleaned_data.get("include")
             ]
             selected_rows.sort(key=lambda row: (row[1]["booking_date"], row[0]))
+            matched_entry_ids = [row[1]["match_entry"].pk for row in selected_rows if row[1].get("match_entry")]
+            if len(matched_entry_ids) != len(set(matched_entry_ids)):
+                row_formset._non_form_errors = row_formset.error_class([
+                    "Dieselbe erwartete Buchung wurde mehreren Kontoumsätzen zugeordnet. Bitte den Abgleich korrigieren."
+                ])
+                return render(request, "cashbook/cashbook_import_csv.html", {
+                    "title": "Kontoumsätze importieren", "cashbook": cashbook,
+                    "upload_form": upload_form, "row_formset": row_formset,
+                    "verification_token": verification_token,
+                })
             for _, data in selected_rows:
                 metadata = []
                 if data.get("value_date"):
@@ -724,31 +826,71 @@ def cashbook_import_csv(request, pk):
                 if data.get("mandate_reference"):
                     metadata.append(f"Mandatsreferenz: {data['mandate_reference']}")
                 description_parts = [part for part in (data.get("purpose"), *metadata) if part]
-                entry = CashBookEntry.objects.create(
-                    cashbook=cashbook,
-                    entry_type=data["entry_type"],
-                    booking_date=data["booking_date"],
-                    amount=data["amount"],
-                    title=data["title"],
-                    category="Kontoumsatz",
-                    counterparty=data.get("counterparty", ""),
-                    reference=data.get("mandate_reference") or data.get("creditor_id", ""),
-                    description="\n".join(description_parts),
-                    trip=data.get("trip"),
-                    created_by=request.user,
-                )
+                fingerprint = _bank_transaction_fingerprint(cashbook, data)
+                if cashbook.entries.filter(bank_import_fingerprint=fingerprint).exists():
+                    continue
+                matched_entry = data.get("match_entry")
+                if matched_entry:
+                    entry = CashBookEntry.objects.select_for_update().get(
+                        pk=matched_entry.pk,
+                        cashbook=cashbook,
+                        reconciliation_status=CashBookEntry.RECONCILIATION_EXPECTED,
+                    )
+                    before = _cashbook_snapshot(entry, [
+                        "booking_date", "counterparty", "reference", "description", "trip_id",
+                        "reconciliation_status", "bank_import_fingerprint",
+                    ])
+                    entry.booking_date = data["booking_date"]
+                    if data.get("counterparty"):
+                        entry.counterparty = data["counterparty"]
+                    if not entry.reference:
+                        entry.reference = data.get("mandate_reference") or data.get("creditor_id", "")
+                    bank_description = "\n".join(description_parts)
+                    if bank_description:
+                        entry.description = "\n\n".join(part for part in (entry.description, "Bankabgleich:\n" + bank_description) if part)
+                    if data.get("trip"):
+                        entry.trip = data["trip"]
+                    entry.reconciliation_status = CashBookEntry.RECONCILIATION_BOOKED
+                    entry.bank_import_fingerprint = fingerprint
+                    entry.bank_reconciled_at = timezone.now()
+                    entry.save()
+                    action = CashBookAuditLog.ACTION_UPDATE
+                    changes = {"Bankabgleich": True, **_cashbook_changes(before, _cashbook_snapshot(entry, [
+                        "booking_date", "counterparty", "reference", "description", "trip_id",
+                        "reconciliation_status", "bank_import_fingerprint",
+                    ]))}
+                else:
+                    entry = CashBookEntry.objects.create(
+                        cashbook=cashbook,
+                        entry_type=data["entry_type"],
+                        booking_date=data["booking_date"],
+                        amount=data["amount"],
+                        title=data["title"],
+                        category="Kontoumsatz",
+                        counterparty=data.get("counterparty", ""),
+                        reference=data.get("mandate_reference") or data.get("creditor_id", ""),
+                        description="\n".join(description_parts),
+                        trip=data.get("trip"),
+                        created_by=request.user,
+                        source=CashBookEntry.SOURCE_BANK_IMPORT,
+                        reconciliation_status=CashBookEntry.RECONCILIATION_BOOKED,
+                        bank_import_fingerprint=fingerprint,
+                        bank_reconciled_at=timezone.now(),
+                    )
+                    action = CashBookAuditLog.ACTION_CREATE
+                    changes = {"CSV-Import": True, **_cashbook_snapshot(entry, [
+                        "entry_number", "entry_type", "booking_date", "amount", "title",
+                        "category", "counterparty", "reference", "description", "trip_id",
+                    ])}
                 _create_cashbook_audit_log(
                     organization=request.org,
                     actor=request.user,
                     target_type=CashBookAuditLog.TARGET_ENTRY,
-                    action=CashBookAuditLog.ACTION_CREATE,
+                    action=action,
                     label=f"#{entry.entry_number} {entry.title}",
                     cashbook=cashbook,
                     entry=entry,
-                    changes={"CSV-Import": True, **_cashbook_snapshot(entry, [
-                        "entry_number", "entry_type", "booking_date", "amount", "title",
-                        "category", "counterparty", "reference", "description", "trip_id",
-                    ])},
+                    changes=changes,
                 )
                 imported_count += 1
             if imported_count:
@@ -979,12 +1121,104 @@ def cashbook_export_receipts_zip(request, pk):
         for entry in entries:
             add_attachment(entry.attachment, Path(entry.attachment.name).name)
         for budget in settled_budgets:
-            folder = f"Sammelbuchung-{budget.settlement_entry.entry_number or budget.settlement_entry_id}"
+            entry_number = budget.settlement_entry.entry_number or budget.settlement_entry_id
+            folder = f"Sammelbuchung-{entry_number}"
             for expense in budget.expenses.exclude(attachment="").exclude(attachment__isnull=True):
-                add_attachment(expense.attachment, f"{folder}/{Path(expense.attachment.name).name}")
+                receipt_name = Path(expense.attachment.name).name
+                add_attachment(
+                    expense.attachment,
+                    f"{folder}/{entry_number}_Sammelbuchung_{receipt_name}",
+                )
 
     response = HttpResponse(buffer.getvalue(), content_type="application/zip")
     response["Content-Disposition"] = f'attachment; filename="{slugify(cashbook.name) or "kassenbuch"}-belege.zip"'
+    return response
+
+
+def _build_receipts_print_pdf(receipts):
+    import pymupdf
+
+    output = pymupdf.open()
+    page_rect = pymupdf.paper_rect("a4")
+    margin = 36
+    header_height = 20
+    gap = 12
+    usable_width = page_rect.width - 2 * margin
+    usable_height = page_rect.height - 2 * margin
+    output_page = None
+    cursor_y = margin
+    rendered_count = 0
+
+    for entry, attachment in receipts:
+        try:
+            with attachment.open("rb") as uploaded_file:
+                source_data = uploaded_file.read()
+            source = pymupdf.open(stream=source_data)
+            if not source.is_pdf:
+                image_pdf = source.convert_to_pdf()
+                source.close()
+                source = pymupdf.open("pdf", image_pdf)
+        except Exception:
+            continue
+
+        try:
+            for source_page_number, source_page in enumerate(source):
+                aspect_height = usable_width * source_page.rect.height / source_page.rect.width
+                compact = aspect_height + header_height <= usable_height / 2
+                content_height = min(aspect_height, usable_height - header_height)
+                block_height = header_height + content_height
+
+                if output_page is None or cursor_y + block_height > page_rect.height - margin or not compact and cursor_y > margin:
+                    output_page = output.new_page(width=page_rect.width, height=page_rect.height)
+                    cursor_y = margin
+
+                label = f"Buchung #{entry.entry_number} - {entry.title}"
+                if len(source) > 1:
+                    label += f" - Belegseite {source_page_number + 1}/{len(source)}"
+                output_page.insert_text((margin, cursor_y + 12), label, fontsize=10, fontname="helv")
+                target = pymupdf.Rect(margin, cursor_y + header_height, page_rect.width - margin, cursor_y + block_height)
+                output_page.show_pdf_page(target, source, source_page_number, keep_proportion=True)
+                cursor_y += block_height + gap
+                rendered_count += 1
+        finally:
+            source.close()
+
+    if not rendered_count:
+        output.close()
+        return None, 0
+    pdf = output.tobytes(deflate=True)
+    output.close()
+    return pdf, rendered_count
+
+
+@login_required
+@cashier_manager_required
+@pro5_required
+def cashbook_print_receipts(request, pk):
+    cashbook = get_object_or_404(CashBook, pk=pk, organization=request.org)
+    entries, _ = _cashbook_filter_entries(cashbook.entries.all(), request)
+    entries = list(entries.exclude(attachment="").exclude(attachment__isnull=True).order_by("entry_number", "id"))
+    budgets_by_entry = {
+        budget.settlement_entry_id: budget
+        for budget in AdvanceBudget.objects.filter(
+            settlement_entry_id__in=[entry.pk for entry in entries],
+        ).prefetch_related("expenses")
+    }
+    receipts = []
+    for entry in entries:
+        receipts.append((entry, entry.attachment))
+        budget = budgets_by_entry.get(entry.pk)
+        if budget:
+            for expense in budget.expenses.exclude(attachment="").exclude(attachment__isnull=True):
+                receipts.append((entry, expense.attachment))
+
+    pdf, rendered_count = _build_receipts_print_pdf(receipts)
+    if not rendered_count:
+        messages.info(request, "Für die aktuelle Auswahl wurden keine druckbaren Belege gefunden.")
+        return redirect("cashbook_detail", pk=cashbook.pk)
+
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{slugify(cashbook.name) or "kassenbuch"}-belege.pdf"'
     return response
 
 
@@ -1112,6 +1346,7 @@ def reimbursement_review(request, pk):
                 reference=f"Auszahlungsanfrage von {reimbursement.requester.username}",
                 description=reimbursement.description,
                 created_by=request.user,
+                **_automatic_entry_reconciliation(reimbursement.cashbook),
             )
             old_attachment_name = reimbursement.attachment.name
             attachment_storage = reimbursement.attachment.storage
@@ -1195,7 +1430,7 @@ def event_expense_review(request, trip_pk, pk):
     if request.method == "POST" and expense.status == EventExpense.STATUS_PENDING:
         if request.POST.get("decision") == "approve":
             with transaction.atomic():
-                entry = CashBookEntry.objects.create(cashbook=expense.cashbook, trip=trip, entry_type=CashBookEntry.TYPE_EXPENSE, booking_date=expense.expense_date, receipt_date=expense.expense_date, amount=expense.amount, title=expense.title, category=expense.category, counterparty=expense.counterparty, reference=expense.reference, description=expense.description, created_by=expense.created_by)
+                entry = CashBookEntry.objects.create(cashbook=expense.cashbook, trip=trip, entry_type=CashBookEntry.TYPE_EXPENSE, booking_date=expense.expense_date, receipt_date=expense.expense_date, amount=expense.amount, title=expense.title, category=expense.category, counterparty=expense.counterparty, reference=expense.reference, description=expense.description, created_by=expense.created_by, **_automatic_entry_reconciliation(expense.cashbook))
                 with expense.attachment.open("rb") as source_file:
                     entry.attachment.save(Path(expense.attachment.name).name, source_file, save=True)
                 expense.status, expense.reviewed_by, expense.reviewed_at, expense.cashbook_entry = EventExpense.STATUS_APPROVED, request.user, timezone.now(), entry
@@ -1276,8 +1511,10 @@ def advance_budget_create(request, trip_pk):
                     cashbook=budget.cashbook, trip=trip, entry_type=CashBookEntry.TYPE_EXPENSE,
                     booking_date=timezone.localdate(), amount=budget.amount,
                     title=f"Vorschuss: {budget.name}", category="Vorschussbudget",
+                    counterparty=budget.assigned_to.user.get_full_name() or budget.assigned_to.user.username,
                     description=f"Vorschussbudget für {budget.assigned_to.user.get_full_name() or budget.assigned_to.user.username}.",
                     created_by=request.user,
+                    **_automatic_entry_reconciliation(budget.cashbook),
                 )
             budget.save()
         messages.success(request, "Vorschussbudget angelegt.")
@@ -1294,19 +1531,22 @@ def advance_budget_settle(request, trip_pk, pk):
     budget = get_object_or_404(AdvanceBudget.objects.select_related("cashbook"), pk=pk, trip=trip)
     _require_responsible_cashier(request, budget.cashbook)
     if request.method == "POST" and not budget.settled_at:
-        expenses = budget.expenses.filter(status=EventExpense.STATUS_APPROVED)
+        expenses = list(budget.expenses.filter(status=EventExpense.STATUS_APPROVED))
         total = sum((item.amount for item in expenses), Decimal("0.00"))
-        if not expenses.exists():
-            messages.error(request, "Ein Vorschussbudget ohne Ausgaben kann nicht abgerechnet werden.")
-        else:
-            with transaction.atomic():
-                difference = total - budget.amount
-                entry = CashBookEntry.objects.create(cashbook=budget.cashbook, trip=trip, entry_type=CashBookEntry.TYPE_EXPENSE if difference >= 0 else CashBookEntry.TYPE_INCOME, booking_date=timezone.localdate(), amount=abs(difference), title=f"Sammelabrechnung: {budget.name}", category="Vorschussbudget", description=f"Sammelabrechnung der Ausgaben #{', '.join(str(item.pk) for item in expenses)}. {'Nachzahlung an den Planer.' if difference > 0 else 'Rückzahlung des nicht benötigten Vorschusses.' if difference < 0 else 'Vorschuss und Ausgaben gleichen sich aus.'} Die zugehörigen Belege sind in der Veranstaltungsabrechnung hinterlegt.", created_by=request.user)
+        with transaction.atomic():
+            difference = total - budget.amount
+            entry = None
+            if budget.amount != 0 or expenses:
+                planner_name = budget.assigned_to.user.get_full_name() or budget.assigned_to.user.username
+                expense_note = "Sammelabrechnung der zugehörigen Ausgaben." if expenses else "Sammelabrechnung ohne Ausgaben."
+                balance_note = "Nachzahlung an den Planer." if difference > 0 else "Rückzahlung des nicht benötigten Vorschusses." if difference < 0 else "Vorschuss und Ausgaben gleichen sich aus."
+                receipt_note = " Die zugehörigen Belege sind in der Veranstaltungsabrechnung hinterlegt." if expenses else ""
+                entry = CashBookEntry.objects.create(cashbook=budget.cashbook, trip=trip, entry_type=CashBookEntry.TYPE_EXPENSE if difference >= 0 else CashBookEntry.TYPE_INCOME, booking_date=timezone.localdate(), amount=abs(difference), title=f"Sammelabrechnung: {budget.name}", category="Vorschussbudget", counterparty=planner_name, description=f"{expense_note} {balance_note}{receipt_note}", created_by=request.user, **_automatic_entry_reconciliation(budget.cashbook))
                 pdf_filename = f"sammelabrechnung-{slugify(budget.name) or budget.pk}.pdf"
                 entry.attachment.save(pdf_filename, ContentFile(_build_advance_budget_pdf(budget, expenses)), save=True)
-                budget.settlement_entry, budget.settled_at, budget.settled_by = entry, timezone.now(), request.user
-                budget.save(update_fields=["settlement_entry", "settled_at", "settled_by"])
-            messages.success(request, "Vorschussbudget als Sammelbuchung ins Kassenbuch übernommen.")
+            budget.settlement_entry, budget.settled_at, budget.settled_by = entry, timezone.now(), request.user
+            budget.save(update_fields=["settlement_entry", "settled_at", "settled_by"])
+        messages.success(request, "Vorschussbudget als Sammelbuchung ins Kassenbuch übernommen.")
     return redirect("event_settlement", trip_pk=trip.pk)
 
 
