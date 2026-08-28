@@ -8,6 +8,13 @@
             {% bootstrap_field form.name %}
             {% bootstrap_field form.image %}
             {% bootstrap_field form.recipientcode %}
+            <div class="card card-body mb-3">
+                <h5>CalDAV-Kalender</h5>
+                <p class="text-muted small">Optional: vollständige URL der Kalender-Sammlung und deren Zugangsdaten. Ein leeres Passwortfeld behält das gespeicherte Passwort bei.</p>
+                {% bootstrap_field form.caldav_calendar_url %}
+                {% bootstrap_field form.caldav_username %}
+                {% bootstrap_field form.caldav_password %}
+            </div>
             {% if organization.pro3 %}
                 {% bootstrap_field form.default_checklist %}
             {% endif %}

@@ -6,9 +6,11 @@ from django.forms import CharField, ModelForm
 from django.forms.models import inlineformset_factory
 
 from main.models import Message, Organization
+from main.secrets import encrypt_secret
 
 
 class OrganizationForm(ModelForm):
+    caldav_password = forms.CharField(required=False, label="CalDAV-Passwort", widget=forms.PasswordInput(render_value=False))
     default_checklist = forms.CharField(
         required=False,
         label="Standard-To-dos bei neuen Veranstaltungen",
@@ -53,9 +55,14 @@ class OrganizationForm(ModelForm):
             entries.append({"title": title, "days_from_start": days})
         return entries
 
+    def clean_caldav_password(self):
+        password = self.cleaned_data.get("caldav_password")
+        current = self.instance.caldav_password if self.instance and self.instance.pk else ""
+        return encrypt_secret(password or current)
+
     class Meta:
         model = Organization
-        fields = ["name", "image", "recipientcode", "default_checklist"]
+        fields = ["name", "image", "recipientcode", "default_checklist", "caldav_calendar_url", "caldav_username", "caldav_password"]
 
 
 class MembershipForm(ModelForm):

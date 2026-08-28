@@ -52,6 +52,9 @@ class Organization(models.Model):
         blank=True,
         verbose_name="Standard-To-dos bei neuen Veranstaltungen",
     )
+    caldav_calendar_url = models.URLField(blank=True, verbose_name="CalDAV-Kalender-URL")
+    caldav_username = models.CharField(max_length=255, blank=True, verbose_name="CalDAV-Benutzername")
+    caldav_password = models.TextField(blank=True, verbose_name="CalDAV-Passwort")
 
     def get_owner(self) -> "Membership":
         return self.membership_set.earliest("id")

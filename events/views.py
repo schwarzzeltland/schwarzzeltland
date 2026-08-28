@@ -31,6 +31,7 @@ from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
 
 from buildings.views import update_trip_material_stock_for_org
+from events.caldav import sync_trip_to_caldav
 from .models import Trip, TripVacancy, EventPlanningChecklistItem, ProgrammItem
 
 from decimal import Decimal, InvalidOperation
@@ -143,6 +144,12 @@ def delete_trip(request, pk=None):
     request.session['previous_url'] = request.build_absolute_uri()
     trip_d = get_object_or_404(Trip, pk=pk, owner=request.org)
     if request.method == 'POST':
+        if trip_d.caldav_uid:
+            trip_d.sync_to_caldav = False
+            try:
+                sync_trip_to_caldav(trip_d)
+            except Exception as error:
+                messages.warning(request, f"Der CalDAV-Termin konnte nicht gelöscht werden: {error}")
         trip_d.delete()
         messages.success(request, f'Veranstaltung {trip_d.name} erfolgreich gelöscht.')
         return HttpResponseRedirect(reverse_lazy('trip'))
@@ -321,9 +328,14 @@ def edit_trip(request, pk=None):
                 save_a_n = True
                 og_trip = deepcopy(trip_d)
                 trip_d.pk = None
+                trip_d.caldav_uid = ""
             trip_d.owner = request.org
             trip_d.save()
             trip_form.save_m2m()
+            try:
+                sync_trip_to_caldav(trip_d)
+            except Exception as error:
+                messages.warning(request, f"Die Veranstaltung wurde gespeichert, konnte aber nicht mit CalDAV synchronisiert werden: {error}")
             #  Wenn "Speichern als neu" => Alle Formset-Objekte kopieren
             if save_a_n:
                 # 1. Konstruktionen duplizieren

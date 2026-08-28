@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.text import slugify
 from PIL import Image, ImageDraw, ImageFont
 from leiterrunden.forms import MeetingGuestFormSet, MeetingMinutesForm, MeetingMinutesItemFormSet
 from leiterrunden.models import (
@@ -412,7 +413,7 @@ def meeting_minutes_pdf(request, pk):
     lines = [minutes.title, f"{minutes.meeting_start:%d.%m.%Y %H:%M} – {minutes.meeting_end:%d.%m.%Y %H:%M}", "", f"Anwesend: {', '.join(a.membership.user.username for a in minutes.attendances.all() if a.present) or '-'}", f"Gäste: {', '.join(g.name for g in minutes.guests.all()) or '-'}", ""] + [f"{item.topic}: {item.notes}" for item in minutes.items.all()]
     image = Image.new("RGB", (1654, 2339), "white"); draw = ImageDraw.Draw(image); y = 100
     for line in lines: draw.text((100, y), line[:180], fill="black", font=ImageFont.load_default()); y += 34
-    buffer = io.BytesIO(); image.save(buffer, format="PDF"); response = HttpResponse(buffer.getvalue(), content_type="application/pdf"); response["Content-Disposition"] = f'attachment; filename="leiterrunde-{minutes.pk}.pdf"'; return response
+    buffer = io.BytesIO(); image.save(buffer, format="PDF"); response = HttpResponse(buffer.getvalue(), content_type="application/pdf"); response["Content-Disposition"] = f'attachment; filename="{slugify(minutes.title) or "protokoll"}.pdf"'; return response
 
 
 @login_required
@@ -498,5 +499,5 @@ def meeting_minutes_pdf(request, pk):
             y += 72 if index else 190
         buffer = io.BytesIO(); image.save(buffer, format="PDF", resolution=300.0); pdf = buffer.getvalue()
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="leiterrunde-{minutes.pk}.pdf"'
+    response["Content-Disposition"] = f'attachment; filename="{slugify(minutes.title) or "protokoll"}.pdf"'
     return response

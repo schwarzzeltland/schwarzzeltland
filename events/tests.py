@@ -2,10 +2,14 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
+import base64
+from unittest.mock import MagicMock, patch
 
 from buildings.models import Material, StockMaterial, StoragePlan, StorageArea
 from events.models import PackedStockMaterial, Trip, TripMaterial, Location, EventPlanningChecklistItem
 from events.forms import ImportLocationForm
+from events.caldav import sync_trip_to_caldav
+from main.secrets import decrypt_secret, encrypt_secret
 
 # Create your tests here.
 
@@ -92,3 +96,41 @@ class TripMaterialPackingTests(TestCase):
         self.assertEqual(items["Am Start"].due_date, start)
         self.assertEqual(items["Nachbereitung"].due_date, start + timedelta(days=2))
         self.assertIsNone(items["Bestehendes To-do ohne Termin"].due_date)
+
+    @patch("events.caldav.urlopen")
+    def test_trip_is_created_updated_and_removed_in_configured_caldav_calendar(self, urlopen):
+        urlopen.return_value = MagicMock(__enter__=MagicMock(), __exit__=MagicMock(return_value=False))
+        self.organization.caldav_calendar_url = "https://calendar.example.test/calendars/team/events/"
+        self.organization.caldav_username = "team"
+        self.organization.caldav_password = encrypt_secret("secret")
+        self.assertNotEqual(self.organization.caldav_password, "secret")
+        self.assertEqual(decrypt_secret(self.organization.caldav_password), "secret")
+        self.organization.save(update_fields=["caldav_calendar_url", "caldav_username", "caldav_password"])
+        self.trip.sync_to_caldav = True
+        self.trip.description = "Interne und nicht öffentliche Informationen"
+        self.trip.location = Location.objects.create(name="Privater Treffpunkt", owner=self.organization)
+        self.trip.save(update_fields=["sync_to_caldav", "description", "location"])
+
+        self.assertTrue(sync_trip_to_caldav(self.trip))
+        self.trip.refresh_from_db()
+        uid = self.trip.caldav_uid
+        first_request = urlopen.call_args.args[0]
+        self.assertEqual(first_request.get_method(), "PUT")
+        self.assertIn(uid, first_request.full_url)
+        self.assertIn(b"SUMMARY:Testlager", first_request.data)
+        self.assertEqual(base64.b64decode(first_request.headers["Authorization"].split()[1]), b"team:secret")
+        self.assertNotIn(b"DESCRIPTION", first_request.data)
+        self.assertNotIn(b"LOCATION", first_request.data)
+
+        self.trip.name = "Aktualisiertes Lager"
+        self.trip.save(update_fields=["name"])
+        sync_trip_to_caldav(self.trip)
+        self.assertEqual(self.trip.caldav_uid, uid)
+        self.assertIn(uid, urlopen.call_args.args[0].full_url)
+
+        self.trip.sync_to_caldav = False
+        self.trip.save(update_fields=["sync_to_caldav"])
+        sync_trip_to_caldav(self.trip)
+        self.trip.refresh_from_db()
+        self.assertEqual(urlopen.call_args.args[0].get_method(), "DELETE")
+        self.assertEqual(self.trip.caldav_uid, "")

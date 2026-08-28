@@ -29,6 +29,7 @@ if os.name == "nt" and MSYS2_WEASYPRINT_DLLS.exists():
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "django-insecure--al=tp&7a5-h=x0gb8)$r&%pdo$=u&lonrtol7tbatc^%!8!ci"
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", SECRET_KEY)
+CALDAV_ENCRYPTION_SECRET = os.environ.get("CALDAV_ENCRYPTION_SECRET", SECRET_KEY)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"

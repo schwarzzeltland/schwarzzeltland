@@ -76,6 +76,8 @@ class Trip(models.Model):
         related_name="planned_trips",
         verbose_name="Planer"
     )
+    sync_to_caldav = models.BooleanField(default=False, verbose_name="Mit Organisationskalender synchronisieren")
+    caldav_uid = models.CharField(max_length=255, blank=True, editable=False)
 
     def __str__(self):
         return f"{self.name}"

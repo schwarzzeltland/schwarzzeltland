@@ -198,7 +198,7 @@ class MeetingMinutesTests(TestCase):
         self.assertCountEqual(mail.outbox[0].to, ["leitung@example.test", "abwesend@example.test"])
         self.assertIn("Protokoll prüfen und annehmen", mail.outbox[0].alternatives[0][0])
         self.assertEqual(self.client.get(reverse("meeting_minutes_edit", args=[minutes.pk])).status_code, 302)
-        pdf = self.client.get(reverse("meeting_minutes_pdf", args=[minutes.pk])); self.assertEqual(pdf.status_code, 200); self.assertEqual(pdf["Content-Type"], "application/pdf")
+        pdf = self.client.get(reverse("meeting_minutes_pdf", args=[minutes.pk])); self.assertEqual(pdf.status_code, 200); self.assertEqual(pdf["Content-Type"], "application/pdf"); self.assertEqual(pdf["Content-Disposition"], 'attachment; filename="juli-sitzung.pdf"')
 
     def test_acceptance_requires_majority_and_all_responsible_members(self):
         memberships = [self.membership]
