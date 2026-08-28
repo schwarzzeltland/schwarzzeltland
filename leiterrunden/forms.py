@@ -32,7 +32,7 @@ class MeetingMinutesItemForm(forms.ModelForm):
 
     class Meta:
         model = MeetingMinutesItem
-        fields = ["parent", "topic", "notes", "responsible_members", "due_date", "position"]
+        fields = ["parent", "topic", "notes", "responsible_members", "due_date", "voting_enabled", "votes_yes", "votes_no", "votes_abstain", "position"]
         widgets = {
             "notes": forms.Textarea(attrs={"rows": 3}),
             "due_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
@@ -41,11 +41,14 @@ class MeetingMinutesItemForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop("organization", None)
+        self.voter_count = kwargs.pop("voter_count", None)
         minutes = kwargs.get("instance").minutes if kwargs.get("instance") and kwargs["instance"].pk else None
         super().__init__(*args, **kwargs)
         self.fields["position"].required = False
         self.fields["due_date"].input_formats = ["%Y-%m-%d"]
         self.fields["responsible_members"].required = False
+        for field in ("voting_enabled", "votes_yes", "votes_no", "votes_abstain"):
+            self.fields[field].required = False
         self.fields["responsible_members"].queryset = organization.membership_set.filter(leiterrundenmitglied=True).select_related("user") if organization else self.fields["responsible_members"].queryset.none()
         self.fields["responsible_members"].widget.attrs.update({"class": "form-select select2-responsible"})
         self.fields["parent"].required = False
@@ -56,6 +59,19 @@ class MeetingMinutesItemForm(forms.ModelForm):
         if parent and parent.parent and parent.parent.parent:
             raise forms.ValidationError("Es sind maximal zwei Unterebenen erlaubt.")
         return parent
+
+    def clean(self):
+        data = super().clean()
+        if data.get("voting_enabled"):
+            cast_votes = sum(data.get(field) or 0 for field in ("votes_yes", "votes_no", "votes_abstain"))
+            if cast_votes < 1:
+                self.add_error("votes_yes", "Bitte mindestens eine Stimme erfassen oder die Abstimmung deaktivieren.")
+            elif self.voter_count is not None and cast_votes > self.voter_count:
+                self.add_error(
+                    "votes_yes",
+                    f"Die Summe der Stimmen ({cast_votes}) darf die Anzahl der anwesenden Stimmberechtigten ({self.voter_count}) nicht überschreiten.",
+                )
+        return data
 
 
 MeetingMinutesItemFormSet = inlineformset_factory(

@@ -6,6 +6,8 @@ from leiterrunden import views
 urlpatterns = [
     path("leiterrunden/protokolle/", views.meeting_minutes_list, name="meeting_minutes_list"),
     path("leiterrunden/protokolle/erstellen/", views.meeting_minutes_create, name="meeting_minutes_create"),
+    path("leiterrunden/protokolle/autosave/", views.meeting_minutes_autosave, name="meeting_minutes_autosave_create"),
+    path("leiterrunden/protokolle/<int:pk>/autosave/", views.meeting_minutes_autosave, name="meeting_minutes_autosave_edit"),
     path("leiterrunden/protokolle/<int:pk>/", views.meeting_minutes_detail, name="meeting_minutes_detail"),
     path("leiterrunden/protokolle/<int:pk>/bearbeiten/", views.meeting_minutes_edit, name="meeting_minutes_edit"),
     path("leiterrunden/protokolle/<int:pk>/duplizieren/", views.meeting_minutes_duplicate, name="meeting_minutes_duplicate"),

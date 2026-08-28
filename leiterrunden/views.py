@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -51,7 +51,19 @@ def _notify_leiterrunde(request, minutes):
     return len(recipients)
 
 def _form_data(request, minutes=None):
-    return (MeetingMinutesForm(request.POST, instance=minutes), MeetingMinutesItemFormSet(request.POST, instance=minutes, form_kwargs={"organization": request.org}), MeetingGuestFormSet(request.POST, instance=minutes))
+    voter_count = sum(
+        request.POST.get(f"attendance_{membership_id}") == "on"
+        for membership_id in request.org.membership_set.filter(leiterrundenmitglied=True).values_list("id", flat=True)
+    )
+    return (
+        MeetingMinutesForm(request.POST, instance=minutes),
+        MeetingMinutesItemFormSet(
+            request.POST,
+            instance=minutes,
+            form_kwargs={"organization": request.org, "voter_count": voter_count},
+        ),
+        MeetingGuestFormSet(request.POST, instance=minutes),
+    )
 
 def _attendance_rows(minutes, organization):
     saved = {row.membership_id: row for row in minutes.attendances.all()} if minutes else {}
@@ -153,6 +165,10 @@ def _duplicate_minutes(source, user, title, replaces=None):
                 notes=item.notes,
                 responsible=item.responsible,
                 due_date=item.due_date,
+                voting_enabled=item.voting_enabled,
+                votes_yes=item.votes_yes,
+                votes_no=item.votes_no,
+                votes_abstain=item.votes_abstain,
                 position=item.position,
             )
             copied_item.responsible_members.set(item.responsible_members.all())
@@ -247,7 +263,7 @@ def meeting_minutes_list(request):
         request,
         "leiterrunden/meeting_minutes_list.html",
         {
-            "title": "Leiterrunden-Protokolle",
+            "title": "Protokolle",
             "minutes": minutes,
             "query": query,
             "status": status,
@@ -267,7 +283,7 @@ def meeting_minutes_create(request):
             messages.success(request, f"Protokoll veröffentlicht und {_notify_leiterrunde(request, minutes)} Leiterrundenmitglied(er) benachrichtigt." if publish else "Entwurf gespeichert.")
             return redirect("meeting_minutes_detail", pk=minutes.pk)
     else: form, items, guests = MeetingMinutesForm(), MeetingMinutesItemFormSet(form_kwargs={"organization": request.org}), MeetingGuestFormSet()
-    return render(request, "leiterrunden/meeting_minutes_form.html", {"title": "Leiterrunden-Protokoll erstellen", "form": form, "formset": items, "guest_formset": guests, "attendance_rows": _attendance_rows(None, request.org), "minutes": None})
+    return render(request, "leiterrunden/meeting_minutes_form.html", {"title": "Protokoll erstellen", "form": form, "formset": items, "guest_formset": guests, "attendance_rows": _attendance_rows(None, request.org), "minutes": None})
 
 @login_required
 @leiterrundenmitglied_required
@@ -285,6 +301,7 @@ def meeting_minutes_detail(request, pk):
             "minutes_tree": _minutes_tree(minutes),
             "has_accepted": has_accepted,
             "acceptance_rows": _acceptance_rows(minutes) if minutes.published else [],
+            "present_voter_count": minutes.attendances.filter(present=True).count(),
         },
     )
 
@@ -300,7 +317,20 @@ def meeting_minutes_edit(request, pk):
             messages.success(request, f"Protokoll veröffentlicht und {_notify_leiterrunde(request, saved)} Leiterrundenmitglied(er) benachrichtigt." if publish else "Entwurf gespeichert.")
             return redirect("meeting_minutes_detail", pk=saved.pk)
     else: form, items, guests = MeetingMinutesForm(instance=minutes), MeetingMinutesItemFormSet(instance=minutes, form_kwargs={"organization": request.org}), MeetingGuestFormSet(instance=minutes)
-    return render(request, "leiterrunden/meeting_minutes_form.html", {"title": "Leiterrunden-Protokoll bearbeiten", "form": form, "formset": items, "guest_formset": guests, "attendance_rows": _attendance_rows(minutes, request.org), "minutes": minutes})
+    return render(request, "leiterrunden/meeting_minutes_form.html", {"title": "Protokoll bearbeiten", "form": form, "formset": items, "guest_formset": guests, "attendance_rows": _attendance_rows(minutes, request.org), "minutes": minutes})
+
+
+@login_required
+@leiterrundenmitglied_required
+@pro6_required
+def meeting_minutes_autosave(request, pk=None):
+    if request.method != "POST":
+        return JsonResponse({"ok": False}, status=405)
+    minutes = get_object_or_404(MeetingMinutes, pk=pk, organization=request.org, published=False) if pk else None
+    form, items, guests, saved = _save_minutes(request, minutes, publish=False)
+    if not saved:
+        return JsonResponse({"ok": False, "message": "Noch nicht speicherbare oder unvollständige Eingaben."}, status=422)
+    return JsonResponse({"ok": True, "pk": saved.pk, "edit_url": reverse("meeting_minutes_edit", args=[saved.pk]), "autosave_url": reverse("meeting_minutes_autosave_edit", args=[saved.pk]), "saved_at": timezone.localtime().strftime("%H:%M")})
 
 
 @login_required
@@ -412,6 +442,8 @@ def meeting_minutes_pdf(request, pk):
             lines += ["", "HINWEIS: Geänderte Fassung.", "Dieses Protokoll ersetzt eine vorherige Veröffentlichung."]
         lines += ["", "ANWESEND"]
         lines += [a.membership.user.username for a in minutes.attendances.all() if a.present]
+        lines += ["", "ABWESEND"]
+        lines += [a.membership.user.username for a in minutes.attendances.all() if not a.present]
         lines += ["", "GÄSTE"]
         lines += [
             f"{guest.name}{f' – {guest.note}' if guest.note else ''}"
@@ -432,6 +464,8 @@ def meeting_minutes_pdf(request, pk):
                     tree_lines.append((level + 1, f"Verantwortlich: {responsible_names}"))
                 if item.due_date:
                     tree_lines.append((level + 1, f"Fällig am: {item.due_date:%d.%m.%Y}"))
+                if item.voting_enabled:
+                    tree_lines.append((level + 1, f"Abstimmung: {item.votes_yes} Ja, {item.votes_no} Nein, {item.votes_abstain} Enthaltungen"))
                 add_tree_lines(item.tree_children, level + 1)
         add_tree_lines(minutes_tree)
         lines += ["", "TAGESORDNUNG"] + tree_lines

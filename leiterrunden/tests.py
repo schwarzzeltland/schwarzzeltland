@@ -26,6 +26,67 @@ class MeetingMinutesTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(MeetingMinutes.objects.get().published)
 
+    def test_changed_form_can_be_autosaved_without_creating_duplicate_drafts(self):
+        self.client.login(username="leitung", password="pw")
+        response = self.client.post(reverse("meeting_minutes_autosave_create"), self._post_data())
+        self.assertEqual(response.status_code, 200)
+        minutes = MeetingMinutes.objects.get()
+        self.assertFalse(minutes.published)
+        self.assertEqual(response.json()["pk"], minutes.pk)
+
+        data = self._post_data()
+        data["title"] = "Automatisch aktualisiert"
+        data["items-INITIAL_FORMS"] = "1"
+        data["items-0-id"] = str(minutes.items.get().pk)
+        response = self.client.post(reverse("meeting_minutes_autosave_edit", args=[minutes.pk]), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(MeetingMinutes.objects.count(), 1)
+        minutes.refresh_from_db()
+        self.assertEqual(minutes.title, "Automatisch aktualisiert")
+
+    def test_vote_sum_must_not_exceed_present_eligible_voters(self):
+        other_user = User.objects.create_user(username="zweite-leitung", password="pw")
+        Membership.objects.create(user=other_user, organization=self.organization, leiterrundenmitglied=True)
+        self.client.login(username="leitung", password="pw")
+        data = self._post_data()
+        data.update({
+            "items-0-voting_enabled": "on",
+            "items-0-votes_yes": "2",
+            "items-0-votes_no": "0",
+            "items-0-votes_abstain": "0",
+        })
+
+        response = self.client.post(reverse("meeting_minutes_create"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "darf die Anzahl der anwesenden Stimmberechtigten (1) nicht überschreiten")
+        self.assertFalse(MeetingMinutes.objects.exists())
+
+        data["items-0-votes_yes"] = "1"
+        response = self.client.post(reverse("meeting_minutes_create"), data)
+        self.assertEqual(response.status_code, 302)
+        minutes = MeetingMinutes.objects.get()
+        self.assertEqual(minutes.items.get().votes_yes, 1)
+        detail = self.client.get(reverse("meeting_minutes_detail", args=[minutes.pk]))
+        pdf_html = render_to_string("leiterrunden/meeting_minutes_pdf.html", {"minutes": minutes, "minutes_tree": detail.context["minutes_tree"], "acceptance_rows": []})
+        self.assertIn("Abstimmung:", pdf_html)
+        self.assertIn("1 Ja", pdf_html)
+
+    def test_detail_and_pdf_show_absent_members(self):
+        absent_user = User.objects.create_user(username="abwesend", password="pw")
+        absent_membership = Membership.objects.create(user=absent_user, organization=self.organization, leiterrundenmitglied=True)
+        self.client.login(username="leitung", password="pw")
+        self.client.post(reverse("meeting_minutes_create"), self._post_data("publish"))
+        minutes = MeetingMinutes.objects.get()
+
+        detail = self.client.get(reverse("meeting_minutes_detail", args=[minutes.pk]))
+        self.assertContains(detail, "Abwesend")
+        self.assertContains(detail, absent_membership.user.username)
+        pdf_html = render_to_string("leiterrunden/meeting_minutes_pdf.html", {"minutes": minutes, "minutes_tree": detail.context["minutes_tree"], "acceptance_rows": detail.context["acceptance_rows"]})
+        self.assertIn("Abwesend", pdf_html)
+        self.assertIn(absent_membership.user.username, pdf_html)
+
     def test_edit_form_does_not_add_an_empty_top(self):
         self.client.login(username="leitung", password="pw")
         self.client.post(reverse("meeting_minutes_create"), self._post_data())

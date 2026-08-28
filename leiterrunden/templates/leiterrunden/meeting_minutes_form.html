@@ -1,7 +1,7 @@
 {% extends "base.html" %}{% load bootstrap5 %}{% block content %}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"><script src="https://code.jquery.com/jquery-3.7.1.min.js"></script><script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<h3>{% if minutes %}Leiterrunden-Protokoll bearbeiten{% else %}Leiterrunden-Protokoll erstellen{% endif %}</h3><form method="post">{% csrf_token %}{% bootstrap_form form %}
-<h4>Anwesenheit</h4>{% for member, attendance in attendance_rows %}<div class="row mb-2"><div class="col-md-3"><input type="checkbox" name="attendance_{{ member.id }}" {% if attendance and attendance.present %}checked{% endif %}> {{ member.user.username }}</div><div class="col-md-9"><input class="form-control" name="attendance_note_{{ member.id }}" value="{% if attendance %}{{ attendance.note }}{% endif %}" placeholder="Notiz (optional)"></div></div>{% endfor %}
+<h3>{% if minutes %}Protokoll bearbeiten{% else %}Protokoll erstellen{% endif %}</h3><form method="post" id="minutes-form" data-autosave-url="{% if minutes %}{% url 'meeting_minutes_autosave_edit' minutes.pk %}{% else %}{% url 'meeting_minutes_autosave_create' %}{% endif %}">{% csrf_token %}{% bootstrap_form form %}
+<h4>Anwesenheit <span class="badge text-bg-primary" id="present-voter-count">0 Stimmberechtigte</span></h4>{% for member, attendance in attendance_rows %}<div class="row mb-2"><div class="col-md-3"><input class="attendance-checkbox" type="checkbox" name="attendance_{{ member.id }}" {% if attendance and attendance.present %}checked{% endif %}> {{ member.user.username }}</div><div class="col-md-9"><input class="form-control" name="attendance_note_{{ member.id }}" value="{% if attendance %}{{ attendance.note }}{% endif %}" placeholder="Notiz (optional)"></div></div>{% endfor %}
 <h4>Gäste</h4>{{ guest_formset.management_form }}<div id="guest-forms">{% for guest_form in guest_formset %}<div class="card mb-2 guest-card"><div class="card-body">{% for hidden in guest_form.hidden_fields %}{{ hidden }}{% endfor %}{% bootstrap_form guest_form exclude='DELETE' %}<button type="button" class="btn btn-sm btn-outline-danger remove-guest">Gast entfernen</button></div></div>{% endfor %}</div>
 <template id="empty-guest"><div class="card mb-2 guest-card"><div class="card-body">{% for hidden in guest_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}{% bootstrap_form guest_formset.empty_form exclude='DELETE' %}<button type="button" class="btn btn-sm btn-outline-danger remove-guest">Gast entfernen</button></div></div></template>
 <button type="button" id="add-guest" class="btn btn-outline-secondary mb-3">Gast hinzufügen</button>
@@ -27,7 +27,9 @@ document.addEventListener('click',event=>{
     deleted.type='hidden';
     deleted.name=id.name.replace('-id','-DELETE');
     deleted.value='on';
-    document.querySelector('form').appendChild(deleted);
+    card.appendChild(deleted);
+    card.hidden=true;
+    return;
   }
   card.remove();
 });
@@ -60,5 +62,48 @@ document.addEventListener('click',event=>{if(event.target.classList.contains('de
 document.getElementById('expand-all').addEventListener('click',()=>{document.querySelectorAll('.top-card > .card-body').forEach(box=>box.hidden=false);refreshCollapseToggles();});
 document.getElementById('collapse-all').addEventListener('click',()=>{document.querySelectorAll('.top-card > .card-body').forEach(box=>box.hidden=true);refreshCollapseToggles();});
 $(document).ready(()=>{refreshCollapseToggles();refreshSubtopSummaries();});
+</script>
+<script>
+function updatePresentVoterCount(){const count=document.querySelectorAll('.attendance-checkbox:checked').length;document.getElementById('present-voter-count').textContent=count+' Stimmberechtigte'}
+function setupVoting(scope=document){scope.querySelectorAll('input[name$="-voting_enabled"]').forEach(toggle=>{const card=toggle.closest('.top-card'),update=()=>['votes_yes','votes_no','votes_abstain'].forEach(name=>{const input=card.querySelector('input[name$="-'+name+'"]');if(input)input.closest('.mb-3').hidden=!toggle.checked});toggle.addEventListener('change',update);update()})}
+document.addEventListener('change',event=>{if(event.target.classList.contains('attendance-checkbox'))updatePresentVoterCount()});
+document.getElementById('add-item').addEventListener('click',()=>setTimeout(()=>setupVoting(document.getElementById('protocol-items').lastElementChild),0));
+document.addEventListener('click',event=>{if(event.target.classList.contains('add-subtop'))setTimeout(()=>setupVoting(event.target.closest('.top-card')),0)});
+$(document).ready(()=>{updatePresentVoterCount();setupVoting()});
+</script>
+<button type="button" id="autosave-status" class="autosave-indicator is-saved" aria-live="polite" aria-label="Alle Änderungen gespeichert" title="Alle Änderungen gespeichert"><i class="bi bi-check-lg" aria-hidden="true"></i></button>
+<style>
+.autosave-indicator{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:1050;width:3rem;height:3.5rem;border:0;border-radius:.75rem 0 0 .75rem;box-shadow:0 2px 12px rgba(15,23,42,.22);display:flex;align-items:center;justify-content:center;font-size:1.45rem;transition:background-color .2s,color .2s}.autosave-indicator.is-saved{background:#198754;color:#fff;cursor:default}.autosave-indicator.is-dirty{background:#ffc107;color:#212529;cursor:pointer}.autosave-indicator.is-error{background:#dc3545;color:#fff;cursor:pointer}.autosave-indicator.is-saving{background:#0d6efd;color:#fff;cursor:wait}.autosave-indicator:focus-visible{outline:3px solid rgba(13,110,253,.35);outline-offset:2px}
+</style>
+<script>
+(()=>{
+  const form=document.getElementById('minutes-form'),status=document.getElementById('autosave-status');
+  let version=0,saving=false;
+  function showState(state,message){status.className='autosave-indicator is-'+state;status.title=message;status.setAttribute('aria-label',message);status.innerHTML=state==='saved'?'<i class="bi bi-check-lg" aria-hidden="true"></i>':state==='saving'?'<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>':state==='error'?'<i class="bi bi-exclamation-lg" aria-hidden="true"></i>':'<i class="bi bi-circle-fill" aria-hidden="true"></i>'}
+  function markDirty(){version++;showState('dirty','Nicht gespeicherte Änderungen – jetzt speichern')}
+  form.addEventListener('input',markDirty);
+  form.addEventListener('change',markDirty);
+  form.addEventListener('click',event=>{if(event.target.closest('.add-subtop,.delete-top,.remove-guest,#add-guest,#add-item'))markDirty()});
+  form.addEventListener('drop',()=>setTimeout(markDirty,0));
+  async function saveDraft(){
+    if(!version||saving)return;
+    saving=true;
+    const savingVersion=version;
+    showState('saving','Entwurf wird gespeichert');
+    try{
+      const response=await fetch(form.dataset.autosaveUrl,{method:'POST',body:new FormData(form),headers:{'X-Requested-With':'XMLHttpRequest'}});
+      const result=await response.json();
+      if(!response.ok)throw new Error(result.message||'Speichern fehlgeschlagen');
+      if(version===savingVersion)version=0;
+      form.dataset.autosaveUrl=result.autosave_url;
+      form.action=result.edit_url;
+      history.replaceState({},'',result.edit_url);
+      if(version)showState('dirty','Weitere nicht gespeicherte Änderungen – jetzt speichern');else showState('saved','Alle Änderungen gespeichert · '+result.saved_at+' Uhr');
+    }catch(error){showState('error','Speichern fehlgeschlagen: '+error.message+' – erneut versuchen');}
+    finally{saving=false;}
+  }
+  status.addEventListener('click',saveDraft);
+  setInterval(saveDraft,120000);
+})();
 </script>
 {% endblock %}

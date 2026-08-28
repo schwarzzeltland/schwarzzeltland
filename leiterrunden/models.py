@@ -77,6 +77,10 @@ class MeetingMinutesItem(models.Model):
     responsible = models.CharField(max_length=255, blank=True, verbose_name="Verantwortlich")
     responsible_members = models.ManyToManyField("main.Membership", blank=True, related_name="assigned_meeting_minutes_items", verbose_name="Verantwortliche")
     due_date = models.DateField(null=True, blank=True, verbose_name="Fällig am")
+    voting_enabled = models.BooleanField(default=False, verbose_name="Abstimmung erfassen")
+    votes_yes = models.PositiveIntegerField(default=0, verbose_name="Ja-Stimmen")
+    votes_no = models.PositiveIntegerField(default=0, verbose_name="Nein-Stimmen")
+    votes_abstain = models.PositiveIntegerField(default=0, verbose_name="Enthaltungen")
     position = models.PositiveIntegerField(default=0)
 
     class Meta:
