@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-4">
+    <h2>Hilfe für {{ organization.name }}</h2>
+    <p class="lead mb-2">Diese Dokumentation ist auf eure freigeschalteten Funktionen und deine Berechtigungen zugeschnitten.</p>
+    <div class="d-flex flex-wrap gap-2">
+        {% if membership.admin %}<span class="badge text-bg-primary">Admin</span>{% endif %}
+        {% if membership.material_manager %}<span class="badge text-bg-secondary">Materialwart</span>{% endif %}
+        {% if membership.event_manager %}<span class="badge text-bg-success">Eventmanager</span>{% endif %}
+        {% if membership.knowledge_manager %}<span class="badge text-bg-info">Knowledge-Manager</span>{% endif %}
+        {% if membership.cashier_manager %}<span class="badge text-bg-warning">Kassenwart</span>{% endif %}
+        {% if membership.leiterrundenmitglied %}<span class="badge text-bg-dark">Leiterrundenmitglied</span>{% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+<aside class="col-lg-3"><div class="list-group sticky-lg-top" style="top:9rem">
+    <a class="list-group-item list-group-item-action" href="#start">Erste Schritte</a>
+    <a class="list-group-item list-group-item-action" href="#organisation">Organisation und Rollen</a>
+    <a class="list-group-item list-group-item-action" href="#material">Material und Konstruktionen</a>
+    <a class="list-group-item list-group-item-action" href="#veranstaltungen">Veranstaltungen</a>
+    <a class="list-group-item list-group-item-action" href="#wissen">Orte, Rezepte und Nachrichten</a>
+    {% if organization.pro1 %}<a class="list-group-item list-group-item-action" href="#einkauf">Einkaufsliste</a>{% endif %}
+    {% if organization.pro2 %}<a class="list-group-item list-group-item-action" href="#vakanzen">Vakanzen</a>{% endif %}
+    {% if organization.pro3 %}<a class="list-group-item list-group-item-action" href="#todos">To-do-Listen</a>{% endif %}
+    {% if organization.pro4 %}<a class="list-group-item list-group-item-action" href="#programm">Programmplanung</a>{% endif %}
+    {% if organization.pro5 %}<a class="list-group-item list-group-item-action" href="#kasse">Kassenbücher</a>{% endif %}
+    {% if organization.pro6 %}<a class="list-group-item list-group-item-action" href="#protokolle">Protokolle</a>{% endif %}
+</div></aside>
+
+<div class="col-lg-9">
+<section id="start" class="mb-5"><h3>Erste Schritte</h3>
+    <ol><li>Prüfe oben im Organisationsumschalter, ob <strong>{{ organization.name }}</strong> ausgewählt ist.</li><li>Öffne das gewünschte Modul über die Navigation.</li><li>Bearbeitungsfunktionen erscheinen nur, wenn deine Rolle sie erlaubt.</li></ol>
+    <div class="alert alert-info">Daten werden immer der aktuell ausgewählten Organisation zugeordnet. Prüfe diese besonders vor dem Erstellen oder Importieren.</div>
+</section>
+
+<section id="organisation" class="mb-5"><h3>Organisation und Rollen</h3>
+    <p>Admins verwalten Name, Bild, Empfängercode, Mitglieder, Rollen, Standard-To-dos und – falls eingerichtet – den CalDAV-Kalender.</p>
+    <ul><li><strong>Admin:</strong> Organisation, Mitglieder und Berechtigungen verwalten.</li><li><strong>Materialwart:</strong> Materialbestände und Konstruktionen verändern.</li><li><strong>Eventmanager:</strong> Veranstaltungen und Orte verwalten.</li><li><strong>Knowledge-Manager:</strong> Rezepte verwalten und übernehmen.</li><li><strong>Kassenwart:</strong> Kassenbücher und Buchungen verwalten.</li><li><strong>Leiterrundenmitglied:</strong> Auszahlungsanfragen und Protokolle nutzen, sofern freigeschaltet.</li></ul>
+    {% if membership.admin %}<p><a href="{% url 'organization' %}" class="btn btn-outline-primary btn-sm">Organisation verwalten</a></p>{% else %}<p class="text-muted">Änderungen an Mitgliedern oder Organisationsdaten kann ein Admin vornehmen.</p>{% endif %}
+</section>
+
+<section id="material" class="mb-5"><h3>Material und Konstruktionen</h3>
+    <h4 class="h5 mt-3">Materialarten und Bestände</h4>
+    <p>Ein Material beschreibt die Sache selbst, zum Beispiel „Doppelzeltbahn“. Dazu können mehrere Bestände an unterschiedlichen Lagerorten existieren. Die Übersicht fasst diese Bestände zusammen; über das Aufklappen sind die einzelnen Lagerpositionen erreichbar.</p>
+    <ul><li><strong>Anzahl:</strong> Gesamtmenge an dieser Lagerposition.</li><li><strong>Zustand:</strong> Aufteilung in in Ordnung, wartungsbedürftig und defekt. Die Zustandsmengen sollten zusammen zur Anzahl passen.</li><li><strong>Materialtyp:</strong> Steuert zusätzliche Abläufe. Verbrauchsmaterial kann beispielsweise über Einkaufslisten automatisch nachbeschafft werden.</li><li><strong>Öffentlich:</strong> Macht die Materialdefinition für andere Organisationen sichtbar, nicht euren konkreten Lagerbestand.</li></ul>
+
+    <h4 class="h5 mt-4">Material einsortieren</h4>
+    <p>Beim Anlegen oder Einsortieren eines Bestands gibt es drei Lagerortarten:</p>
+    <ol><li><strong>Materialkiste:</strong> Der Bestand wird einer Kiste zugeordnet. Lagerort und Lagerplanposition werden von der Kiste übernommen.</li><li><strong>Bereich im Lagerplan:</strong> Der Bestand liegt direkt in einem markierten Planbereich.</li><li><strong>Freier Lagerort:</strong> Eine freie Textangabe, wenn weder Kiste noch Planbereich passend ist.</li></ol>
+    <p>Wird eine Kiste später auf dem Lagerplan verschoben oder ihr Lagerort geändert, folgt die Anzeige der enthaltenen Bestände automatisch.</p>
+
+    <h4 class="h5 mt-4">Materialkisten und QR-Codes</h4>
+    <p>Materialkisten bilden reale Boxen, Schränke oder Behälter ab. Eine Kiste hat einen Namen, optional eine Beschreibung, einen Lagerort und eine Position im Lagerplan. In der Bearbeitung können vorhandene Materialbestände über Suche gesammelt einer Kiste zugeordnet werden. Die Zuordnung verändert keine Mengen.</p>
+    <ul><li>Die Kistenübersicht kann nach Kistenname, Lagerort oder enthaltenem Material durchsucht werden.</li><li>Die Detailansicht zeigt Inhalt, Mengen und Zustand.</li><li>Jede Kiste besitzt einen dauerhaften QR-Code. Ein Scan öffnet direkt die Kistenansicht, sofern der Benutzer die Organisation sehen darf.</li><li>Über „QR-Codes erstellen“ entsteht ein PDF für mehrere Kisten: nur QR-Code, mit Name und Lagerort oder zusätzlich mit Inhalt.</li><li>Beim Löschen einer Kiste bleiben die Materialbestände erhalten; nur ihre Kistenzuordnung wird entfernt.</li></ul>
+
+    <h4 class="h5 mt-4">Lagerpläne</h4>
+    <p>Ein Lagerplan ist ein hochgeladenes Bild eures Lagers. Darauf werden benannte rechteckige Bereiche angelegt, etwa „Regal links“, „Dachboden“ oder „Fach A3“.</p>
+    <ol><li>Unter Material-Lager → Lagerpläne einen Plan mit Bild anlegen.</li><li>Den Plan öffnen und die benötigten Bereiche auf dem Bild positionieren und benennen.</li><li>Materialkisten oder einzelne Bestände beim Einsortieren einem Bereich zuordnen.</li><li>Über das Kartensymbol „Auf Lagerplan anzeigen“ direkt zum hervorgehobenen Bereich springen.</li><li>„Kisten und Materialbestände anzeigen“ listet den vollständigen Inhalt des markierten Bereichs.</li></ol>
+    <p>Wird ein Plan oder Bereich gelöscht, bleiben Kisten und Bestände bestehen, verlieren aber ihre Planposition.</p>
+
+    <h4 class="h5 mt-4">Konstruktionen</h4>
+    <p>Konstruktionen sind wiederverwendbare Materiallisten für Zelte und Bauwerke. Neben Beschreibung und Bild können Schlafplätze, Flächen, Gewichtsinformationen und alle benötigten Materialien mit Mengen gepflegt werden.</p>
+    <ul><li>Eigene Konstruktionen können bearbeitet und bei Bedarf öffentlich geteilt werden.</li><li>Öffentliche Konstruktionen anderer Organisationen können als Ausgangspunkt genutzt werden.</li><li>Die Bestandsprüfung zeigt, ob das Material in der gewünschten Menge verfügbar ist.</li><li>In Veranstaltungen werden Konstruktionen mit Stückzahl zugeordnet; daraus berechnet das System den gesamten Materialbedarf.</li></ul>
+    {% if membership.material_manager %}<p>Du darfst Bestände und Konstruktionen bearbeiten.</p>{% else %}<p class="text-muted">Du hast hier Lesezugriff; Änderungen benötigen die Rolle Materialwart.</p>{% endif %}
+</section>
+
+<section id="veranstaltungen" class="mb-5"><h3>Veranstaltungen</h3>
+    <p>Veranstaltungen verbinden Terminplanung, Personenstruktur, Materialbedarf und die freigeschalteten Planungsmodule.</p>
+    <h4 class="h5 mt-3">Grunddaten und Gruppen</h4>
+    <ol><li>Name, Beschreibung, Typ, Beginn und Ende eintragen.</li><li>Einen eigenen Ort auswählen und die verantwortlichen Planer festlegen.</li><li>Teilnehmende in Gruppen aufteilen, etwa nach Stufe oder Sippe. Die Summe ist die Teilnehmerzahl der Veranstaltung und wird unter anderem für Rezeptmengen verwendet.</li><li>Konstruktionen mit Stückzahl sowie einzelnes zusätzliches Material ergänzen.</li><li>Speichern und anschließend die Materialverfügbarkeit prüfen.</li></ol>
+    <h4 class="h5 mt-4">Verfügbarkeit und Packliste</h4>
+    <p>Die Prüfung addiert Material aus Konstruktionen und manuell ergänzten Positionen. Parallel laufende Veranstaltungen werden berücksichtigt. Bei jeder Lagerposition kann markiert werden, was bereits gepackt ist. Lagerplan-Symbole führen direkt zur tatsächlichen Position. Eine Materialzeile wird vollständig markiert, sobald die gepackte Menge den Bedarf erreicht.</p>
+    <h4 class="h5 mt-4">Materialverleih</h4>
+    <p>Für einen Verleih wird der Veranstaltungstyp „Material-Verleih“ gewählt. Empfängerorganisation und deren Empfängercode schützen vor einer falschen Zuordnung. Verliehenes Material erscheint bei gültigem Code temporär im Lager der empfangenden Organisation und besitzt ein Gültigkeitsende.</p>
+    <p>Ist für {{ organization.name }} ein CalDAV-Kalender eingerichtet, kann die Checkbox zur Kalendersynchronisierung aktiviert werden. Übertragen werden aus Datenschutzgründen nur Titel, Beginn und Ende.</p>
+    {% if membership.event_manager %}<p>Du darfst Veranstaltungen und Orte erstellen und bearbeiten.</p>{% else %}<p class="text-muted">Zum Bearbeiten ist die Rolle Eventmanager erforderlich.</p>{% endif %}
+</section>
+
+<section id="wissen" class="mb-5"><h3>Orte, Rezepte und Nachrichten</h3>
+    <h4 class="h5 mt-3">Orte</h4><p>Eigene Orte stehen in Veranstaltungen zur Auswahl. Ein Ort kann Typ, Beschreibung, Koordinaten und eine öffentliche Freigabe enthalten. Öffentliche Orte anderer Organisationen lassen sich in die eigene Verwaltung übernehmen.</p>
+    <h4 class="h5 mt-4">Rezepte</h4><p>Rezepte enthalten Portionenzahl, Zubereitung und Zutaten. Jede Zutat sollte Menge, Einheit und möglichst eine Warengruppe besitzen. Beim Anzeigen kann die Personenzahl geändert werden; die Mengen werden entsprechend skaliert. Öffentliche Rezepte können angesehen und als eigene Kopie übernommen werden.</p>
+    <p>Für Programm-Mahlzeiten kann ein eigenes Rezept ausgewählt werden. Die Teilnehmerzahl der Veranstaltung dient anschließend als Multiplikator für die Einkaufsmengen.</p>
+    <h4 class="h5 mt-4">Nachrichten</h4><p>Nachrichten werden zwischen Organisationen versendet. Posteingang und gesendete Nachrichten bleiben voneinander getrennt; Empfänger ist die Organisation, nicht nur ein einzelner Benutzer.</p>
+</section>
+
+{% if organization.pro1 %}<section id="einkauf" class="mb-5"><h3>Einkaufsliste <span class="badge text-bg-success">Freigeschaltet</span></h3>
+    <p>Jede Veranstaltung besitzt eine eigene Einkaufsliste. Positionen enthalten Artikel, Menge, Einheit und Warengruppe und können direkt in der Tabelle bearbeitet, gesucht und gefiltert werden.</p>
+    <h4 class="h5 mt-3">Manuelle und automatische Positionen</h4>
+    <ul><li>Artikel können manuell ergänzt werden. Die Namenssuche schlägt vorhandene Verbrauchsmaterialien vor.</li><li>Reicht ein Verbrauchsmaterial beim Speichern der Veranstaltung nicht aus, kann die fehlende Menge automatisch auf der Einkaufsliste erscheinen.</li><li>Das grüne Häkchen schließt eine Position ab. Bei passendem Verbrauchsmaterial wird die gekaufte Menge dem Lager hinzugefügt und anschließend für offene Veranstaltungsmengen verwendet.</li></ul>
+    <h4 class="h5 mt-4">Zutaten eines einzelnen Rezepts übernehmen</h4>
+    <p>Bei einer Mahlzeit mit Rezept kann „Zutaten zur Einkaufsliste hinzufügen“ gewählt werden. Jede Zutat wird mit der gewählten Personenzahl multipliziert. Ein erneuter Import desselben Rezepts und Termins ersetzt dessen frühere Positionen, damit keine Doppelmenge entsteht.</p>
+    {% if organization.pro4 %}<h4 class="h5 mt-4">Rezeptzutaten bündeln</h4>
+    <p>Unter der Programmplanung fasst „Rezept-Zutaten bündeln &amp; zur Einkaufsliste hinzufügen“ gleiche Zutaten aus mehreren Mahlzeiten zu gemeinsamen Einkaufspositionen zusammen.</p>
+    <ol><li>Ein oder mehrere Veranstaltungstage auswählen.</li><li>Die gewünschten Mahlzeiten beziehungsweise Rezepte auswählen.</li><li>Warengruppen auswählen, zum Beispiel Getränke oder Gemüse; Zutaten ohne Warengruppe können separat eingeschlossen werden.</li><li>Übernehmen. Gleicher Zutatenname, gleiche Einheit und gleiche Warengruppe werden addiert und mit der Gesamtteilnehmerzahl multipliziert.</li></ol>
+    <div class="alert alert-warning">Ein erneutes Bündeln ersetzt alle zuvor gebündelten Positionen mit dem Zusatz „(Rezepte)“. Manuelle Artikel und einzeln importierte Rezeptpositionen bleiben davon getrennt.</div>{% endif %}
+</section>{% endif %}
+
+{% if organization.pro2 %}<section id="vakanzen" class="mb-5"><h3>Vakanzen <span class="badge text-bg-success">Freigeschaltet</span></h3>
+    <p>Mit Vakanzen werden An- und Abwesenheitszeiträume einzelner Personen innerhalb einer Veranstaltung dokumentiert. Die Liste kann gefiltert und exportiert werden und unterstützt die Personal- und Verpflegungsplanung.</p>
+</section>{% endif %}
+
+{% if organization.pro3 %}<section id="todos" class="mb-5"><h3>To-do-Listen <span class="badge text-bg-success">Freigeschaltet</span></h3>
+    <p>Veranstaltungen erhalten eine Planungscheckliste. Standard-To-dos aus den Organisationseinstellungen werden bei neuen Veranstaltungen automatisch angelegt; relative Termine beziehen sich auf den Veranstaltungsbeginn.</p>
+    {% if membership.material_manager %}<p>Als Materialwart kannst du zusätzlich die organisationsweite Material-To-do-Liste verwenden.</p>{% endif %}
+</section>{% endif %}
+
+{% if organization.pro4 %}<section id="programm" class="mb-5"><h3>Programmplanung <span class="badge text-bg-success">Freigeschaltet</span></h3>
+    <p>Programmpunkte enthalten Beginn, Ende, Name, Kurzbeschreibung, ausführliche Beschreibung und Typ. Sie werden zeitlich sortiert dargestellt und können für Mitglieder sichtbar oder intern gehalten werden.</p>
+    <ul><li>Bei Mahlzeiten kann ein Rezept aus der Sammlung von {{ organization.name }} verknüpft werden.</li><li>„Rezept für die Teilnehmeranzahl anzeigen“ skaliert die Zutaten auf die in den Veranstaltungsgruppen erfasste Gesamtpersonenzahl.</li><li>Überlappende Zeiten, fehlende Endzeiten und Programmpunkte außerhalb des Veranstaltungszeitraums sollten vor der Freigabe geprüft werden.</li><li>Die Druckansicht erzeugt einen kompakten Ablaufplan.</li></ul>
+    {% if organization.pro1 %}<p>Zusammen mit der Einkaufsliste können Zutaten eines einzelnen Programmpunkts oder gebündelt aus mehreren Rezepten übernommen werden.</p>{% endif %}
+</section>{% endif %}
+
+{% if organization.pro5 %}<section id="kasse" class="mb-5"><h3>Kassenbücher und Auszahlungsanfragen <span class="badge text-bg-success">Freigeschaltet</span></h3>
+    <p>Kassenbücher verwalten Einnahmen, Ausgaben, Belege und Kontodaten. Buchungen sollten mit Datum, Betrag, Verwendungszweck und Beleg vollständig erfasst werden.</p>
+    {% if membership.cashier_manager %}<p>Du darfst Kassenbücher und Buchungen verwalten sowie Auszahlungsanfragen bearbeiten.</p>{% elif membership.leiterrundenmitglied %}<p>Du kannst deine Auszahlungsanfragen erfassen und deren Status verfolgen.</p>{% else %}<p class="text-muted">Für die Nutzung ist die Rolle Kassenwart oder Leiterrundenmitglied erforderlich.</p>{% endif %}
+</section>{% endif %}
+
+{% if organization.pro6 %}<section id="protokolle" class="mb-5"><h3>Protokolle <span class="badge text-bg-success">Freigeschaltet</span></h3>
+    <p>Protokolle enthalten Anwesenheit, Gäste und hierarchische Tagesordnungspunkte. Pro TOP können Verantwortliche, Fälligkeit und optional ein Abstimmungsergebnis erfasst werden.</p>
+    <ol><li>Protokoll als Entwurf anlegen und regelmäßig speichern lassen.</li><li>Anwesende und Abwesende prüfen; daraus ergibt sich die Zahl der Stimmberechtigten.</li><li>TOPs, Unter-TOPs und Beschlüsse erfassen.</li><li>Bei Abstimmungen darf die Stimmensumme die anwesenden Stimmberechtigten nicht überschreiten.</li><li>Nach der Prüfung veröffentlichen. Veröffentlichte Fassungen sind gesperrt und können über eine neue Fassung geändert werden.</li></ol>
+    <p>Der PDF-Export enthält Anwesenheit, Abwesenheit, TOPs und Abstimmungen. Die Annahme erfolgt durch die Leiterrundenmitglieder.</p>
+    {% if not membership.leiterrundenmitglied %}<p class="text-muted">Für dieses Modul benötigst du die Rolle Leiterrundenmitglied.</p>{% endif %}
+</section>{% endif %}
+
+{% if not organization.pro1 and not organization.pro2 and not organization.pro3 and not organization.pro4 and not organization.pro5 and not organization.pro6 %}<div class="alert alert-secondary">Für {{ organization.name }} sind derzeit keine Zusatzfunktionen freigeschaltet. Die oben beschriebenen Grundfunktionen stehen weiterhin zur Verfügung.</div>{% endif %}
+</div></div>
+{% endblock %}

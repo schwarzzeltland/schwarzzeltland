@@ -187,6 +187,13 @@ def privacypolice_view(request):
 
 
 def help_view(request):
+    if request.user.is_authenticated:
+        membership = request.user.membership_set.filter(organization=request.org).first()
+        return render(request, "main/help_authenticated.html", {
+            "title": f"Hilfe für {request.org.name}",
+            "organization": request.org,
+            "membership": membership,
+        })
     return render(request, "main/help.html", {"title": "Was ist Schwarzzeltland?"})
 
 

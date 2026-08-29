@@ -51,8 +51,7 @@
                     <a class="nav-link yellow-hover fw-semibold text-white" href="/main/contacts">Kontakt</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link yellow-hover fw-semibold text-white" href="/main/help">Was ist
-                        Schwarzzeltland?</a>
+                    <a class="nav-link yellow-hover fw-semibold text-white" href="{% url 'help' %}">{% if user.is_authenticated %}Hilfe{% else %}Was ist Schwarzzeltland?{% endif %}</a>
                 </li>
             </ul>
             <div class="d-flex flex-wrap flex-md-nowrap row-gap-3">

@@ -186,3 +186,28 @@ class ProtectedMediaTests(TestCase):
         self.client.login(username="owner", password="pw")
         cashier_response = self.client.get(f"/uploads/{attachment_path}")
         self.assertEqual(cashier_response.status_code, 200)
+
+    def test_public_help_remains_available_anonymously(self):
+        response = self.client.get("/main/help")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Was heißt das im Detail?")
+        self.assertNotContains(response, "Diese Dokumentation ist auf eure freigeschalteten Funktionen")
+
+    def test_authenticated_help_is_organization_and_feature_specific(self):
+        self.owner_org.pro2 = True
+        self.owner_org.pro6 = True
+        self.owner_org.save(update_fields=["pro2", "pro6"])
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.get(f"/main/help?org={self.owner_org.pk}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f"Hilfe für {self.owner_org.name}")
+        self.assertContains(response, "Materialkisten und QR-Codes")
+        self.assertContains(response, "Lagerpläne")
+        self.assertContains(response, 'id="vakanzen"', html=False)
+        self.assertContains(response, 'id="protokolle"', html=False)
+        self.assertNotContains(response, 'id="einkauf"', html=False)
+        self.assertNotContains(response, 'id="programm"', html=False)
+        self.assertNotContains(response, "Rezeptzutaten bündeln")
