@@ -154,6 +154,7 @@ def _duplicate_minutes(source, user, title, replaces=None):
             meeting_end=source.meeting_end,
             introduction=source.introduction,
             created_by=user,
+            updated_by=user,
             replaces=replaces,
         )
         item_map = {}
@@ -201,8 +202,9 @@ def _save_minutes(request, minutes=None, publish=False):
     with transaction.atomic():
         saved = form.save(commit=False)
         if minutes is None: saved.organization, saved.created_by = request.org, request.user
+        saved.updated_by = request.user
         saved.meeting_date = saved.meeting_start.date() if saved.meeting_start else timezone.localdate()
-        if publish: saved.published, saved.published_at = True, timezone.now()
+        if publish: saved.published, saved.published_at, saved.published_by = True, timezone.now(), request.user
         saved.save(); item_formset.instance = saved
         for index, item in enumerate(item_formset.save(commit=False), start=1):
             item.position = item.position or index
@@ -225,7 +227,7 @@ def _save_minutes(request, minutes=None, publish=False):
 @leiterrundenmitglied_required
 @pro6_required
 def meeting_minutes_list(request):
-    minutes = MeetingMinutes.objects.filter(organization=request.org).prefetch_related(
+    minutes = MeetingMinutes.objects.filter(organization=request.org).select_related("updated_by", "published_by").prefetch_related(
         "items__responsible_members",
         "acceptances",
     )
@@ -290,7 +292,7 @@ def meeting_minutes_create(request):
 @leiterrundenmitglied_required
 @pro6_required
 def meeting_minutes_detail(request, pk):
-    minutes = get_object_or_404(MeetingMinutes.objects.select_related("replaces").prefetch_related("items__responsible_members__user", "items__copied_from__responsible_members__user", "replaces__items__responsible_members__user", "attendances__membership__user", "guests"), pk=pk, organization=request.org)
+    minutes = get_object_or_404(MeetingMinutes.objects.select_related("replaces", "updated_by", "published_by").prefetch_related("items__responsible_members__user", "items__copied_from__responsible_members__user", "replaces__items__responsible_members__user", "attendances__membership__user", "guests"), pk=pk, organization=request.org)
     membership = Membership.objects.get(user=request.user, organization=request.org)
     has_accepted = minutes.acceptances.filter(membership=membership).exists()
     return render(

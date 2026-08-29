@@ -43,7 +43,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <div class="fw-semibold">{{ minute.title }}</div>
-                            <small class="text-muted">{{ minute.meeting_date|date:"d.m.Y" }} · {{ minute.items.count }} Tagesordnungspunkt(e)</small>
+                            <small class="text-muted">{{ minute.meeting_date|date:"d.m.Y" }} · {{ minute.items.count }} Tagesordnungspunkt(e) · {% if minute.published %}Veröffentlicht von {{ minute.published_by.username|default:"Unbekannt" }}{% else %}Zuletzt bearbeitet von {{ minute.updated_by.username|default:"Unbekannt" }}{% endif %}</small>
                         </div>
                         <span class="d-inline-flex flex-nowrap gap-1 align-items-center">{% if minute.changed %}<span class="badge text-bg-warning">Geändert</span>{% elif minute.published %}<span class="badge text-bg-success">Veröffentlicht</span>{% else %}<span class="badge text-bg-secondary">Entwurf</span>{% endif %}{% if minute.replaces_id %}<span class="badge text-bg-info">Neue Version</span>{% endif %}{% if minute.accepted %}<span class="badge text-bg-primary">Angenommen</span>{% endif %}</span>
                     </div>

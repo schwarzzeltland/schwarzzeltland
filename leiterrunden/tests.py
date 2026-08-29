@@ -24,7 +24,11 @@ class MeetingMinutesTests(TestCase):
         self.client.login(username="leitung", password="pw")
         response = self.client.post(reverse("meeting_minutes_create"), self._post_data())
         self.assertEqual(response.status_code, 302)
-        self.assertFalse(MeetingMinutes.objects.get().published)
+        minutes = MeetingMinutes.objects.get()
+        self.assertFalse(minutes.published)
+        self.assertEqual(minutes.updated_by, self.user)
+        self.assertIsNone(minutes.published_by)
+        self.assertContains(self.client.get(reverse("meeting_minutes_list")), "Zuletzt bearbeitet von leitung")
 
     def test_changed_form_can_be_autosaved_without_creating_duplicate_drafts(self):
         self.client.login(username="leitung", password="pw")
@@ -195,6 +199,8 @@ class MeetingMinutesTests(TestCase):
         self.client.login(username="leitung", password="pw")
         self.assertEqual(self.client.post(reverse("meeting_minutes_create"), self._post_data("publish")).status_code, 302)
         minutes = MeetingMinutes.objects.get(); self.assertTrue(minutes.published); self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(minutes.published_by, self.user)
+        self.assertContains(self.client.get(reverse("meeting_minutes_detail", args=[minutes.pk])), "Veröffentlicht von: leitung")
         self.assertCountEqual(mail.outbox[0].to, ["leitung@example.test", "abwesend@example.test"])
         self.assertIn("Protokoll prüfen und annehmen", mail.outbox[0].alternatives[0][0])
         self.assertEqual(self.client.get(reverse("meeting_minutes_edit", args=[minutes.pk])).status_code, 302)
