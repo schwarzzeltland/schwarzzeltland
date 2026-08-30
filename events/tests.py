@@ -1,5 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
+from django.core import mail
 from django.utils import timezone
 from datetime import timedelta
 import base64
@@ -10,6 +11,9 @@ from events.models import PackedStockMaterial, Trip, TripMaterial, Location, Eve
 from events.forms import ImportLocationForm
 from events.caldav import sync_trip_to_caldav
 from main.secrets import decrypt_secret, encrypt_secret
+from main.models import Membership
+from main.tasks import send_due_checklist_items_today
+from leiterrunden.models import MeetingMinutes, MeetingMinutesItemCompletion
 
 # Create your tests here.
 
@@ -96,6 +100,104 @@ class TripMaterialPackingTests(TestCase):
         self.assertEqual(items["Am Start"].due_date, start)
         self.assertEqual(items["Nachbereitung"].due_date, start + timedelta(days=2))
         self.assertIsNone(items["Bestehendes To-do ohne Termin"].due_date)
+
+    def test_due_todo_notifies_only_responsible_or_all_planners_as_fallback(self):
+        second_user = User.objects.create_user(username="zweiter-planer", email="zwei@example.test", password="pw")
+        Membership.objects.create(user=second_user, organization=self.organization, event_manager=True)
+        self.user.email = "eins@example.test"
+        self.user.save(update_fields=["email"])
+        self.trip.planners.add(self.user, second_user)
+        due_date = timezone.now()
+        EventPlanningChecklistItem.objects.create(trip=self.trip, title="Persönlich", due_date=due_date, responsible=second_user)
+
+        send_due_checklist_items_today()
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["zwei@example.test"])
+
+        mail.outbox.clear()
+        EventPlanningChecklistItem.objects.filter(title="Persönlich").update(done=True)
+        EventPlanningChecklistItem.objects.create(trip=self.trip, title="Ohne Verantwortung", due_date=due_date)
+        send_due_checklist_items_today()
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertCountEqual(mail.outbox[0].to, ["eins@example.test", "zwei@example.test"])
+
+    def test_todo_responsible_choices_are_limited_to_planners_and_material_managers(self):
+        self.organization.pro3 = True
+        self.organization.save(update_fields=["pro3"])
+        planner = User.objects.create_user(username="auswahl-planer", password="pw")
+        outsider = User.objects.create_user(username="keine-auswahl", password="pw")
+        Membership.objects.create(user=planner, organization=self.organization, event_manager=True)
+        Membership.objects.create(user=outsider, organization=self.organization)
+        self.trip.planners.add(planner)
+
+        trip_response = self.client.get(f"/events/trips/{self.trip.pk}/checklist/?org={self.organization.pk}")
+        self.assertContains(trip_response, f'<option value="{planner.pk}">auswahl-planer</option>', html=False)
+        self.assertNotContains(trip_response, f'<option value="{outsider.pk}">keine-auswahl</option>', html=False)
+
+        material_response = self.client.get(f"/main/organization_material/checklist/?org={self.organization.pk}")
+        self.assertContains(material_response, f'<option value="{self.user.pk}">eventmanager</option>', html=False)
+        self.assertNotContains(material_response, f'<option value="{planner.pk}">auswahl-planer</option>', html=False)
+
+        response = self.client.post(f"/events/trips/{self.trip.pk}/checklist/add/?org={self.organization.pk}", {"title": "Zugeordnet", "responsible": planner.pk})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(EventPlanningChecklistItem.objects.get(title="Zugeordnet").responsible, planner)
+
+    def test_personal_todo_list_is_available_to_leiterrunden_member_and_shows_only_tops(self):
+        self.organization.pro3 = True
+        self.organization.pro6 = True
+        self.organization.save(update_fields=["pro3", "pro6"])
+        membership = self.organization.membership_set.get(user=self.user)
+        membership.leiterrundenmitglied = True
+        membership.event_manager = False
+        membership.material_manager = False
+        membership.save(update_fields=["leiterrundenmitglied", "event_manager", "material_manager"])
+        EventPlanningChecklistItem.objects.create(trip=self.trip, title="Mein Veranstaltungs-To-do", responsible=self.user)
+        minutes = MeetingMinutes.objects.create(organization=self.organization, title="Leiterrunde", meeting_date=timezone.localdate(), published=True, created_by=self.user)
+        top = minutes.items.create(topic="Mein TOP", position=1)
+        top.responsible_members.add(membership)
+
+        response = self.client.get(f"/main/todos/?org={self.organization.pk}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Mein Veranstaltungs-To-do")
+        self.assertContains(response, "Mein TOP")
+        self.assertNotContains(response, "<strong>Checklisten</strong>", html=False)
+
+        toggle = self.client.post(f"/main/todos/meeting-items/{top.pk}/toggle/?org={self.organization.pk}")
+        self.assertEqual(toggle.status_code, 200)
+        self.assertTrue(MeetingMinutesItemCompletion.objects.get(item=top, user=self.user).completed)
+        top.refresh_from_db()
+        self.assertEqual(top.topic, "Mein TOP")
+
+        open_top = minutes.items.create(topic="Noch offener TOP", position=2)
+        open_top.responsible_members.add(membership)
+        response = self.client.get(f"/main/todos/?org={self.organization.pk}")
+        content = response.content.decode()
+        self.assertLess(content.index("Noch offener TOP"), content.index("Mein TOP"))
+
+    def test_personal_todo_list_for_material_manager_hides_event_and_leiterrunde_items(self):
+        self.organization.pro3 = True
+        self.organization.pro6 = True
+        self.organization.save(update_fields=["pro3", "pro6"])
+        membership = self.organization.membership_set.get(user=self.user)
+        membership.event_manager = False
+        membership.material_manager = True
+        membership.leiterrundenmitglied = False
+        membership.save(update_fields=["event_manager", "material_manager", "leiterrundenmitglied"])
+        EventPlanningChecklistItem.objects.create(trip=self.trip, title="Fremdes Veranstaltungs-To-do", responsible=self.user)
+        EventPlanningChecklistItem.objects.create(organization=self.organization, title="Mein Material-To-do", responsible=self.user)
+        minutes = MeetingMinutes.objects.create(organization=self.organization, title="Leiterrunde", meeting_date=timezone.localdate(), published=True, created_by=self.user)
+        top = minutes.items.create(topic="Fremder TOP", position=1)
+        top.responsible_members.add(membership)
+
+        response = self.client.get(f"/main/todos/?org={self.organization.pk}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Mein Material-To-do")
+        self.assertNotContains(response, "Fremdes Veranstaltungs-To-do")
+        self.assertNotContains(response, "Fremder TOP")
+        self.assertNotContains(response, "<strong>Leiterrunden-TOPs</strong>", html=False)
 
     @patch("events.caldav.urlopen")
     def test_trip_is_created_updated_and_removed_in_configured_caldav_calendar(self, urlopen):

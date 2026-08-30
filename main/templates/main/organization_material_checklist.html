@@ -24,6 +24,7 @@
                                            data-id="{{ item.id }}"
                                            value="{{ item.due_date|date:'Y-m-d\\TH:i' }}">
                                 </div>
+                                <div><label class="text-muted small me-1">Verantwortlich:</label><select class="form-select form-select-sm inline-responsible" data-id="{{ item.id }}"><option value="">Alle Materialwarte</option>{% for user in responsible_users %}<option value="{{ user.id }}" {% if item.responsible_id == user.id %}selected{% endif %}>{{ user.username }}</option>{% endfor %}</select></div>
                             </div>
                             <button class="btn btn-outline-danger btn-sm ms-2 delete-btn"
                                     data-id="{{ item.id }}"
@@ -49,6 +50,7 @@
                     <div style="flex: 2; min-width: 200px;">
                         <input type="datetime-local" name="due_date" class="form-control">
                     </div>
+                    <div style="flex: 2; min-width: 180px;"><select name="responsible" class="form-select"><option value="">Alle Materialwarte</option>{% for user in responsible_users %}<option value="{{ user.id }}">{{ user.username }}</option>{% endfor %}</select></div>
                     <button type="submit" class="btn btn-success" style="min-width: 120px;">Hinzufügen</button>
                 </form>
             </div>
@@ -92,7 +94,7 @@
                         <div class="d-flex justify-content-between align-items-center w-100">
                         <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-2 flex-grow-1">
                         <div class="form-check flex-grow-1">
-                        <input class="form-check-input toggle-done me-2" type="checkbox" data-id="${item.id}" ${item.done ? "checked" : ""}>
+                        <input class="form-check-input toggle-done me-2" type="checkbox" data-id="${item.id}" data-url="${item.toggle_url}" ${item.done ? "checked" : ""}>
                         <label class="form-check-label fw-semibold mb-0">${item.title}</label>
                         </div>
                         <div class="d-flex flex-column">
@@ -101,6 +103,7 @@
                         data-id="${item.id}"
                         value="${item.due_date ? item.due_date.replace(' ', 'T').slice(0, 16) : ''}">
                         </div>
+                        <div class="d-flex flex-column"><label class="text-muted small mb-0">Verantwortlich:</label><select class="form-select form-select-sm inline-responsible" data-id="${item.id}"><option value="">Alle Materialwarte</option>{% for user in responsible_users %}<option value="{{ user.id }}" ${String(item.responsible_id)==='{{ user.id }}'?'selected':''}>{{ user.username }}</option>{% endfor %}</select></div>
                         </div>
                         <button class="btn btn-outline-danger btn-sm ms-2 delete-btn"
                         data-id="${item.id}" data-url="${item.delete_url}">✖</button>
@@ -146,6 +149,7 @@
                         });
                     }
                 });
+                parent.querySelectorAll(".inline-responsible").forEach(select => {select.onchange=function(){const body=new FormData();body.append('id',this.dataset.id);body.append('responsible',this.value);fetch("{% url 'update_checklist_responsible' %}",{method:'POST',headers:{'X-CSRFToken':csrf},body:body});};});
             }
 
             document.querySelectorAll(".inline-due-date").forEach(input => {

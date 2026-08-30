@@ -131,3 +131,13 @@ class MeetingMinutesAcceptance(models.Model):
         ordering = ["accepted_at"]
         verbose_name = "Protokollannahme"
         verbose_name_plural = "Protokollannahmen"
+
+
+class MeetingMinutesItemCompletion(models.Model):
+    item = models.ForeignKey(MeetingMinutesItem, on_delete=models.CASCADE, related_name="personal_completions")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="meeting_item_completions")
+    completed = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["item", "user"], name="unique_meeting_item_completion")]

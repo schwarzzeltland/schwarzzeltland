@@ -169,6 +169,7 @@
                                                     Rezepte
                                                 </a>
                                             </li>
+                                            {% if membership.event_manager or membership.material_manager or membership.leiterrundenmitglied %}<li><a class="dropdown-item {% if current == 'personal_todo_list' %}active{% endif %}" href="{% url 'personal_todo_list' %}">Meine To-dos</a></li>{% endif %}
                                             {% if membership.material_manager and organization.pro3 %}
                                                 <li>
                                                     <a class="dropdown-item {% if current == 'organization_material_checklist' %}active{% endif %}"

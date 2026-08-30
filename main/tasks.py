@@ -34,7 +34,7 @@ def send_due_checklist_items_today():
 
     items = (
         EventPlanningChecklistItem.objects
-        .select_related("trip", "organization")
+        .select_related("trip", "organization", "responsible")
         .filter(
             due_date__date=today,
             done=False,
@@ -44,15 +44,18 @@ def send_due_checklist_items_today():
     for item in items:
         recipients = []
 
+        if item.responsible and item.responsible.email:
+            recipients.append(item.responsible.email)
+
         # 🔹 Fall 1: Trip → Planer
-        if item.trip:
+        if item.trip and not item.responsible:
             planners = item.trip.planners.all()
             for user in planners:
                 if user.email:
                     recipients.append(user.email)
 
         # 🔹 Fall 2: Organisation → Materialwarte
-        if item.organization:
+        if item.organization and not item.responsible:
             material_managers = Membership.objects.filter(
                 organization=item.organization,
                 material_manager=True,

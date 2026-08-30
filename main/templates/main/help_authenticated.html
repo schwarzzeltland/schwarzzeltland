@@ -103,6 +103,8 @@
 
 {% if organization.pro3 %}<section id="todos" class="mb-5"><h3>To-do-Listen <span class="badge text-bg-success">Freigeschaltet</span></h3>
     <p>Veranstaltungen erhalten eine Planungscheckliste. Standard-To-dos aus den Organisationseinstellungen werden bei neuen Veranstaltungen automatisch angelegt; relative Termine beziehen sich auf den Veranstaltungsbeginn.</p>
+    <p>Für Veranstaltungspunkte kann ein Planer als verantwortlich ausgewählt werden, für organisationsweite Material-To-dos ein Materialwart. Ist eine Person ausgewählt, erhält nur sie die Fälligkeitsmail. Ohne Auswahl werden alle Planer beziehungsweise Materialwarte informiert.</p>
+    <p>Unter „Meine To-dos“ sehen Eventmanager, Materialwarte und Leiterrundenmitglieder alle ihnen ausdrücklich zugewiesenen Punkte der aktuellen Organisation. Nicht erledigte Punkte stehen oben. Verantwortete Leiterrunden-TOPs werden dort ebenfalls verlinkt und können für die persönliche Übersicht abgehakt werden. Dieses persönliche Häkchen verändert weder TOP noch Protokoll.</p>
     {% if membership.material_manager %}<p>Als Materialwart kannst du zusätzlich die organisationsweite Material-To-do-Liste verwenden.</p>{% endif %}
 </section>{% endif %}
 

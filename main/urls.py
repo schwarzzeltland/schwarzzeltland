@@ -47,4 +47,7 @@ urlpatterns = [
     path("accept-cookies/", views.accept_cookies, name="accept_cookies"),
     path("organization_material/checklist/", views.organization_material_checklist, name="organization_material_checklist"),
     path("organization_material/checklist/add/", views.add_organization_material_checklist_item, name="add_organization_material_checklist_item"),
+    path("todos/", views.personal_todo_list, name="personal_todo_list"),
+    path("todos/<int:item_id>/toggle/", views.toggle_personal_todo, name="toggle_personal_todo"),
+    path("todos/meeting-items/<int:item_id>/toggle/", views.toggle_personal_meeting_item, name="toggle_personal_meeting_item"),
 ]

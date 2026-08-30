@@ -196,6 +196,10 @@ class EventPlanningChecklistItem(models.Model):
     done = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     due_date = models.DateTimeField(null=True, blank=True)
+    responsible = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="responsible_checklist_items", verbose_name="Verantwortlich"
+    )
 
     def __str__(self):
         return f"{self.title} ({'✓' if self.done else '✗'})"

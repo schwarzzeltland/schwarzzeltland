@@ -30,6 +30,7 @@ urlpatterns = [
     path("checklist/<int:item_id>/toggle/", views.toggle_checklist_item, name="toggle_checklist_item"),
     path("checklist/<int:item_id>/delete/", views.delete_checklist_item, name="delete_checklist_item"),
     path("checklist/update-due-date/", views.update_checklist_due_date, name="update_checklist_due_date"),
+    path("checklist/update-responsible/", views.update_checklist_responsible, name="update_checklist_responsible"),
     path('trip/<int:trip_id>/vacancies/export/', views.export_vacancies_csv, name='export_vacancies_csv'),
     path("trips/<int:trip_id>/vacancies/import/", views.import_vacancies_csv, name="import_vacancies_csv"),
     path('trip/check_trip_material/<int:pk>/', views.check_trip_material, name='check_trip_material'),

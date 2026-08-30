@@ -13,6 +13,7 @@ from django.utils.text import slugify
 from django.utils.timezone import now, localtime
 from _decimal import Decimal
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q, Sum
@@ -1824,11 +1825,13 @@ def checklist(request, trip_id):
     trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
     items = trip.checklist.all().order_by("done", "due_date")
     form = EventPlanningChecklistItemForm()
+    responsible_users = trip.planners.order_by("username")
     return render(request, "events/checklist.html", {
         "title": f"To-Do's zur Veranstaltung: {trip.name}",
         "trip": trip,
         "items": items,
         "form": form,
+        "responsible_users": responsible_users,
     })
 
 
@@ -1840,6 +1843,7 @@ def add_checklist_item(request, trip_id):
     trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
     title = request.POST.get("title")
     due_date = request.POST.get("due_date") or None
+    responsible = trip.planners.filter(pk=request.POST.get("responsible") or None).first()
     if due_date:
         # Falls dein Input vom Frontend als "2025-09-06T14:30" kommt (datetime-local input)
         try:
@@ -1852,7 +1856,8 @@ def add_checklist_item(request, trip_id):
     item = EventPlanningChecklistItem.objects.create(
         trip=trip,
         title=title,
-        due_date=due_date
+        due_date=due_date,
+        responsible=responsible,
     )
     return JsonResponse({
         "success": True,
@@ -1861,6 +1866,8 @@ def add_checklist_item(request, trip_id):
             "title": item.title,
             "done": item.done,
             "due_date": item.due_date.strftime("%Y-%m-%dT%H:%M") if item.due_date else "",
+            "responsible_id": item.responsible_id,
+            "toggle_url": reverse("toggle_checklist_item", args=[item.id]),
             "delete_url": reverse("delete_checklist_item", args=[item.id])
         }
     })
@@ -1869,10 +1876,12 @@ def add_checklist_item(request, trip_id):
 @login_required
 @require_POST
 @pro3_required
-@event_manager_required
 def toggle_checklist_item(request, item_id):
     item = get_object_or_404(EventPlanningChecklistItem,
                              Q(pk=item_id) & (Q(trip__owner=request.org) | Q(organization=request.org)))
+    membership = request.user.membership_set.filter(organization=request.org).first()
+    if not membership or (item.trip_id and not membership.event_manager) or (item.organization_id and not membership.material_manager):
+        return JsonResponse({"success": False}, status=403)
     item.done = not item.done
     item.save()
     return JsonResponse({"success": True, "done": item.done})
@@ -1881,10 +1890,12 @@ def toggle_checklist_item(request, item_id):
 @login_required
 @require_POST
 @pro3_required
-@event_manager_required
 def delete_checklist_item(request, item_id):
     item = get_object_or_404(EventPlanningChecklistItem,
                              Q(pk=item_id) & (Q(trip__owner=request.org) | Q(organization=request.org)))
+    membership = request.user.membership_set.filter(organization=request.org).first()
+    if not membership or (item.trip_id and not membership.event_manager) or (item.organization_id and not membership.material_manager):
+        return JsonResponse({"success": False}, status=403)
     item.delete()
     return JsonResponse({"success": True})
 
@@ -1893,7 +1904,6 @@ def delete_checklist_item(request, item_id):
 @require_POST
 @csrf_exempt
 @pro3_required
-@event_manager_required
 def update_checklist_due_date(request):
     import json
     data = json.loads(request.body)
@@ -1902,6 +1912,9 @@ def update_checklist_due_date(request):
 
     item = get_object_or_404(EventPlanningChecklistItem,
                              Q(pk=item_id) & (Q(trip__owner=request.org) | Q(organization=request.org)))
+    membership = request.user.membership_set.filter(organization=request.org).first()
+    if not membership or (item.trip_id and not membership.event_manager) or (item.organization_id and not membership.material_manager):
+        return JsonResponse({"success": False}, status=403)
 
     if value:
         try:
@@ -1917,6 +1930,30 @@ def update_checklist_due_date(request):
         "success": True,
         "due_date": item.due_date.strftime("%Y-%m-%dT%H:%M") if item.due_date else ""
     })
+
+
+@login_required
+@require_POST
+@pro3_required
+def update_checklist_responsible(request):
+    item = get_object_or_404(
+        EventPlanningChecklistItem.objects.select_related("trip", "organization"),
+        Q(pk=request.POST.get("id")) & (Q(trip__owner=request.org) | Q(organization=request.org)),
+    )
+    membership = request.user.membership_set.filter(organization=request.org).first()
+    if item.trip_id:
+        if not membership or not membership.event_manager:
+            return JsonResponse({"success": False}, status=403)
+        eligible = item.trip.planners.all()
+    else:
+        if not membership or not membership.material_manager:
+            return JsonResponse({"success": False}, status=403)
+        eligible = User.objects.filter(membership__organization=request.org, membership__material_manager=True)
+    responsible_id = request.POST.get("responsible")
+    responsible = eligible.filter(pk=responsible_id).first() if responsible_id else None
+    item.responsible = responsible
+    item.save(update_fields=["responsible"])
+    return JsonResponse({"success": True, "responsible_id": item.responsible_id})
 
 
 def overlaps(a_start, a_end, b_start, b_end):

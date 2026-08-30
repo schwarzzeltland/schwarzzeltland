@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse, request
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -19,11 +20,12 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.contrib.sites.shortcuts import get_current_site
-from django.db.models import Q
+from django.db.models import Q, Exists, OuterRef
 
 from buildings.models import Construction
 from events.forms import EventPlanningChecklistItemForm
 from events.models import EventPlanningChecklistItem
+from leiterrunden.models import MeetingMinutesItem, MeetingMinutesItemCompletion
 from main.decorators import material_manager_required, organization_admin_required, pro3_required
 from main.forms import (
     CustomUserCreationForm,
@@ -415,26 +417,30 @@ def custom_csrf_failure(request, reason=""):
 def organization_material_checklist(request):
     items = EventPlanningChecklistItem.objects.filter(organization=request.org, trip__isnull=True).order_by("done", "due_date")
     form = EventPlanningChecklistItemForm()
+    responsible_users = User.objects.filter(membership__organization=request.org, membership__material_manager=True).distinct().order_by("username")
     return render(request, "main/organization_material_checklist.html", {
         "title": f"Materialwart To-Do-Liste: {request.org.name}",
         "items": items,
         "form": form,
+        "responsible_users": responsible_users,
     })
 
 
 @login_required
 @require_POST
 @pro3_required
+@material_manager_required
 def add_organization_material_checklist_item(request):
     title = request.POST.get("title")
     due_date = request.POST.get("due_date") or None
+    responsible = User.objects.filter(pk=request.POST.get("responsible") or None, membership__organization=request.org, membership__material_manager=True).first()
     if due_date:
         try:
             naive_dt = datetime.strptime(due_date, "%Y-%m-%dT%H:%M")
         except ValueError:
             naive_dt = datetime.strptime(due_date, "%Y-%m-%d")
         due_date = timezone.make_aware(naive_dt)
-    item = EventPlanningChecklistItem.objects.create(organization=request.org, title=title, due_date=due_date)
+    item = EventPlanningChecklistItem.objects.create(organization=request.org, title=title, due_date=due_date, responsible=responsible)
     return JsonResponse({
         "success": True,
         "item": {
@@ -442,6 +448,72 @@ def add_organization_material_checklist_item(request):
             "title": item.title,
             "done": item.done,
             "due_date": item.due_date.isoformat() if item.due_date else "",
+            "responsible_id": item.responsible_id,
+            "toggle_url": reverse("toggle_checklist_item", args=[item.id]),
             "delete_url": reverse("delete_checklist_item", args=[item.id]),
         },
     })
+
+
+@login_required
+def personal_todo_list(request):
+    membership = request.user.membership_set.filter(organization=request.org).first()
+    if not membership or not (membership.event_manager or membership.material_manager or membership.leiterrundenmitglied):
+        raise PermissionDenied
+    checklist_scope = Q(pk__in=[])
+    if membership.event_manager:
+        checklist_scope |= Q(trip__owner=request.org)
+    if membership.material_manager:
+        checklist_scope |= Q(organization=request.org, trip__isnull=True)
+    checklist_items = EventPlanningChecklistItem.objects.filter(
+        checklist_scope, responsible=request.user
+    ).select_related("trip", "organization").order_by("done", "due_date", "title") if request.org.pro3 and (membership.event_manager or membership.material_manager) else []
+    meeting_items = MeetingMinutesItem.objects.filter(
+        minutes__organization=request.org,
+        minutes__published=True,
+        responsible_members=membership,
+    ).filter(Q(minutes__replacement__isnull=True) | Q(minutes__replacement__published=False)).annotate(
+        personal_completed=Exists(MeetingMinutesItemCompletion.objects.filter(item_id=OuterRef("pk"), user=request.user, completed=True))
+    ).select_related("minutes").order_by("personal_completed", "due_date", "position") if request.org.pro6 and membership.leiterrundenmitglied else []
+    return render(request, "main/personal_todo_list.html", {
+        "title": "Meine To-dos",
+        "checklist_items": checklist_items,
+        "meeting_items": meeting_items,
+        "show_checklist_card": request.org.pro3 and (membership.event_manager or membership.material_manager),
+        "show_meeting_card": request.org.pro6 and membership.leiterrundenmitglied,
+    })
+
+
+@login_required
+@require_POST
+def toggle_personal_todo(request, item_id):
+    membership = request.user.membership_set.filter(organization=request.org).first()
+    if not membership or not (membership.event_manager or membership.material_manager or membership.leiterrundenmitglied) or not request.org.pro3:
+        raise PermissionDenied
+    item = get_object_or_404(
+        EventPlanningChecklistItem,
+        Q(pk=item_id, responsible=request.user) & (Q(trip__owner=request.org) | Q(organization=request.org)),
+    )
+    item.done = not item.done
+    item.save(update_fields=["done"])
+    return JsonResponse({"success": True, "done": item.done})
+
+
+@login_required
+@require_POST
+def toggle_personal_meeting_item(request, item_id):
+    membership = request.user.membership_set.filter(organization=request.org).first()
+    if not membership or not membership.leiterrundenmitglied or not request.org.pro6:
+        raise PermissionDenied
+    item = get_object_or_404(
+        MeetingMinutesItem,
+        pk=item_id,
+        minutes__organization=request.org,
+        minutes__published=True,
+        responsible_members=membership,
+    )
+    completion, created = MeetingMinutesItemCompletion.objects.get_or_create(item=item, user=request.user)
+    if not created:
+        completion.completed = not completion.completed
+        completion.save(update_fields=["completed", "updated_at"])
+    return JsonResponse({"success": True, "done": completion.completed})
