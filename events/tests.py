@@ -2,13 +2,13 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from django.core import mail
 from django.utils import timezone
-from datetime import timedelta
+from datetime import datetime, timedelta
 import base64
 from unittest.mock import MagicMock, patch
 
 from buildings.models import Material, StockMaterial, StoragePlan, StorageArea
 from events.models import PackedStockMaterial, Trip, TripMaterial, Location, EventPlanningChecklistItem
-from events.forms import ImportLocationForm
+from events.forms import ImportLocationForm, ProgrammItemForm
 from events.caldav import sync_trip_to_caldav
 from main.secrets import decrypt_secret, encrypt_secret
 from main.models import Membership
@@ -100,6 +100,61 @@ class TripMaterialPackingTests(TestCase):
         self.assertEqual(items["Am Start"].due_date, start)
         self.assertEqual(items["Nachbereitung"].due_date, start + timedelta(days=2))
         self.assertIsNone(items["Bestehendes To-do ohne Termin"].due_date)
+
+    def test_programm_includes_departure_day_when_departure_is_earlier_than_arrival_time(self):
+        tz = timezone.get_current_timezone()
+        self.trip.start_date = timezone.make_aware(datetime(2026, 8, 1, 15, 0), tz)
+        self.trip.end_date = timezone.make_aware(datetime(2026, 8, 3, 10, 0), tz)
+        self.trip.save(update_fields=["start_date", "end_date"])
+        self.organization.pro4 = True
+        self.organization.save(update_fields=["pro4"])
+
+        form = ProgrammItemForm(trip=self.trip)
+        self.assertEqual(
+            [value for value, _label in form.fields["days"].choices],
+            ["2026-08-01", "2026-08-02", "2026-08-03"],
+        )
+
+        response = self.client.get(f"/events/trip/programm/{self.trip.pk}/?org={self.organization.pk}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [day for day, _items in response.context["grouped_by_day"]],
+            [datetime(2026, 8, 1).date(), datetime(2026, 8, 2).date(), datetime(2026, 8, 3).date()],
+        )
+
+    def test_trip_overview_orders_upcoming_trips_from_nearest_to_farthest(self):
+        reference = timezone.now()
+        self.trip.start_date = reference - timedelta(days=10)
+        self.trip.end_date = reference - timedelta(days=9)
+        self.trip.save(update_fields=["start_date", "end_date"])
+        farther_trip = Trip.objects.create(
+            owner=self.organization,
+            name="Spätere Veranstaltung",
+            start_date=reference + timedelta(days=20),
+            end_date=reference + timedelta(days=21),
+        )
+        nearer_trip = Trip.objects.create(
+            owner=self.organization,
+            name="Nächste Veranstaltung",
+            start_date=reference + timedelta(days=5),
+            end_date=reference + timedelta(days=6),
+        )
+
+        response = self.client.get(f"/events/trip?org={self.organization.pk}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(list(response.context["trips"]), [nearer_trip, farther_trip])
+
+        response = self.client.get(
+            f"/events/trip?org={self.organization.pk}&hide_past_trips=0"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            list(response.context["trips"]),
+            [farther_trip, nearer_trip, self.trip],
+        )
 
     def test_due_todo_notifies_only_responsible_or_all_planners_as_fallback(self):
         second_user = User.objects.create_user(username="zweiter-planer", email="zwei@example.test", password="pw")

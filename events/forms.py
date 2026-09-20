@@ -332,8 +332,9 @@ class ProgrammItemForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if trip:
             day_choices = []
-            current_day = trip.start_date
-            while current_day <= trip.end_date:
+            current_day = timezone.localtime(trip.start_date).date()
+            end_day = timezone.localtime(trip.end_date).date()
+            while current_day <= end_day:
                 day_choices.append((current_day.isoformat(), current_day.strftime("%a, %d.%m.")))
                 current_day += timedelta(days=1)
             self.fields['days'].choices = day_choices

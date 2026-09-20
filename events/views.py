@@ -86,15 +86,19 @@ def trip(request):
     request.session['hide_past_trips'] = hide_past_trips
     request.session['previous_url'] = request.build_absolute_uri()
     # Filtere Konstruktionen basierend auf der Suchanfrage
-    trips_query = Trip.objects.filter(owner=request.org).order_by('-start_date')
+    trips_query = Trip.objects.filter(owner=request.org)
     if hide_past_trips == '1':
-        trips_query = trips_query.filter(end_date__gte=now()).order_by('-start_date')
+        trips_query = trips_query.filter(end_date__gte=now())
     if search_query:
         trips_query = trips_query.filter(
             Q(name__icontains=search_query) | Q(owner__name__icontains=search_query)
-        ).order_by('-start_date')
+        )
     if selected_trip_type:
-        trips_query = trips_query.filter(type=selected_trip_type).order_by('-start_date')
+        trips_query = trips_query.filter(type=selected_trip_type)
+    if hide_past_trips == '1':
+        trips_query = trips_query.order_by('start_date', 'pk')
+    else:
+        trips_query = trips_query.order_by('-start_date', '-pk')
     TYPES = (
         (0, "Lager"),
         (1, "Fahrt"),
@@ -2078,9 +2082,10 @@ def programm(request, pk):
 
     # Tage sortieren
     all_days = []
-    current_day = trip.start_date
-    while current_day <= trip.end_date:
-        all_days.append(current_day.date())
+    current_day = localtime(trip.start_date).date()
+    end_day = localtime(trip.end_date).date()
+    while current_day <= end_day:
+        all_days.append(current_day)
         current_day += timedelta(days=1)
 
     grouped_by_day_sorted = [(day, grouped_by_day.get(day, [])) for day in all_days]
@@ -2269,9 +2274,10 @@ def print_programm(request, pk):
 
     # Tage sortieren
     all_days = []
-    current_day = trip.start_date
-    while current_day <= trip.end_date:
-        all_days.append(current_day.date())
+    current_day = localtime(trip.start_date).date()
+    end_day = localtime(trip.end_date).date()
+    while current_day <= end_day:
+        all_days.append(current_day)
         current_day += timedelta(days=1)
 
     grouped_by_day_sorted = [(day, grouped_by_day.get(day, [])) for day in all_days]
