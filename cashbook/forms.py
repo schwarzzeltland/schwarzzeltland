@@ -81,6 +81,8 @@ class CashBookReceiptRequestForm(forms.ModelForm):
     class Meta:
         model = CashBookReceiptRequest
         fields = ["recipient", "request_note"]
+        labels = {"recipient": "Empfänger", "request_note": "Nachricht an das Mitglied"}
+        widgets = {"request_note": forms.Textarea(attrs={"rows": 3, "placeholder": "Worum geht es bei diesem Beleg?"})}
 
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -90,10 +92,12 @@ class CashBookReceiptSubmissionForm(forms.ModelForm):
     class Meta:
         model = CashBookReceiptRequest
         fields = ["attachment", "response_note"]
+        labels = {"attachment": "Belegdatei", "response_note": "Bemerkung zum Beleg"}
+        widgets = {"response_note": forms.Textarea(attrs={"rows": 3})}
 
 class CashBookReceiptReviewForm(forms.Form):
-    decision = forms.ChoiceField(choices=(("approve", "Beleg übernehmen"), ("return", "Zurückgeben")), widget=forms.RadioSelect)
-    review_note = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 3}))
+    decision = forms.ChoiceField(label="Prüfergebnis", choices=(("approve", "Beleg übernehmen"), ("return", "Zurückgeben")), widget=forms.RadioSelect)
+    review_note = forms.CharField(required=False, label="Nachricht an das Mitglied", widget=forms.Textarea(attrs={"rows": 3}))
 
 
 class CashBookEntryForm(forms.ModelForm):

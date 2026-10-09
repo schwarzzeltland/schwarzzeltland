@@ -9,7 +9,6 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from django.contrib import messages
-from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
 from django.core import signing
@@ -43,9 +42,9 @@ CSV_IMPORT_COLUMNS = (
 CashBookCsvRowFormSet = formset_factory(CashBookCsvRowForm, extra=0)
 
 
-def _receipt_request_url(name, receipt_request):
+def _receipt_request_url(request, name, receipt_request):
     path = reverse(name, args=[receipt_request.pk])
-    return f"{settings.SITE_URL.rstrip('/')}{path}?org={receipt_request.entry.cashbook.organization_id}"
+    return request.build_absolute_uri(f"{path}?org={receipt_request.entry.cashbook.organization_id}")
 
 
 def _normalized_iban(value):
@@ -1006,7 +1005,7 @@ def cashbook_receipt_request_create(request, cashbook_pk, pk):
         receipt_request = form.save(commit=False)
         receipt_request.entry, receipt_request.requested_by = entry, request.user
         receipt_request.save()
-        url = _receipt_request_url("cashbook_receipt_request_submit", receipt_request)
+        url = _receipt_request_url(request, "cashbook_receipt_request_submit", receipt_request)
         transaction.on_commit(lambda: notify_receipt_request(receipt_request.recipient.user, receipt_request, subject=f"Beleg angefordert: #{entry.entry_number} {entry.title}", heading="Beleg angefordert", text=f"Für den Kassenbucheintrag #{entry.entry_number} „{entry.title}“ wird ein Beleg benötigt.", action_label="Beleg einreichen", action_url=url))
         messages.success(request, "Beleganfrage wurde erstellt.")
         return redirect("cashbook_detail", pk=cashbook.pk)
@@ -1038,7 +1037,7 @@ def cashbook_receipt_request_submit(request, pk):
         receipt_request.save()
         responsible = receipt_request.entry.cashbook.responsible
         if responsible:
-            url = _receipt_request_url("cashbook_receipt_request_review", receipt_request)
+            url = _receipt_request_url(request, "cashbook_receipt_request_review", receipt_request)
             transaction.on_commit(lambda: notify_receipt_request(responsible.user, receipt_request, subject=f"Beleg zur Prüfung: #{receipt_request.entry.entry_number} {receipt_request.entry.title}", heading="Beleg prüfen", text=f"Für den Kassenbucheintrag #{receipt_request.entry.entry_number} „{receipt_request.entry.title}“ wurde ein Beleg eingereicht.", action_label="Beleg prüfen", action_url=url))
         messages.success(request, "Beleg wurde zur Prüfung eingereicht.")
         return redirect("cashbook_receipt_request_list")
@@ -1061,7 +1060,7 @@ def cashbook_receipt_request_review(request, pk):
         else:
             receipt_request.status = CashBookReceiptRequest.STATUS_REQUESTED
         receipt_request.save()
-        url = _receipt_request_url("cashbook_receipt_request_submit", receipt_request)
+        url = _receipt_request_url(request, "cashbook_receipt_request_submit", receipt_request)
         approved = receipt_request.status == CashBookReceiptRequest.STATUS_APPROVED
         transaction.on_commit(lambda: notify_receipt_request(receipt_request.recipient.user, receipt_request, subject=f"Beleg {'übernommen' if approved else 'zurückgegeben'}: #{receipt_request.entry.entry_number} {receipt_request.entry.title}", heading="Beleg übernommen" if approved else "Beleg überarbeiten", text=f"Der Beleg für den Kassenbucheintrag #{receipt_request.entry.entry_number} „{receipt_request.entry.title}“ wurde {'übernommen.' if approved else 'zur Überarbeitung zurückgegeben.'}", action_label="Beleganfrage öffnen", action_url=url))
         return redirect("cashbook_receipt_request_list")

@@ -116,7 +116,7 @@
 
 {% if organization.pro5 %}<section id="kasse" class="mb-5"><h3>Kassenbücher und Auszahlungsanfragen <span class="badge text-bg-success">Freigeschaltet</span></h3>
     <p>Kassenbücher verwalten Einnahmen, Ausgaben, Belege und Kontodaten. Buchungen sollten mit Datum, Betrag, Verwendungszweck und Beleg vollständig erfasst werden.</p>
-    {% if membership.cashier_manager %}<p>Du darfst Kassenbücher und Buchungen verwalten sowie Auszahlungsanfragen bearbeiten.</p>{% elif membership.leiterrundenmitglied %}<p>Du kannst deine Auszahlungsanfragen erfassen und deren Status verfolgen.</p>{% else %}<p class="text-muted">Für die Nutzung ist die Rolle Kassenwart oder Leiterrundenmitglied erforderlich.</p>{% endif %}
+    {% if membership.cashier_manager %}<p>Du darfst Kassenbücher und Buchungen verwalten sowie Auszahlungsanfragen bearbeiten. Bei Einträgen ohne Beleg kannst du über „Beleg anfordern“ ein Leiterrundenmitglied auswählen. Eingereichte Dateien prüfst du unter „Beleganfragen“; erst mit „Beleg übernehmen“ wird die Datei am Eintrag gespeichert.</p>{% elif membership.leiterrundenmitglied %}<p>Du kannst deine Auszahlungsanfragen erfassen und deren Status verfolgen. Unter „Beleganfragen“ findest du angeforderte Belege, liest die Nachricht des Kassenwarts, lädst die Datei hoch und ergänzt bei Bedarf eine Bemerkung. Dein Upload wird erst nach Prüfung übernommen.</p>{% else %}<p class="text-muted">Für die Nutzung ist die Rolle Kassenwart oder Leiterrundenmitglied erforderlich.</p>{% endif %}
 </section>{% endif %}
 
 {% if organization.pro6 %}<section id="protokolle" class="mb-5"><h3>Protokolle <span class="badge text-bg-success">Freigeschaltet</span></h3>
