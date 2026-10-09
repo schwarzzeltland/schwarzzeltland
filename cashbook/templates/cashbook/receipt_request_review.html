@@ -1,1 +1,17 @@
-{% extends "base.html" %}{% load bootstrap5 %}{% block content %}<h3>Beleg prüfen</h3><p><strong>{{ receipt_request.entry }}</strong></p>{% if receipt_request.request_note %}<p><strong>Ursprüngliche Anfrage:</strong><br>{{ receipt_request.request_note|linebreaksbr }}</p>{% endif %}{% if receipt_request.response_note %}<p><strong>Bemerkung des Mitglieds:</strong><br>{{ receipt_request.response_note|linebreaksbr }}</p>{% endif %}<a class="btn btn-outline-secondary mb-3" href="{{ receipt_request.attachment.url }}" target="_blank">Beleg öffnen</a><form method="post">{% csrf_token %}{% bootstrap_form form %}<button class="btn btn-primary">Speichern</button></form>{% endblock %}
+{% extends "base.html" %}{% load bootstrap5 %}{% block content %}<h3>Beleg prüfen</h3>
+        <div class="card mb-3">
+            <div class="card-body">
+                <strong>#{{ receipt_request.entry.entry_number }} {{ receipt_request.entry.title }}</strong><br>{{ receipt_request.entry.booking_date|date:"d.m.Y" }}
+                · {{ receipt_request.entry.amount }}
+                {{ receipt_request.entry.cashbook.currency }}{% if receipt_request.entry.counterparty %} ·
+                    {{ receipt_request.entry.counterparty }}{% endif %}</div>
+        </div>
+    </strong></p>{% if receipt_request.request_note %}
+        <p><strong>Ursprüngliche Anfrage:</strong><br>{{ receipt_request.request_note|linebreaksbr }}</p>{% endif %}
+{% if receipt_request.response_note %}
+    <p><strong>Bemerkung des Mitglieds:</strong><br>{{ receipt_request.response_note|linebreaksbr }}</p>{% endif %}
+    <a class="btn btn-outline-secondary mb-3" href="{{ receipt_request.attachment.url }}" target="_blank">Beleg
+        öffnen</a>
+    <form method="post">{% csrf_token %}{% bootstrap_form form %}
+        <button class="btn btn-primary">Speichern</button>
+    </form>{% endblock %}
