@@ -70,3 +70,23 @@ def notify_requester_about_decision(reimbursement):
         fail_silently=False,
     )
     return True
+
+
+def notify_receipt_request(recipient, receipt_request, *, subject, heading, text, action_label, action_url):
+    if not recipient.email:
+        return False
+    html_message = render_to_string("cashbook/email/receipt_request.html", {
+        "recipient_name": recipient.get_full_name() or recipient.username,
+        "receipt_request": receipt_request,
+        "heading": heading,
+        "text": text,
+        "action_label": action_label,
+        "action_url": action_url,
+    })
+    send_mail(
+        subject=subject,
+        message=f"Hallo {recipient.get_full_name() or recipient.username},\n\n{text}\n\n{action_url}\n",
+        from_email=formataddr((receipt_request.entry.cashbook.organization.name, settings.EMAIL_HOST_USER)),
+        recipient_list=[recipient.email], html_message=html_message, fail_silently=False,
+    )
+    return True

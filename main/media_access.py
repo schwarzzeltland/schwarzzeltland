@@ -6,7 +6,7 @@ from django.http import FileResponse, Http404
 from django.utils._os import safe_join
 
 from buildings.models import Construction, Material, StoragePlan
-from cashbook.models import CashBookEntry, EventExpense, ReimbursementRequest
+from cashbook.models import CashBookEntry, CashBookReceiptRequest, EventExpense, ReimbursementRequest
 from main.models import Membership, Organization
 
 
@@ -97,6 +97,13 @@ def _has_access_to_media(user, source_path):
             if reimbursement.requester_id == getattr(user, "pk", None):
                 return True
             return _is_org_cashier(user, reimbursement.cashbook.organization)
+        receipt_request = CashBookReceiptRequest.objects.filter(attachment=source_path).select_related(
+            "entry__cashbook__organization", "recipient__user"
+        ).first()
+        if receipt_request is not None:
+            if receipt_request.recipient.user_id == getattr(user, "pk", None):
+                return True
+            return _is_org_cashier(user, receipt_request.entry.cashbook.organization)
         entry = CashBookEntry.objects.filter(attachment=source_path).select_related("cashbook__organization").first()
         if entry is None:
             return False

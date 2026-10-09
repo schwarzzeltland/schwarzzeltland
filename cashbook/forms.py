@@ -2,7 +2,7 @@ from django import forms
 from decimal import Decimal
 
 from events.models import Trip
-from cashbook.models import AdvanceBudget, CashBook, CashBookEntry, EventExpense, ReimbursementRequest
+from cashbook.models import AdvanceBudget, CashBook, CashBookEntry, CashBookReceiptRequest, EventExpense, ReimbursementRequest
 from main.models import Membership
 
 
@@ -76,6 +76,24 @@ class ReimbursementRequestForm(forms.ModelForm):
 class ReimbursementReviewForm(forms.Form):
     decision = forms.ChoiceField(label="Prüfergebnis",choices=(("approve", "Genehmigen"), ("reject", "Ablehnen")), widget=forms.RadioSelect)
     review_note = forms.CharField(required=False, label="Prüfvermerk", widget=forms.Textarea(attrs={"rows": 3}))
+
+class CashBookReceiptRequestForm(forms.ModelForm):
+    class Meta:
+        model = CashBookReceiptRequest
+        fields = ["recipient", "request_note"]
+
+    def __init__(self, *args, organization=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["recipient"].queryset = Membership.objects.filter(organization=organization, leiterrundenmitglied=True).select_related("user")
+
+class CashBookReceiptSubmissionForm(forms.ModelForm):
+    class Meta:
+        model = CashBookReceiptRequest
+        fields = ["attachment", "response_note"]
+
+class CashBookReceiptReviewForm(forms.Form):
+    decision = forms.ChoiceField(choices=(("approve", "Beleg übernehmen"), ("return", "Zurückgeben")), widget=forms.RadioSelect)
+    review_note = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 3}))
 
 
 class CashBookEntryForm(forms.ModelForm):
@@ -227,6 +245,13 @@ class CashBookCsvRowForm(forms.Form):
     entry_type = forms.ChoiceField(label="Art", choices=CashBookEntry.TYPE_CHOICES)
     amount = forms.DecimalField(label="Betrag", min_value=Decimal("0.01"), max_digits=12, decimal_places=2)
     title = forms.CharField(label="Buchungstext / Titel", max_length=255)
+    category = forms.CharField(
+        required=False,
+        initial="Kontoumsatz",
+        label="Kategorie",
+        max_length=255,
+        widget=forms.TextInput(attrs={"class": "form-control", "autocomplete": "off"}),
+    )
     counterparty = forms.CharField(required=False, label="Zahlungsbeteiligter", max_length=255)
     purpose = forms.CharField(required=False, label="Verwendungszweck", widget=forms.Textarea(attrs={"rows": 2}))
     balance_after = forms.DecimalField(required=False, label="Saldo nach Buchung", max_digits=14, decimal_places=2)
@@ -251,6 +276,7 @@ class CashBookCsvRowForm(forms.Form):
         super().__init__(*args, **kwargs)
         if organization:
             self.fields["trip"].queryset = Trip.objects.filter(owner=organization).order_by("-start_date", "name")
+            self.fields["trip"].widget.attrs["class"] = "form-select trip-search"
         if cashbook:
             self.fields["match_entry"].queryset = cashbook.entries.filter(
                 reconciliation_status=CashBookEntry.RECONCILIATION_EXPECTED,

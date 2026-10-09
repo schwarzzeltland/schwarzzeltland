@@ -9,6 +9,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from django.contrib import messages
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
 from django.core import signing
@@ -18,6 +19,7 @@ from django.db.models import Q
 from django.forms import formset_factory
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.template.loader import render_to_string
 from django.utils.text import slugify
 from django.utils import timezone
@@ -25,11 +27,11 @@ from PIL import Image, ImageDraw, ImageFont
 
 from cashbook.forms import (
     AdvanceBudgetForm, CashBookCsvRowForm, CashBookCsvUploadForm, CashBookEntryForm, CashBookForm,
-    EventExpenseForm,
+    CashBookReceiptRequestForm, CashBookReceiptReviewForm, CashBookReceiptSubmissionForm, EventExpenseForm,
     ReimbursementRequestForm, ReimbursementReviewForm,
 )
-from cashbook.models import AdvanceBudget, CashBook, CashBookAuditLog, CashBookEntry, EventExpense, ReimbursementRequest
-from cashbook.notifications import notify_requester_about_decision, notify_responsible_about_request
+from cashbook.models import AdvanceBudget, CashBook, CashBookAuditLog, CashBookEntry, CashBookReceiptRequest, EventExpense, ReimbursementRequest
+from cashbook.notifications import notify_receipt_request, notify_requester_about_decision, notify_responsible_about_request
 from main.decorators import cashier_manager_required, organization_admin_required, pro5_required
 
 CASHBOOK_AUDIT_FIELDS = ["name", "description", "currency", "opening_balance", "responsible_id", "account_holder", "iban", "bic", "active"]
@@ -39,6 +41,11 @@ CSV_IMPORT_COLUMNS = (
     "Saldo nach Buchung", "Glaeubiger ID", "Mandatsreferenz",
 )
 CashBookCsvRowFormSet = formset_factory(CashBookCsvRowForm, extra=0)
+
+
+def _receipt_request_url(name, receipt_request):
+    path = reverse(name, args=[receipt_request.pk])
+    return f"{settings.SITE_URL.rstrip('/')}{path}?org={receipt_request.entry.cashbook.organization_id}"
 
 
 def _normalized_iban(value):
@@ -187,6 +194,7 @@ def _bank_csv_initial_rows(csv_file, cashbook):
             "entry_type": entry_type,
             "amount": amount,
             "title": title,
+            "category": "Kontoumsatz",
             "counterparty": counterparty,
             "purpose": purpose,
             "balance_after": balance_after,
@@ -210,6 +218,8 @@ def _bank_csv_initial_rows(csv_file, cashbook):
             )
         is_duplicate = cashbook.entries.filter(bank_import_fingerprint=fingerprint).exists() or duplicate_entries.exists()
         match_entry = None if is_duplicate else _suggest_bank_match(cashbook, row_data)
+        if match_entry:
+            row_data["category"] = match_entry.category
         initial_rows.append({
             **row_data,
             "include": not is_duplicate,
@@ -657,7 +667,7 @@ def cashbook_delete(request, pk):
 @pro5_required
 def cashbook_detail(request, pk):
     cashbook = get_object_or_404(CashBook, pk=pk, organization=request.org)
-    all_entries = cashbook.entries.select_related("trip", "created_by").all()
+    all_entries = cashbook.entries.select_related("trip", "created_by").prefetch_related("receipt_requests").all()
     entries = all_entries
     audit_rows = [
         {
@@ -837,10 +847,11 @@ def cashbook_import_csv(request, pk):
                         reconciliation_status=CashBookEntry.RECONCILIATION_EXPECTED,
                     )
                     before = _cashbook_snapshot(entry, [
-                        "booking_date", "counterparty", "reference", "description", "trip_id",
+                        "booking_date", "category", "counterparty", "reference", "description", "trip_id",
                         "reconciliation_status", "bank_import_fingerprint",
                     ])
                     entry.booking_date = data["booking_date"]
+                    entry.category = data["category"]
                     if data.get("counterparty"):
                         entry.counterparty = data["counterparty"]
                     if not entry.reference:
@@ -856,7 +867,7 @@ def cashbook_import_csv(request, pk):
                     entry.save()
                     action = CashBookAuditLog.ACTION_UPDATE
                     changes = {"Bankabgleich": True, **_cashbook_changes(before, _cashbook_snapshot(entry, [
-                        "booking_date", "counterparty", "reference", "description", "trip_id",
+                        "booking_date", "category", "counterparty", "reference", "description", "trip_id",
                         "reconciliation_status", "bank_import_fingerprint",
                     ]))}
                 else:
@@ -866,7 +877,7 @@ def cashbook_import_csv(request, pk):
                         booking_date=data["booking_date"],
                         amount=data["amount"],
                         title=data["title"],
-                        category="Kontoumsatz",
+                        category=data["category"],
                         counterparty=data.get("counterparty", ""),
                         reference=data.get("mandate_reference") or data.get("creditor_id", ""),
                         description="\n".join(description_parts),
@@ -978,6 +989,83 @@ def cashbook_entry_delete(request, cashbook_pk, pk):
         "cashbook": cashbook,
         "entry": entry,
     })
+
+
+@login_required
+@cashier_manager_required
+@pro5_required
+def cashbook_receipt_request_create(request, cashbook_pk, pk):
+    cashbook = get_object_or_404(CashBook, pk=cashbook_pk, organization=request.org)
+    _require_cashbook_editor(request, cashbook)
+    entry = get_object_or_404(CashBookEntry, pk=pk, cashbook=cashbook)
+    if entry.attachment:
+        messages.info(request, "Für diesen Eintrag liegt bereits ein Beleg vor.")
+        return redirect("cashbook_detail", pk=cashbook.pk)
+    form = CashBookReceiptRequestForm(request.POST or None, organization=request.org)
+    if request.method == "POST" and form.is_valid():
+        receipt_request = form.save(commit=False)
+        receipt_request.entry, receipt_request.requested_by = entry, request.user
+        receipt_request.save()
+        url = _receipt_request_url("cashbook_receipt_request_submit", receipt_request)
+        transaction.on_commit(lambda: notify_receipt_request(receipt_request.recipient.user, receipt_request, subject=f"Beleg angefordert: #{entry.entry_number} {entry.title}", heading="Beleg angefordert", text=f"Für den Kassenbucheintrag #{entry.entry_number} „{entry.title}“ wird ein Beleg benötigt.", action_label="Beleg einreichen", action_url=url))
+        messages.success(request, "Beleganfrage wurde erstellt.")
+        return redirect("cashbook_detail", pk=cashbook.pk)
+    return render(request, "cashbook/receipt_request_form.html", {"form": form, "entry": entry, "cashbook": cashbook})
+
+
+@login_required
+@pro5_required
+def cashbook_receipt_request_list(request):
+    membership = request.membership
+    if not (membership.cashier_manager or membership.leiterrundenmitglied):
+        raise PermissionDenied
+    requests = CashBookReceiptRequest.objects.filter(entry__cashbook__organization=request.org).select_related("entry__cashbook", "recipient__user")
+    if not membership.cashier_manager:
+        requests = requests.filter(recipient=membership)
+    return render(request, "cashbook/receipt_request_list.html", {"receipt_requests": requests})
+
+
+@login_required
+@pro5_required
+def cashbook_receipt_request_submit(request, pk):
+    receipt_request = get_object_or_404(CashBookReceiptRequest, pk=pk, entry__cashbook__organization=request.org, recipient=request.membership)
+    if receipt_request.status == CashBookReceiptRequest.STATUS_APPROVED:
+        return redirect("cashbook_receipt_request_list")
+    form = CashBookReceiptSubmissionForm(request.POST or None, request.FILES or None, instance=receipt_request)
+    if request.method == "POST" and form.is_valid():
+        receipt_request = form.save(commit=False)
+        receipt_request.status = CashBookReceiptRequest.STATUS_SUBMITTED
+        receipt_request.save()
+        responsible = receipt_request.entry.cashbook.responsible
+        if responsible:
+            url = _receipt_request_url("cashbook_receipt_request_review", receipt_request)
+            transaction.on_commit(lambda: notify_receipt_request(responsible.user, receipt_request, subject=f"Beleg zur Prüfung: #{receipt_request.entry.entry_number} {receipt_request.entry.title}", heading="Beleg prüfen", text=f"Für den Kassenbucheintrag #{receipt_request.entry.entry_number} „{receipt_request.entry.title}“ wurde ein Beleg eingereicht.", action_label="Beleg prüfen", action_url=url))
+        messages.success(request, "Beleg wurde zur Prüfung eingereicht.")
+        return redirect("cashbook_receipt_request_list")
+    return render(request, "cashbook/receipt_request_submit.html", {"form": form, "receipt_request": receipt_request})
+
+
+@login_required
+@cashier_manager_required
+@pro5_required
+def cashbook_receipt_request_review(request, pk):
+    receipt_request = get_object_or_404(CashBookReceiptRequest.objects.select_related("entry", "entry__cashbook"), pk=pk, entry__cashbook__organization=request.org)
+    _require_cashbook_editor(request, receipt_request.entry.cashbook)
+    form = CashBookReceiptReviewForm(request.POST or None)
+    if request.method == "POST" and form.is_valid() and receipt_request.status == CashBookReceiptRequest.STATUS_SUBMITTED:
+        receipt_request.review_note, receipt_request.reviewed_by, receipt_request.reviewed_at = form.cleaned_data["review_note"], request.user, timezone.now()
+        if form.cleaned_data["decision"] == "approve":
+            receipt_request.entry.attachment = receipt_request.attachment
+            receipt_request.entry.save()
+            receipt_request.status = CashBookReceiptRequest.STATUS_APPROVED
+        else:
+            receipt_request.status = CashBookReceiptRequest.STATUS_REQUESTED
+        receipt_request.save()
+        url = _receipt_request_url("cashbook_receipt_request_submit", receipt_request)
+        approved = receipt_request.status == CashBookReceiptRequest.STATUS_APPROVED
+        transaction.on_commit(lambda: notify_receipt_request(receipt_request.recipient.user, receipt_request, subject=f"Beleg {'übernommen' if approved else 'zurückgegeben'}: #{receipt_request.entry.entry_number} {receipt_request.entry.title}", heading="Beleg übernommen" if approved else "Beleg überarbeiten", text=f"Der Beleg für den Kassenbucheintrag #{receipt_request.entry.entry_number} „{receipt_request.entry.title}“ wurde {'übernommen.' if approved else 'zur Überarbeitung zurückgegeben.'}", action_label="Beleganfrage öffnen", action_url=url))
+        return redirect("cashbook_receipt_request_list")
+    return render(request, "cashbook/receipt_request_review.html", {"form": form, "receipt_request": receipt_request})
 
 
 @login_required

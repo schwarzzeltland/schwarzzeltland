@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% load bootstrap5 %}{% block content %}<h3>Beleg einreichen</h3><p>{{ receipt_request.entry }}</p><form method="post" enctype="multipart/form-data">{% csrf_token %}{% bootstrap_form form %}<button class="btn btn-primary">Zur Prüfung einreichen</button></form>{% endblock %}

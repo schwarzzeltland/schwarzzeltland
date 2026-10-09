@@ -296,6 +296,7 @@ class CashbookTests(TestCase):
             "transactions-0-entry_type": CashBookEntry.TYPE_EXPENSE,
             "transactions-0-amount": "13.00",
             "transactions-0-title": "Angepasster Einkauf",
+            "transactions-0-category": "Verpflegung",
             "transactions-0-counterparty": "Bäckerei",
             "transactions-0-purpose": "Verpflegung",
             "transactions-0-balance_after": "987.50",
@@ -307,6 +308,7 @@ class CashbookTests(TestCase):
             "transactions-1-entry_type": CashBookEntry.TYPE_INCOME,
             "transactions-1-amount": "100.00",
             "transactions-1-title": "Überweisung",
+            "transactions-1-category": "Spenden",
             "transactions-1-counterparty": "Förderverein",
             "transactions-1-purpose": "Spende",
             "transactions-1-balance_after": "1087.50",
@@ -319,6 +321,7 @@ class CashbookTests(TestCase):
         self.assertEqual(entry.title, "Angepasster Einkauf")
         self.assertEqual(entry.amount, Decimal("13.00"))
         self.assertEqual(entry.entry_type, CashBookEntry.TYPE_EXPENSE)
+        self.assertEqual(entry.category, "Verpflegung")
         self.assertEqual(entry.trip, trip)
         self.assertIn("Valutadatum: 08.08.2026", entry.description)
         self.assertIn("Saldo nach Buchung: 987.50", entry.description)

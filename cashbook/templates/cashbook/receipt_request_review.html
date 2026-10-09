@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% load bootstrap5 %}{% block content %}<h3>Beleg prüfen</h3><p>{{ receipt_request.entry }}</p><a href="{{ receipt_request.attachment.url }}" target="_blank">Beleg öffnen</a><form method="post">{% csrf_token %}{% bootstrap_form form %}<button class="btn btn-primary">Speichern</button></form>{% endblock %}

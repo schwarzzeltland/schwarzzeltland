@@ -232,6 +232,40 @@ class EventExpense(models.Model):
             raise ValidationError("Das Vorschussbudget gehört nicht zu dieser Veranstaltung.")
 
 
+def receipt_request_upload_to(instance, filename):
+    return cashbook_attachment_upload_to(instance.entry, filename)
+
+
+class CashBookReceiptRequest(models.Model):
+    STATUS_REQUESTED = "requested"
+    STATUS_SUBMITTED = "submitted"
+    STATUS_APPROVED = "approved"
+    STATUS_CHOICES = (
+        (STATUS_REQUESTED, "Beleg angefordert"),
+        (STATUS_SUBMITTED, "Zur Prüfung eingereicht"),
+        (STATUS_APPROVED, "Beleg übernommen"),
+    )
+
+    entry = models.ForeignKey(CashBookEntry, on_delete=models.CASCADE, related_name="receipt_requests", verbose_name="Kassenbucheintrag")
+    recipient = models.ForeignKey("main.Membership", on_delete=models.PROTECT, related_name="cashbook_receipt_requests", verbose_name="Empfänger")
+    requested_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="requested_cashbook_receipts", verbose_name="Angefordert von")
+    request_note = models.TextField(blank=True, verbose_name="Nachricht")
+    attachment = models.FileField(upload_to=receipt_request_upload_to, blank=True, null=True, verbose_name="Eingereichter Beleg")
+    response_note = models.TextField(blank=True, verbose_name="Bemerkung zum Beleg")
+    review_note = models.TextField(blank=True, verbose_name="Prüfvermerk")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_REQUESTED, verbose_name="Status")
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_cashbook_receipt_requests", verbose_name="Geprüft von")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"Beleganfrage für {self.entry}"
+
+
 class ReimbursementRequest(models.Model):
     STATUS_PENDING = "pending"
     STATUS_APPROVED = "approved"

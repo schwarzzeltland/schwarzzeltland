@@ -1,42 +1,20 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
     <style>
-        .select2-container {
-            width: 100% !important;
+        .cashbook-filter-form .ts-wrapper {
+            min-width: 0;
+            width: 100%;
         }
 
-        .select2-container--default .select2-selection--single {
-            height: 38px;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            padding: 0 10px;
-            border: 1px solid #ced4da;
-            background-color: #fff;
-        }
-
-        .select2-container--default .select2-selection--single .select2-selection__rendered {
-            color: #212529;
-            line-height: 36px;
-            padding-left: 0;
-            padding-right: 20px;
-        }
-
-        .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 100%;
-            right: 10px;
-        }
-
-        .select2-container--default .select2-selection--single:focus,
-        .select2-container--default .select2-selection--single:hover,
-        .select2-container--default.select2-container--focus .select2-selection--single {
-            border-color: #80bdff;
-            outline: 0;
-            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        .cashbook-filter-form .ts-control,
+        .cashbook-filter-form .ts-control input {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .cashbook-actions {
@@ -156,12 +134,12 @@
 
     <div class="card border-1 mb-3">
         <div class="card-body">
-            <form method="get" class="row g-2">
+            <form method="get" class="cashbook-filter-form row g-2">
                 <div class="col-md-3">
                     <input type="text" name="search" value="{{ search_query }}" class="form-control" placeholder="Suche">
                 </div>
                 <div class="col-md-2">
-                    <select name="trip" id="trip-filter" class="form-select select2">
+                    <select name="trip" id="trip-filter" class="form-select">
                         <option value="">Alle Veranstaltungen</option>
                         {% for trip in trip_options %}
                             <option value="{{ trip.pk }}" {% if selected_trip == trip.pk|stringformat:"s" %}selected{% endif %}>{{ trip.name }}</option>
@@ -183,7 +161,7 @@
                     <input type="date" name="end_date" value="{{ end_date }}" class="form-control" placeholder="Bis">
                 </div>
                 <div class="col-md-1 d-grid">
-                    <button type="submit" class="btn btn-outline-secondary">Filter</button>
+                    <button type="submit" class="btn btn-outline-secondary text-nowrap">Filter</button>
                 </div>
             </form>
         </div>
@@ -246,6 +224,7 @@
                     <td class="text-end">
                         <div class="d-flex justify-content-end gap-1">
                             {% if can_edit %}<a href="{% url 'cashbook_entry_edit' cashbook.pk entry.pk %}" class="btn btn-outline-primary btn-sm">Bearbeiten</a>
+                            {% if not entry.attachment %}<a href="{% url 'cashbook_receipt_request_create' cashbook.pk entry.pk %}" class="btn btn-outline-secondary btn-sm">Beleg anfordern</a>{% endif %}
                             <a href="{% url 'cashbook_entry_delete' cashbook.pk entry.pk %}" class="btn btn-outline-danger btn-sm">Löschen</a>{% endif %}
                         </div>
                     </td>
@@ -326,11 +305,12 @@
             });
         }
 
-        if (window.jQuery && document.getElementById("trip-filter")) {
-            window.jQuery("#trip-filter").select2({
-                width: "100%",
+        const tripFilter = document.getElementById("trip-filter");
+        if (tripFilter) {
+            new TomSelect(tripFilter, {
                 placeholder: "Veranstaltung suchen",
-                allowClear: true
+                allowEmptyOption: true,
+                create: false,
             });
         }
     </script>

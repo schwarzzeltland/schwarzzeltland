@@ -2,6 +2,8 @@
 {% load bootstrap5 %}
 
 {% block content %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
         <h3 class="mb-0">Kontoumsätze importieren</h3>
@@ -60,6 +62,7 @@
                 <div class="col-md-3">{% bootstrap_field row_form.entry_type %}</div>
                 <div class="col-md-3">{% bootstrap_field row_form.amount %}</div>
                 <div class="col-md-6">{% bootstrap_field row_form.title %}</div>
+                <div class="col-md-6">{% bootstrap_field row_form.category %}</div>
                 <div class="col-md-6">{% bootstrap_field row_form.counterparty %}</div>
                 <div class="col-md-6">{% bootstrap_field row_form.match_entry %}</div>
                 <div class="col-md-6">{% bootstrap_field row_form.trip %}</div>
@@ -76,5 +79,52 @@
         <a href="{% url 'cashbook_import_csv' cashbook.pk %}" class="btn btn-outline-secondary">Andere Datei wählen</a>
     </div>
 </form>
+<script>
+    document.querySelectorAll('input[name$="-category"]').forEach(categoryInput => {
+        const wrapper = categoryInput.parentElement;
+        wrapper.classList.add("position-relative");
+
+        const suggestionsList = document.createElement("ul");
+        suggestionsList.className = "list-group position-absolute w-100";
+        suggestionsList.style.zIndex = "1000";
+        suggestionsList.style.maxHeight = "160px";
+        suggestionsList.style.overflowY = "auto";
+        wrapper.appendChild(suggestionsList);
+
+        const loadSuggestions = (query = "") => {
+            fetch(`/cashbooks/autocomplete/category/?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(categories => {
+                    suggestionsList.innerHTML = "";
+                    categories.forEach(category => {
+                        const item = document.createElement("li");
+                        item.className = "list-group-item list-group-item-action";
+                        item.textContent = category;
+                        item.addEventListener("click", () => {
+                            categoryInput.value = category;
+                            suggestionsList.innerHTML = "";
+                        });
+                        suggestionsList.appendChild(item);
+                    });
+                });
+        };
+
+        categoryInput.addEventListener("focus", () => loadSuggestions(categoryInput.value.trim()));
+        categoryInput.addEventListener("input", () => loadSuggestions(categoryInput.value.trim()));
+        document.addEventListener("click", event => {
+            if (!categoryInput.contains(event.target) && !suggestionsList.contains(event.target)) {
+                suggestionsList.innerHTML = "";
+            }
+        });
+    });
+
+    document.querySelectorAll(".trip-search").forEach(tripSelect => {
+        new TomSelect(tripSelect, {
+            placeholder: "Veranstaltung suchen",
+            allowEmptyOption: true,
+            create: false,
+        });
+    });
+</script>
 {% endif %}
 {% endblock %}
