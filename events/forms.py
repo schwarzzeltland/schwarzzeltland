@@ -316,13 +316,14 @@ class ProgrammItemForm(forms.ModelForm):
 
     class Meta:
         model = ProgrammItem
-        fields = ["name", "short_description", "description", "type","recipe", "visible_for_members"]
+        fields = ["name", "short_description", "description", "type", "recipe", "education_hours", "visible_for_members"]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "short_description": forms.TextInput(attrs={"class": "form-control"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "type": forms.Select(attrs={"class": "form-select"}),
             "recipe": forms.Select(attrs={"class": "form-select select2"}),
+            "education_hours": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.25"}),
             "visible_for_members": forms.CheckboxInput(attrs={"class": "form-check-input"}
                                                        )
         }
@@ -365,6 +366,7 @@ class ProgrammItemEditForm(forms.ModelForm):
             'description',
             'type',
             'recipe',
+            'education_hours',
             'visible_for_members',
             'start_time',
             'end_time',
@@ -375,6 +377,7 @@ class ProgrammItemEditForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "type": forms.Select(attrs={"class": "form-select"}),
             "recipe": forms.Select(attrs={"class": "form-select select2"}),
+            "education_hours": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.25"}),
             "visible_for_members": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "start_time": forms.DateTimeInput(
                 attrs={"class": "form-control", "type": "datetime-local"},

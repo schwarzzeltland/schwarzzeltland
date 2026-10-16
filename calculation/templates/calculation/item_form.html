@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% load bootstrap5 %}{% block content %}<h2>{{ heading }}</h2><form method="post" class="card card-body">{% csrf_token %}{% bootstrap_form form %}<button class="btn btn-primary">Speichern</button><a href="{% url 'calculation_detail' trip.pk %}" class="btn btn-outline-secondary mt-2">Zurück zur Kalkulation</a></form>{% endblock %}

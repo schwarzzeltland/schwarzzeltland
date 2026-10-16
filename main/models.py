@@ -47,6 +47,7 @@ class Organization(models.Model):
     pro4 = models.BooleanField(default=False)
     pro5 = models.BooleanField(default=False)
     pro6 = models.BooleanField(default=False)
+    pro7 = models.BooleanField(default=False)
     default_checklist = models.JSONField(
         default=default_checklist_items,
         blank=True,

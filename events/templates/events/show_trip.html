@@ -114,6 +114,9 @@
                     {% if can_access_settlement %}
                         <a href="{% url 'event_settlement' trip.pk %}" class="btn btn-outline-success">Abrechnung</a>
                     {% endif %}
+                    {% if can_access_calculation %}
+                        <a href="{% url 'calculation_detail' trip.pk %}" class="btn btn-outline-primary">Kalkulation</a>
+                    {% endif %}
                 </div>
                 <div class="mb-2">
                     <button id="download-ics-btn" type="button" class="btn btn-outline-primary"

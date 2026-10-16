@@ -71,6 +71,10 @@
                     </button>
                 {% endif %}
             </div>
+            <div class="mb-3">
+                {{ form.education_hours.label_tag }} {{ form.education_hours }}
+                <small class="form-text text-muted">Anrechenbare Bildungsstunden dieses Programmpunkts.</small>
+            </div>
 
             <div class="mb-3 form-check">
                 {{ form.visible_for_members }}

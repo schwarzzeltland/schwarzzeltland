@@ -184,6 +184,10 @@ def disclaimer_view(request):
     return render(request, "main/disclaimer.html", {"title": "Haftungsausschluss"})
 
 
+def terms_view(request):
+    return render(request, "main/terms.html", {"title": "Nutzungsbedingungen"})
+
+
 def privacypolice_view(request):
     return render(request, "main/privacypolice.html", {"title": "Datenschutzerklärung"})
 

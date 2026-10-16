@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"><title>{% if is_actual %}Nachkalkulation{% else %}Kalkulation{% endif %} – {{ trip.name }}</title></head>
+<body>
+    <h1>{% if is_actual %}Nachkalkulation{% else %}Kalkulation{% endif %}</h1>
+    <div>{{ trip.name }}</div>
+    <div class="muted">{{ trip.start_date|date:'d.m.Y' }} – {{ trip.end_date|date:'d.m.Y' }} · {{ trip.location|default:'Kein Ort angegeben' }}</div>
+
+    <h2>Grunddaten</h2>
+    <table class="summary"><tbody>
+        <tr><td>Teilnehmende gesamt</td><td class="number">{{ values.total_people }}</td><td>Förderfähige Personen</td><td class="number">{{ values.eligible_count }}</td></tr>
+        <tr><td>Veranstaltungstage</td><td class="number">{{ calculation.event_days }}</td><td>Bildungs-/QS-Stunden</td><td class="number">{{ values.education_hours }}</td></tr>
+        <tr><td>Förderprofil</td><td colspan="3">{{ calculation.profile }}</td></tr>
+    </tbody></table>
+
+    <h2>Kostenpositionen</h2>
+    <table><thead><tr><th>Kategorie</th><th>Beschreibung</th><th>Berechnung</th><th class="number">{% if is_actual %}Ist-Kosten{% else %}Plan-Kosten{% endif %}</th><th>Förderfähig</th></tr></thead><tbody>
+        {% for row in line_rows %}<tr><td>{{ row.line.category }}</td><td>{{ row.line.description|default:'–' }}</td><td>{{ row.line.get_calculation_mode_display }}: {% if is_actual and row.line.actual_amount is not None %}{{ row.line.actual_amount }}{% else %}{{ row.line.planned_amount }}{% endif %} €</td><td class="number">{% if is_actual %}{{ row.actual_total }}{% else %}{{ row.planned_total }}{% endif %} €</td><td>{% if row.line.eligible %}Ja{% else %}Nein{% endif %}</td></tr>{% empty %}<tr><td colspan="5">Keine Kostenpositionen vorhanden.</td></tr>{% endfor %}
+    </tbody></table>
+
+    <h2>{% if is_actual %}Nachkalkulation{% else %}Planung{% endif %}</h2>
+    <table class="summary"><tbody>
+        {% if is_actual %}
+            <tr><td>Förderfähige Ist-Kosten</td><td class="number">{{ values.actual_costs }} €</td></tr>
+            <tr><td>Gebuchte Einnahmen</td><td class="number">{{ values.booked_income }} €</td></tr>
+            <tr><td>Voraussichtlicher Ist-Zuschuss</td><td class="number">{{ values.actual_subsidy }} €</td></tr>
+            <tr class="result"><td>Ergebnis</td><td class="number">{{ values.actual_result }} €</td></tr>
+        {% else %}
+            <tr><td>Förderfähige Plan-Kosten</td><td class="number">{{ values.planned_costs }} €</td></tr>
+            <tr><td>Teilnehmerbeiträge nach Rabatten</td><td class="number">{{ values.participant_income }} €</td></tr>
+            <tr><td>Zuschüsse für Gäste</td><td class="number">{{ values.guest_subsidies }} €</td></tr>
+            <tr><td>Voraussichtlicher Zuschuss</td><td class="number">{{ values.planned_subsidy }} €</td></tr>
+            <tr class="result"><td>Ergebnis</td><td class="number">{{ values.planned_result }} €</td></tr>
+        {% endif %}
+    </tbody></table>
+</body></html>

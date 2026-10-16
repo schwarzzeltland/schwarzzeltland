@@ -254,6 +254,7 @@ class ProgrammItem(models.Model):
 
     start_time = models.DateTimeField(null=True, verbose_name="Startzeit")
     end_time = models.DateTimeField(null=True, verbose_name="Endzeit")
+    education_hours = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name="Bildungsstunden")
     visible_for_members = models.BooleanField(default=True,verbose_name="Sichtbar für Mitglieder")
 
     def __str__(self):

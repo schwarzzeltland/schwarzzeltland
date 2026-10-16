@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% load bootstrap5 %}
+{% block content %}
+<style>
+    .calculation-page .card { border: 0; box-shadow: 0 .125rem .35rem rgba(0, 0, 0, .08); }
+    .calculation-page .section-card { margin-bottom: 1.5rem; }
+    .calculation-page .section-card > .card-header { background: #fff; border-bottom: 1px solid #e9ecef; }
+    .calculation-page .metric-label { color: #6c757d; font-size: .82rem; margin-bottom: .2rem; }
+    .calculation-page .metric-value { font-size: 1.2rem; font-weight: 600; }
+    .calculation-page .result-value { font-size: 1.45rem; font-weight: 700; }
+    .calculation-page .table th { white-space: nowrap; }
+    .calculation-page .summary-card { height: 100%; }
+</style>
+
+<div class="calculation-page">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h2 class="mb-1">Kalkulation</h2>
+            <p class="text-muted mb-0">{{ trip.name }} · Planwerte und Nachkalkulation</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'calculation_export_pdf' trip.pk 'planning' %}" class="btn btn-outline-primary">Kalkulation als PDF</a>
+            <a href="{% url 'calculation_export_pdf' trip.pk 'actual' %}" class="btn btn-outline-success">Nachkalkulation als PDF</a>
+            {% if is_event_manager %}
+                <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-outline-secondary">Zur Bearbeitung der Veranstaltung</a>
+            {% else %}
+                <a href="{% url 'show_trip' trip.pk %}" class="btn btn-outline-secondary">Zurück zur Veranstaltung</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not values.requirements.met %}
+        <div class="alert alert-warning" role="alert">
+            <strong>Grundvoraussetzungen für die Förderung noch nicht erfüllt.</strong>
+            {% if not values.requirements.minimum_participants_met %} Mindestens {{ values.requirements.minimum_participants }} förderfähige Personen sind erforderlich.{% endif %}
+            {% if not values.requirements.minimum_days_met %} Die Veranstaltung muss mindestens {{ values.requirements.minimum_days }} Tage dauern oder als Bildungs-/QS-Veranstaltung markiert sein.{% endif %}
+            Der Zuschuss wird deshalb aktuell mit 0,00 € berechnet.
+        </div>
+    {% endif %}
+
+    <div class="card section-card">
+        <div class="card-header"><strong>Veranstaltungsdaten</strong><span class="text-muted ms-2">übernommen aus der Veranstaltung</span></div>
+        <div class="card-body py-3"><div class="row g-3">
+            <div class="col-md-4"><div class="metric-label">Zeitraum</div><div>{{ trip.start_date|date:'d.m.Y' }} – {{ trip.end_date|date:'d.m.Y' }}</div></div>
+            <div class="col-md-4"><div class="metric-label">Ort</div><div>{{ trip.location|default:'–' }}</div></div>
+            <div class="col-md-4"><div class="metric-label">Gemeldete Personen</div><div>{{ trip.total_persons }}</div></div>
+        </div></div>
+    </div>
+
+    <div class="card section-card">
+        <div class="card-header d-flex flex-wrap justify-content-between gap-2 align-items-center"><strong>Grunddaten der Berechnung</strong><span class="small text-muted" title="Die Förderregeln werden im gewählten Förderprofil festgelegt.">ⓘ Fördergrundlage</span></div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                    {% bootstrap_field field %}
+                    {% if field.name == 'education_hours' %}
+                        <div class="form-text mb-3">
+                            Gesamtwert für die Förderung: <strong>{{ values.education_hours }} Stunden</strong>
+                            {% if organization.pro4 %}<span class="text-muted">({{ program_education_hours }} aus dem Programm + manuell ergänzte Bildungsblöcke)</span>{% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+                <div class="d-flex flex-wrap gap-2">
+                    <button name="save_calculation" class="btn btn-primary">Kalkulation speichern</button>
+                    <button name="sync_event_data" class="btn btn-outline-secondary" title="Übernimmt Personenanzahl, Veranstaltungstage und bei aktiviertem Programm die Bildungsstunden. Beiträge und Kostenpositionen bleiben unverändert.">Veranstaltungsdaten übernehmen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6"><div class="card summary-card border-start border-4 border-primary">
+            <div class="card-body"><h4 class="h5 mb-3">Planung</h4>
+                <div class="row g-3"><div class="col-sm-6"><div class="metric-label">Förderfähige Kosten</div><div class="metric-value">{{ values.planned_costs }} €</div></div><div class="col-sm-6"><div class="metric-label">Teilnehmerbeiträge nach Rabatten</div><div class="metric-value">{{ values.participant_income }} €</div></div><div class="col-sm-6"><div class="metric-label">Zuschüsse für Gäste</div><div>{{ values.guest_subsidies }} €</div></div><div class="col-sm-6"><div class="metric-label" title="Pauschale je Tag, Person und Bildungs-/QS-Stunde gemäß Profil.">Theoretischer Zuschuss</div><div>{{ values.base_subsidy }} €</div></div><div class="col-sm-6"><div class="metric-label">Voraussichtlicher Zuschuss</div><div>{{ values.planned_subsidy }} €</div></div></div>
+                <hr><div class="d-flex justify-content-between align-items-center"><strong>Ergebnis</strong><span class="result-value">{{ values.planned_result }} €</span></div>
+            </div>
+        </div></div>
+        <div class="col-lg-6"><div class="card summary-card border-start border-4 border-success">
+            <div class="card-body"><h4 class="h5 mb-3">Nachkalkulation</h4>
+                <div class="row g-3"><div class="col-sm-6"><div class="metric-label" title="Automatisch werden nur Ausgaben einer passenden Kategorie übernommen. Ein manuell eingetragener Ist-Wert hat Vorrang.">Ist-Kosten</div><div class="metric-value">{{ values.actual_costs }} €</div>{% if organization.pro5 %}<small class="text-muted">{{ values.booked_costs }} € erfasst</small>{% endif %}</div><div class="col-sm-6"><div class="metric-label">Gebuchte Einnahmen</div><div class="metric-value">{{ values.booked_income }} €</div></div><div class="col-sm-6"><div class="metric-label">Voraussichtlicher Ist-Zuschuss</div><div>{{ values.actual_subsidy }} €</div></div><div class="col-sm-6"><div class="metric-label">Einreichfristen</div><div class="small">Voll: {{ values.full_deadline|date:'d.m.Y' }}<br>Reduziert: {{ values.reduced_deadline|date:'d.m.Y' }}</div></div></div>
+                <hr><div class="d-flex justify-content-between align-items-center"><strong>Ergebnis</strong><span class="result-value">{{ values.actual_result }} €</span></div>
+            </div>
+        </div></div>
+    </div>
+
+    <div class="card section-card">
+        <div class="card-header d-flex justify-content-between align-items-center"><strong>Bildungsblöcke</strong><span class="badge text-bg-light">{{ values.education_hours }} Stunden</span></div>
+        <div class="card-body">
+            {% if organization.pro4 %}<h5 class="h6 text-muted">Aus Programmübersicht</h5><div class="table-responsive mb-4"><table class="table table-sm align-middle mb-0"><thead><tr><th>Programmpunkt</th><th>Zeit</th><th>Bildungsstunden</th></tr></thead><tbody>{% for item in program_education_items %}<tr><td>{{ item.name }}</td><td>{{ item.start_time|date:'d.m.Y H:i' }}</td><td>{{ item.education_hours }}</td></tr>{% empty %}<tr><td colspan="3" class="text-muted">Keine Programmpunkte mit Bildungsstunden markiert.</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+            <h5 class="h6 text-muted">Manuell ergänzt</h5><div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Thema</th><th>Stunden</th><th></th></tr></thead><tbody>{% for session in calculation.education_sessions.all %}<tr><td>{{ session.topic }}</td><td>{{ session.hours }}</td><td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'calculation_education_edit' trip.pk session.pk %}">Bearbeiten</a></td></tr>{% empty %}<tr><td colspan="3" class="text-muted">Keine manuell erfassten Bildungsblöcke; der Programmwert wird verwendet.</td></tr>{% endfor %}</tbody></table></div>
+            <a class="btn btn-outline-primary" href="{% url 'calculation_education_create' trip.pk %}">Bildungsblock hinzufügen</a>
+        </div>
+    </div>
+
+    <div class="card section-card">
+        <div class="card-header"><strong>Kostenpositionen</strong><div class="small text-muted mt-1">Variable Kosten können pro Person oder pro Person und Tag berechnet werden. Passende Abrechnungskategorien werden automatisch als Ist-Kosten übernommen.</div></div>
+        <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Kategorie</th><th>Beschreibung</th><th>Berechnung</th><th class="text-end">Plan gesamt</th><th class="text-end">Ist gesamt</th><th>Förderfähig</th><th></th></tr></thead><tbody>{% for row in line_rows %}<tr><td><span class="badge text-bg-light">{{ row.line.category }}</span></td><td>{{ row.line.description|default:'–' }}</td><td>{% if row.line.calculation_mode == 'per_person' %}{{ row.line.planned_amount }} €/Person{% elif row.line.calculation_mode == 'per_person_day' %}{{ row.line.planned_amount }} €/Person/Tag{% else %}Fix: {{ row.line.planned_amount }} €{% endif %}</td><td class="text-end">{{ row.planned_total }} €</td><td class="text-end">{% if row.line.actual_amount is not None %}{{ row.actual_total }} €{% elif row.actual_is_automatic %}{{ row.actual_total }} € <small class="text-success">auto</small>{% else %}–{% endif %}</td><td>{% if row.line.eligible %}<span class="badge text-bg-success">Ja</span>{% else %}<span class="badge text-bg-secondary">Nein</span>{% endif %}</td><td class="text-end text-nowrap"><a href="{% url 'calculation_line_edit' trip.pk row.line.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a> <form class="d-inline" method="post" action="{% url 'calculation_line_delete' trip.pk row.line.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Löschen</button></form></td></tr>{% empty %}<tr><td colspan="7" class="text-center text-muted py-4">Noch keine Kostenpositionen.</td></tr>{% endfor %}</tbody></table></div></div>
+    </div>
+
+    <div class="card section-card"><div class="card-header"><strong>Kostenposition hinzufügen</strong></div><div class="card-body"><form method="post">{% csrf_token %}{% bootstrap_form line_form %}<button class="btn btn-primary">Kostenposition hinzufügen</button></form></div></div>
+</div>
+
+<script>
+    const categoryInput = document.getElementById("calculation-category-input");
+    if (categoryInput) {
+        const wrapper = categoryInput.parentElement;
+        wrapper.classList.add("position-relative");
+        const suggestions = document.createElement("ul");
+        suggestions.className = "list-group position-absolute w-100 shadow-sm";
+        suggestions.style.zIndex = "1000";
+        suggestions.style.maxHeight = "160px";
+        suggestions.style.overflowY = "auto";
+        wrapper.appendChild(suggestions);
+        const loadSuggestions = (query = "") => fetch("{% url 'calculation_category_autocomplete' %}?q=" + encodeURIComponent(query)).then(response => response.json()).then(categories => {
+            suggestions.innerHTML = "";
+            categories.forEach(category => { const item = document.createElement("li"); item.className = "list-group-item list-group-item-action"; item.textContent = category; item.addEventListener("click", () => { categoryInput.value = category; suggestions.innerHTML = ""; }); suggestions.appendChild(item); });
+        });
+        categoryInput.addEventListener("focus", () => loadSuggestions(categoryInput.value.trim()));
+        categoryInput.addEventListener("input", () => loadSuggestions(categoryInput.value.trim()));
+        document.addEventListener("click", event => { if (!categoryInput.contains(event.target) && !suggestions.contains(event.target)) suggestions.innerHTML = ""; });
+    }
+</script>
+{% endblock %}

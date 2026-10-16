@@ -279,10 +279,10 @@ def _event_settlement_access(request, trip):
     membership = request.user.membership_set.filter(organization=request.org).first()
     if not membership or trip.owner_id != request.org.id:
         raise PermissionDenied("Sie haben keine Berechtigung für diese Abrechnung.")
-    is_cashier = membership.cashier_manager
-    is_planner = trip.planners.filter(pk=request.user.pk).exists()
-    if not (is_cashier or is_planner):
-        raise PermissionDenied("Nur ausgewählte Planer und Kassenwarte dürfen diese Abrechnung sehen.")
+    is_cashier = membership.cashier_manager or membership.admin
+    is_event_manager = membership.event_manager
+    if not (is_cashier or is_event_manager):
+        raise PermissionDenied("Nur Admins, Veranstaltungsmanager und Kassenwarte dürfen diese Abrechnung sehen.")
     return membership, is_cashier
 
 
@@ -1478,6 +1478,7 @@ def event_settlement(request, trip_pk):
         "budgets": trip.advance_budgets.select_related("cashbook", "assigned_to__user", "settlement_entry"),
         "expense_totals": totals.items(), "pending_expense_totals": pending_totals.items(),
         "is_cashier": is_cashier,
+        "is_event_manager": membership.event_manager,
     })
 
 

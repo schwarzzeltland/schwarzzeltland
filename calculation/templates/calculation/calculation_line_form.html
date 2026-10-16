@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load bootstrap5 %}
+{% block content %}
+<h2>Kostenposition bearbeiten</h2>
+<p class="text-muted">{{ trip.name }}</p>
+<form method="post" class="card card-body">{% csrf_token %}{% bootstrap_form form %}<button class="btn btn-primary">Speichern</button><a href="{% url 'calculation_detail' trip.pk %}" class="btn btn-outline-secondary mt-2">Zurück zur Kalkulation</a></form>
+<script>
+    const categoryInput = document.getElementById("calculation-category-input");
+    if (categoryInput) {
+        const wrapper = categoryInput.parentElement;
+        wrapper.classList.add("position-relative");
+        const suggestions = document.createElement("ul");
+        suggestions.className = "list-group position-absolute w-100";
+        suggestions.style.zIndex = "1000";
+        suggestions.style.maxHeight = "160px";
+        suggestions.style.overflowY = "auto";
+        wrapper.appendChild(suggestions);
+
+        const loadSuggestions = (query = "") => {
+            fetch("{% url 'calculation_category_autocomplete' %}?q=" + encodeURIComponent(query))
+                .then(response => response.json())
+                .then(categories => {
+                    suggestions.innerHTML = "";
+                    categories.forEach(category => {
+                        const item = document.createElement("li");
+                        item.className = "list-group-item list-group-item-action";
+                        item.textContent = category;
+                        item.addEventListener("click", () => {
+                            categoryInput.value = category;
+                            suggestions.innerHTML = "";
+                        });
+                        suggestions.appendChild(item);
+                    });
+                });
+        };
+        categoryInput.addEventListener("focus", () => loadSuggestions(categoryInput.value.trim()));
+        categoryInput.addEventListener("input", () => loadSuggestions(categoryInput.value.trim()));
+        document.addEventListener("click", event => {
+            if (!categoryInput.contains(event.target) && !suggestions.contains(event.target)) {
+                suggestions.innerHTML = "";
+            }
+        });
+    }
+</script>
+{% endblock %}

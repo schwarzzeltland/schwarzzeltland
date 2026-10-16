@@ -312,7 +312,7 @@
                             </div>
                         </div>
 
-                        {% if trip.owner.pro1 or trip.owner.pro2 or trip.owner.pro3 or trip.owner.pro4 or can_access_settlement %}
+                        {% if trip.owner.pro1 or trip.owner.pro2 or trip.owner.pro3 or trip.owner.pro4 or trip.owner.pro7 or can_access_settlement %}
                             <!-- Fach: Zusatzfunktionen -->
                             <h5>
                                 <a class="collapse-toggle" data-bs-toggle="collapse" href="#collapse_zusatz"
@@ -342,6 +342,10 @@
                                 {% if can_access_settlement %}
                                     <a href="{% url 'event_settlement' trip.id %}" class="btn btn-outline-success btn-equal">
                                         Abrechnung</a>
+                                {% endif %}
+                                {% if trip.owner.pro7 %}
+                                    <a href="{% url 'calculation_detail' trip.id %}" class="btn btn-outline-primary btn-equal">
+                                        Kalkulation</a>
                                 {% endif %}
                             </div>
                         </div>

@@ -110,3 +110,13 @@ def pro6_required(func):
             raise PermissionDenied("Diese Organisation hat keine Pro6-Berechtigung.")
         return func(request, *args, **kwargs)
     return wrapper
+
+
+def pro7_required(func):
+    @wraps(func)
+    def wrapper(request, *args, **kwargs):
+        org = getattr(request, "org", None)
+        if not org or not org.pro7:
+            raise PermissionDenied("Diese Organisation hat keine Pro7-Berechtigung.")
+        return func(request, *args, **kwargs)
+    return wrapper

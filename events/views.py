@@ -124,7 +124,12 @@ def show_trip(request, pk=None):
     membership = request.user.membership_set.filter(organization=request.org).first()
     can_access_settlement = bool(
         request.org.pro5 and membership and (
-            membership.cashier_manager or trip.planners.filter(pk=request.user.pk).exists()
+            membership.admin or membership.cashier_manager or membership.event_manager
+        )
+    )
+    can_access_calculation = bool(
+        request.org.pro7 and membership and (
+            membership.admin or membership.cashier_manager or membership.event_manager
         )
     )
     tripconstruction = TripConstruction.objects.filter(trip=trip)
@@ -140,6 +145,7 @@ def show_trip(request, pk=None):
         'tripgroups': tripgroups,
         'total_tn_count': total_tn_count,
         'can_access_settlement': can_access_settlement,
+        'can_access_calculation': can_access_calculation,
     })
 
 
@@ -794,7 +800,7 @@ def edit_trip(request, pk=None):
     membership = request.user.membership_set.filter(organization=request.org).first()
     can_access_settlement = bool(
         trip_d and request.org.pro5 and membership and (
-            membership.cashier_manager or trip_d.planners.filter(pk=request.user.pk).exists()
+            membership.admin or membership.cashier_manager or membership.event_manager
         )
     )
     return render(request, 'events/edit_trip.html', {
@@ -2120,6 +2126,8 @@ def add_programm_item(request, pk):
             description = form.cleaned_data['description']
             type = form.cleaned_data['type']
             recipe = form.cleaned_data['recipe']  # <-- Rezept übernehmen
+            education_hours = form.cleaned_data['education_hours']
+            visible_for_members = form.cleaned_data['visible_for_members']
             start_time = form.cleaned_data['start_time']
             end_time = form.cleaned_data['end_time']
             selected_days = form.cleaned_data['days']
@@ -2135,6 +2143,8 @@ def add_programm_item(request, pk):
                     description=description,
                     type=type,
                     recipe=recipe,
+                    education_hours=education_hours,
+                    visible_for_members=visible_for_members,
                     start_time=start_dt,
                     end_time=end_dt
                 )

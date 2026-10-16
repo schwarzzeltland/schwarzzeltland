@@ -148,7 +148,7 @@
                                     <!-- Mehr-Dropdown -->
                                     <li class="nav-item dropdown">
                                         <a class="nav-link dropdown-toggle
-       {% if current == 'messages' or current == 'sentmessages' or current == 'showmessage' or current == 'sendmessage' or current == 'recipes' or current == 'organization_material_checklist' or current == 'cashbook_list' or current == 'cashbook_create' or current == 'cashbook_detail' or current == 'cashbook_edit' or current == 'cashbook_delete' or current == 'cashbook_entry_create' or current == 'cashbook_entry_edit' or current == 'cashbook_entry_delete' or current == 'meeting_minutes_list' or current == 'meeting_minutes_create' or current == 'meeting_minutes_detail' or current == 'meeting_minutes_edit' or current == 'meeting_minutes_delete' %}active{% endif %}"
+       {% if current == 'messages' or current == 'sentmessages' or current == 'showmessage' or current == 'sendmessage' or current == 'recipes' or current == 'organization_material_checklist' or current == 'cashbook_list' or current == 'cashbook_create' or current == 'cashbook_detail' or current == 'cashbook_edit' or current == 'cashbook_delete' or current == 'cashbook_entry_create' or current == 'cashbook_entry_edit' or current == 'cashbook_entry_delete' or current == 'calculation_detail' or current == 'subsidy_profiles' or current == 'meeting_minutes_list' or current == 'meeting_minutes_create' or current == 'meeting_minutes_detail' or current == 'meeting_minutes_edit' or current == 'meeting_minutes_delete' %}active{% endif %}"
                                            href="#"
                                            role="button"
                                            data-bs-toggle="dropdown"
@@ -185,6 +185,9 @@
                                                         Kassenbücher
                                                     </a>
                                                 </li>
+                                            {% endif %}
+                                            {% if organization.pro7 and membership.admin or organization.pro7 and membership.cashier_manager %}
+                                                <li><a class="dropdown-item {% if current == 'subsidy_profiles' %}active{% endif %}" href="{% url 'subsidy_profiles' %}">Förderprofile</a></li>
                                             {% endif %}
                                             {% if membership.leiterrundenmitglied and organization.pro5 %}
                                                 <li><a class="dropdown-item {% if current == 'reimbursement_list' or current == 'reimbursement_create' %}active{% endif %}" href="{% url 'reimbursement_list' %}">Auszahlungsanfragen</a></li>
@@ -327,6 +330,7 @@
                     </style>
 
                     <ul class="footer-ul">
+                        <li class="footer-li"><a href="{% url 'terms' %}">Nutzungsbedingungen</a></li>
                         <li class="footer-li"><a href="/main/disclaimer">Haftungsausschluss</a></li>
                         <li class="footer-li"><a href="/main/impressum">Impressum</a></li>
                         <li class="footer-li"><a href="/main/privacypolice">Datenschutzerklärung</a></li>

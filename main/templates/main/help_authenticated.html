@@ -26,6 +26,7 @@
     {% if organization.pro3 %}<a class="list-group-item list-group-item-action" href="#todos">To-do-Listen</a>{% endif %}
     {% if organization.pro4 %}<a class="list-group-item list-group-item-action" href="#programm">Programmplanung</a>{% endif %}
     {% if organization.pro5 %}<a class="list-group-item list-group-item-action" href="#kasse">Kassenbücher</a>{% endif %}
+    {% if organization.pro7 and membership.admin or organization.pro7 and membership.cashier_manager or organization.pro7 and membership.event_manager %}<a class="list-group-item list-group-item-action" href="#kalkulation">Kalkulation und Nachkalkulation</a>{% endif %}
     {% if organization.pro6 %}<a class="list-group-item list-group-item-action" href="#protokolle">Protokolle</a>{% endif %}
 </div></aside>
 
@@ -127,5 +128,14 @@
 </section>{% endif %}
 
 {% if not organization.pro1 and not organization.pro2 and not organization.pro3 and not organization.pro4 and not organization.pro5 and not organization.pro6 %}<div class="alert alert-secondary">Für {{ organization.name }} sind derzeit keine Zusatzfunktionen freigeschaltet. Die oben beschriebenen Grundfunktionen stehen weiterhin zur Verfügung.</div>{% endif %}
+{% if organization.pro7 and membership.admin or organization.pro7 and membership.cashier_manager or organization.pro7 and membership.event_manager %}<section id="kalkulation" class="mb-5"><h3>Kalkulation und Nachkalkulation <span class="badge text-bg-success">Freigeschaltet</span></h3>
+    <p>Die Kalkulation steht in einer Veranstaltung unter <strong>Zusatzfunktionen</strong> zur Verfügung. Sie übernimmt Personenanzahl, Veranstaltungstage und – bei aktivierter Programmplanung – die Bildungsstunden aus der Veranstaltung.</p>
+    <h4 class="h5 mt-3">Planung</h4>
+    <ul><li>Kostenpositionen können als fixer Betrag, pro Person oder pro Person und Tag erfasst werden.</li><li>Förderprofil, förderfähige Personen, Gästezuschüsse, Teilnehmerbeiträge und Leiter-Rabatte bestimmen die Planwerte.</li><li>Bildungsblöcke aus dem Programm und manuell ergänzte Stunden werden zusammen für die Förderung berücksichtigt.</li></ul>
+    <h4 class="h5 mt-3">Nachkalkulation</h4>
+    <ul><li>Bei aktivierter Abrechnung werden Ist-Kosten automatisch je übereinstimmender Kategorie übernommen.</li><li>Ein manuell eingetragener Ist-Wert einer Kostenposition hat Vorrang.</li><li>Für das Ergebnis der Nachkalkulation werden ausschließlich gebuchte Einnahmen berücksichtigt.</li></ul>
+    <p>Über die Schaltflächen oben auf der Kalkulationsseite können Planung und Nachkalkulation getrennt als PDF exportiert werden.</p>
+    {% if membership.admin or membership.cashier_manager %}<p class="text-muted">Förderprofile können von Admins und Kassenwarten organisationsweit angepasst werden.</p>{% endif %}
+</section>{% endif %}
 </div></div>
 {% endblock %}
