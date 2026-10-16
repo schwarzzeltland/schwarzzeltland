@@ -155,7 +155,7 @@ def calculation_detail(request, trip_pk):
         if request.org.pro4 else Decimal("0")
     )
     calculation, created = EventCalculation.objects.get_or_create(trip=trip, defaults={"profile": _default_profile(request.org), "event_days": max(1, (trip.end_date.date() - trip.start_date.date()).days + 1), "eligible_participants": trip.total_persons(), "total_participants": trip.total_persons(), "education_hours": program_education_hours})
-    if created or not calculation.lines.exists():
+    if created:
         _ensure_default_cost_lines(calculation)
     if request.method == "POST":
         if "sync_event_data" in request.POST:
