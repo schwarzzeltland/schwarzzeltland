@@ -33,7 +33,7 @@
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
 <!-- ======= Header ======= -->
-<nav class="navbar navbar-expand-lg navbar-dark fixed-top navbar-background py-3">
+<nav class="navbar navbar-expand-md navbar-dark fixed-top navbar-background py-3">
     <div class="container">
         <h1 class="logo me-auto me-lg-0">
             <a href="/" class="ps-0">
@@ -41,10 +41,18 @@
                 <div class="d-inline d-sm-none">S<span>.</span></div>
             </a>
         </h1>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarTogglerDemo02"
-                aria-controls="navbarTogglerDemo02" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+        {% if user.is_authenticated and organization %}
+            <button class="navbar-toggler d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#subNav"
+                    aria-controls="subNav" aria-expanded="false" aria-label="Navigation anzeigen">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        {% else %}
+            <div class="d-flex d-md-none align-items-center gap-2">
+                <a class="btn btn-sm btn-outline-light" href="{% url 'contacts' %}">Kontakt</a>
+                <a class="btn btn-sm btn-outline-light" href="{% url 'help' %}">Info</a>
+                <a class="btn btn-sm btn-warning" href="{% url 'login' %}">Login</a>
+            </div>
+        {% endif %}
         <div class="collapse navbar-collapse" id="navbarTogglerDemo02">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-0 ms-lg-4">
                 <li class="nav-item">
@@ -109,8 +117,8 @@
                 {% block page_actions %}{% endblock %}
 
                 {% if organization %}
-                    <nav class="navbar navbar-expand-lg navbar-light p-0 breadcrumbs-nav">
-                        <button class="navbar-toggler ms-auto"
+                    <nav class="navbar navbar-expand-md navbar-light p-0 breadcrumbs-nav">
+                        <button class="navbar-toggler ms-auto d-none"
                                 type="button"
                                 data-bs-toggle="collapse"
                                 data-bs-target="#subNav"
@@ -121,7 +129,86 @@
                         </button>
 
                         <div class="collapse navbar-collapse" id="subNav">
+                            {% with request.resolver_match.url_name as current %}
                             <ul class="navbar-nav ms-lg-3 gap-lg-2">
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle {% if current == 'home' or current == 'personal_todo_list' or current == 'messages' or current == 'sentmessages' or current == 'showmessage' or current == 'sendmessage' %}active fw-bold{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">&Uuml;bersicht</a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item {% if current == 'home' %}active{% endif %}" href="{% url 'home' %}">Start</a></li>
+                                        {% if membership.event_manager or membership.material_manager or membership.leiterrundenmitglied %}<li><a class="dropdown-item {% if current == 'personal_todo_list' %}active{% endif %}" href="{% url 'personal_todo_list' %}">Meine To-dos</a></li>{% endif %}
+                                        {% if membership.admin %}<li><a class="dropdown-item {% if current == 'messages' or current == 'sentmessages' or current == 'showmessage' or current == 'sendmessage' %}active{% endif %}" href="{% url 'messages' %}">Nachrichten</a></li>{% endif %}
+                                    </ul>
+                                </li>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle {% if current == 'trip' or current == 'delete_trip' or current == 'edit_trip' or current == 'show_trip' or current == 'programm' or current == 'add_programm_item' or current == 'edit_programm_item' or current == 'show_programm_item' or current == 'print_programm' or current == 'shoppinglist' or current == 'trip_vacancies' or current == 'checklist' or current == 'calculation_detail' or current == 'calculation_export_pdf' or current == 'calculation_line_edit' or current == 'calculation_income_edit' or current == 'calculation_education_edit' or current == 'event_settlement' or current == 'event_settlement_export_receipts_zip' or current == 'event_settlement_print_receipts' or current == 'event_expense_create' or current == 'event_expense_edit' or current == 'event_expense_delete' or current == 'event_expense_review' or current == 'advance_budget_create' or current == 'advance_budget_settle' or current == 'material' or current == 'edit_material' or current == 'create_material' or current == 'show_material' or current == 'material_container_list' or current == 'material_container_detail' or current == 'storage_plan_list' or current == 'storage_plan_detail' or current == 'constructions' or current == 'edit_constructions' or current == 'show_construction' or current == 'location' or current == 'edit_location' or current == 'show_location' or current == 'organization_material_checklist' or current == 'recipes' or current == 'new_recipe' or current == 'my_recipes' or current == 'public_recipes' or current == 'show_public_recipe' or current == 'show_my_recipe' or current == 'edit_recipe' %}active fw-bold{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Planen</a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item {% if current == 'trip' %}active{% endif %}" href="{% url 'trip' %}">Veranstaltungen</a></li>
+                                        <li><a class="dropdown-item {% if current == 'material' %}active{% endif %}" href="{% url 'material' %}">Material-Lager</a></li>
+                                        <li><a class="dropdown-item {% if current == 'constructions' %}active{% endif %}" href="{% url 'constructions' %}">Konstruktionen</a></li>
+                                        <li><a class="dropdown-item {% if current == 'location' %}active{% endif %}" href="{% url 'location' %}">Orte</a></li>
+                                        <li><a class="dropdown-item {% if current == 'recipes' %}active{% endif %}" href="{% url 'recipes' %}">Rezepte</a></li>
+                                        {% if membership.material_manager and organization.pro3 %}<li><hr class="dropdown-divider"></li><li><a class="dropdown-item {% if current == 'organization_material_checklist' %}active{% endif %}" href="{% url 'organization_material_checklist' %}">Materialwart To-dos</a></li>{% endif %}
+                                    </ul>
+                                </li>
+                                {% if membership.cashier_manager and organization.pro5 or membership.leiterrundenmitglied and organization.pro5 or membership.admin and organization.pro7 %}<li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle {% if current == 'cashbook_list' or current == 'cashbook_create' or current == 'cashbook_detail' or current == 'cashbook_edit' or current == 'cashbook_delete' or current == 'cashbook_entry_create' or current == 'cashbook_entry_edit' or current == 'cashbook_entry_delete' or current == 'cashbook_export_csv' or current == 'cashbook_export_pdf' or current == 'cashbook_export_sepa' or current == 'cashbook_import_csv' or current == 'cashbook_receipt_request_list' or current == 'cashbook_receipt_request_create' or current == 'cashbook_receipt_request_submit' or current == 'cashbook_receipt_request_review' or current == 'reimbursement_list' or current == 'reimbursement_create' or current == 'reimbursement_review' or current == 'subsidy_profiles' %}active fw-bold{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Finanzen</a>
+                                    <ul class="dropdown-menu">
+                                        {% if membership.cashier_manager and organization.pro5 %}<li><a class="dropdown-item {% if current == 'cashbook_list' or current == 'cashbook_create' or current == 'cashbook_detail' or current == 'cashbook_edit' or current == 'cashbook_entry_create' or current == 'cashbook_entry_edit' %}active{% endif %}" href="{% url 'cashbook_list' %}">Kassenb&uuml;cher</a></li>{% endif %}
+                                        {% if membership.leiterrundenmitglied and organization.pro5 %}<li><a class="dropdown-item {% if current == 'reimbursement_list' or current == 'reimbursement_create' %}active{% endif %}" href="{% url 'reimbursement_list' %}">Auszahlungsanfragen</a></li><li><a class="dropdown-item {% if current == 'cashbook_receipt_request_list' %}active{% endif %}" href="{% url 'cashbook_receipt_request_list' %}">Beleganfragen</a></li>{% endif %}
+                                        {% if organization.pro7 and membership.admin or organization.pro7 and membership.cashier_manager %}<li><a class="dropdown-item {% if current == 'subsidy_profiles' %}active{% endif %}" href="{% url 'subsidy_profiles' %}">F&ouml;rderprofile</a></li>{% endif %}
+                                    </ul>
+                                </li>{% endif %}
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle {% if current == 'organization' or current == 'add_user' or current == 'delete_membership' or current == 'change_admin' or current == 'change_material_manager' or current == 'change_event_manager' or current == 'change_knowledge_manager' or current == 'change_cashier_manager' or current == 'change_leiterrundenmitglied' or current == 'meeting_minutes_list' or current == 'meeting_minutes_create' or current == 'meeting_minutes_detail' or current == 'meeting_minutes_edit' or current == 'meeting_minutes_delete' or current == 'meeting_minutes_duplicate' or current == 'meeting_minutes_revise' or current == 'meeting_minutes_accept' or current == 'meeting_minutes_pdf' %}active fw-bold{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Organisation</a>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item {% if current == 'organization' %}active{% endif %}" href="{% url 'organization' %}">{% if membership.admin %}Mitglieder und Einstellungen{% else %}Details{% endif %}</a></li>
+                                        {% if membership.leiterrundenmitglied and organization.pro6 %}<li><a class="dropdown-item {% if current == 'meeting_minutes_list' or current == 'meeting_minutes_create' or current == 'meeting_minutes_detail' or current == 'meeting_minutes_edit' or current == 'meeting_minutes_delete' %}active{% endif %}" href="{% url 'meeting_minutes_list' %}">Protokolle</a></li>{% endif %}
+                                        {% if user.is_authenticated %}
+                                            <li class="d-md-none"><hr class="dropdown-divider"></li>
+                                            <li class="d-md-none"><h6 class="dropdown-header">Aktive Organisation</h6></li>
+                                            <li class="d-md-none"><span class="dropdown-item-text fw-semibold">{{ organization.name }}</span></li>
+                                            <li class="d-md-none"><h6 class="dropdown-header">Organisation wechseln</h6></li>
+                                            {% for org in user.organization_set.all %}{% if org.id != organization.id %}<li class="d-md-none"><form method="post">{% csrf_token %}<input type="hidden" name="org" value="{{ org.id }}"><button class="dropdown-item" type="submit">{{ org.name }}</button></form></li>{% endif %}{% endfor %}
+                                            <li class="d-md-none"><a class="dropdown-item fw-semibold" href="{% url 'create_organization' %}">+ Neue Organisation</a></li>
+                                        {% endif %}
+                                    </ul>
+                                </li>
+                                <li class="nav-item d-md-none"><a class="nav-link small text-muted" href="{% url 'contacts' %}">Kontakt</a></li>
+                                <li class="nav-item d-md-none"><a class="nav-link small text-muted" href="{% url 'help' %}">Hilfe</a></li>
+                                <li class="nav-item d-md-none"><form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="btn btn-sm btn-outline-danger mt-1">Abmelden</button></form></li>
+                            </ul>
+                            <ul class="navbar-nav ms-lg-3 gap-lg-2 d-none">
+                                <li class="nav-item"><a class="nav-link {% if current == 'home' %}active fw-bold{% endif %}" href="{% url 'home' %}">Start</a></li>
+                                <li class="nav-item"><a class="nav-link {% if current == 'trip' %}active fw-bold{% endif %}" href="{% url 'trip' %}">Veranstaltungen</a></li>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle {% if current == 'material' or current == 'constructions' or current == 'location' or current == 'organization_material_checklist' %}active fw-bold{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Material</a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item {% if current == 'material' %}active{% endif %}" href="{% url 'material' %}">Material-Lager</a></li>
+                                        <li><a class="dropdown-item {% if current == 'constructions' %}active{% endif %}" href="{% url 'constructions' %}">Konstruktionen</a></li>
+                                        <li><a class="dropdown-item {% if current == 'location' %}active{% endif %}" href="{% url 'location' %}">Orte</a></li>
+                                        {% if membership.material_manager and organization.pro3 %}<li><hr class="dropdown-divider"></li><li><a class="dropdown-item {% if current == 'organization_material_checklist' %}active{% endif %}" href="{% url 'organization_material_checklist' %}">Materialwart To-dos</a></li>{% endif %}
+                                    </ul>
+                                </li>
+                                {% if membership.cashier_manager and organization.pro5 or membership.leiterrundenmitglied and organization.pro5 or membership.admin and organization.pro7 %}<li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle {% if current == 'cashbook_list' or current == 'cashbook_create' or current == 'cashbook_detail' or current == 'cashbook_edit' or current == 'cashbook_entry_create' or current == 'cashbook_entry_edit' or current == 'reimbursement_list' or current == 'cashbook_receipt_request_list' or current == 'subsidy_profiles' %}active fw-bold{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Finanzen</a>
+                                    <ul class="dropdown-menu">
+                                        {% if membership.cashier_manager and organization.pro5 %}<li><a class="dropdown-item" href="{% url 'cashbook_list' %}">KassenbÃ¼cher</a></li>{% endif %}
+                                        {% if membership.leiterrundenmitglied and organization.pro5 %}<li><a class="dropdown-item" href="{% url 'reimbursement_list' %}">Auszahlungsanfragen</a></li><li><a class="dropdown-item" href="{% url 'cashbook_receipt_request_list' %}">Beleganfragen</a></li>{% endif %}
+                                        {% if organization.pro7 and membership.admin or organization.pro7 and membership.cashier_manager %}<li><a class="dropdown-item" href="{% url 'subsidy_profiles' %}">FÃ¶rderprofile</a></li>{% endif %}
+                                    </ul>
+                                </li>{% endif %}
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle {% if current == 'messages' or current == 'recipes' or current == 'personal_todo_list' or current == 'meeting_minutes_list' %}active fw-bold{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Zusammenarbeit</a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="{% url 'messages' %}">Nachrichten</a></li><li><a class="dropdown-item" href="{% url 'recipes' %}">Rezepte</a></li>
+                                        {% if membership.event_manager or membership.material_manager or membership.leiterrundenmitglied %}<li><a class="dropdown-item" href="{% url 'personal_todo_list' %}">Meine To-dos</a></li>{% endif %}
+                                        {% if membership.leiterrundenmitglied and organization.pro6 %}<li><a class="dropdown-item" href="{% url 'meeting_minutes_list' %}">Protokolle</a></li>{% endif %}
+                                    </ul>
+                                </li>
+                                <li class="nav-item"><a class="nav-link {% if current == 'organization' %}active fw-bold{% endif %}" href="{% url 'organization' %}">Verwaltung</a></li>
+                            </ul>
+                            {% endwith %}
+                            <ul class="navbar-nav ms-lg-3 gap-lg-2 d-none">
 
                                 <li class="nav-item">
                                     <a class="nav-link {% if request.resolver_match.url_name == 'material' %}active fw-bold{% endif %}"

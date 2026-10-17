@@ -410,9 +410,9 @@ def calculation_export_pdf(request, trip_pk, report_type):
     except (ImportError, OSError):
         from cashbook.views import _build_text_pdf
         lines = [f"Veranstaltung: {trip.name}", f"Zeitraum: {trip.start_date:%d.%m.%Y} - {trip.end_date:%d.%m.%Y}", ""]
-        for row in line_rows:
-            amount = row["actual_total"] if is_actual else row["planned_total"]
-            lines.append(f"{row['line'].category}: {amount:.2f} EUR")
+        for group in cost_groups:
+            amount = group["actual_total"] if is_actual else group["planned_total"]
+            lines.append(f"{group['category']}: {amount:.2f} EUR")
         lines.extend(["", f"Förderfähige Kosten: {(values['actual_costs'] if is_actual else values['planned_costs']):.2f} EUR", f"Zuschuss: {(values['actual_subsidy'] if is_actual else values['planned_subsidy']):.2f} EUR", f"Ergebnis: {(values['actual_result'] if is_actual else values['planned_result']):.2f} EUR"])
         pdf = _build_text_pdf("Nachkalkulation" if is_actual else "Kalkulation", lines)
     response = HttpResponse(pdf, content_type="application/pdf")
