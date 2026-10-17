@@ -5,9 +5,16 @@
         <h3 class="mb-0">Abrechnung: {{ trip.name }}</h3>
         <small class="text-muted">Ausgaben werden erst nach Freigabe ins Kassenbuch übertragen.</small>
     </div>
-    <div>
+    <div class="d-flex flex-wrap gap-2 justify-content-end">
         <a class="btn btn-success" href="{% url 'event_expense_create' trip.pk %}">Ausgabe erfassen</a>
         {% if is_cashier %}<a class="btn btn-outline-primary" href="{% url 'advance_budget_create' trip.pk %}">Vorschussbudget anlegen</a>{% endif %}
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Exporte</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="{% url 'calculation_export_pdf' trip.pk 'settlement' %}">Abrechnung als PDF</a></li>
+                {% if is_cashier %}<li><a class="dropdown-item" href="{% url 'event_settlement_export_receipts_zip' trip.pk %}">Belege als ZIP</a></li><li><a class="dropdown-item" href="{% url 'event_settlement_print_receipts' trip.pk %}">Belege drucken</a></li>{% endif %}
+            </ul>
+        </div>
     </div>
 </div>
 
@@ -17,18 +24,19 @@
 </div></div></div>
 
 <h4>Ausgaben</h4>
-<div class="table-responsive"><table class="table table-hover"><thead><tr><th>Datum</th><th>Titel</th><th>Zahlungsquelle</th><th>Erfasst von</th><th>Betrag</th><th>Status</th><th>Beleg</th><th></th></tr></thead><tbody>
+<div class="table-responsive"><table class="table table-hover"><thead><tr><th>Datum</th><th>Titel</th><th>Kategorie</th><th>Zahlungsquelle</th><th>Erfasst von</th><th>Betrag</th><th>Förderfähig</th><th>Status</th><th>Beleg</th><th></th></tr></thead><tbody>
 {% for item in expenses %}<tr>
     <td>{{ item.expense_date|date:"d.m.Y" }}</td><td>{{ item.title }}</td>
+    <td>{{ item.category|default:"–" }}</td>
     <td>{% if item.cashbook %}{{ item.cashbook.name }}{% else %}{{ item.advance_budget.name }}{% endif %}</td>
     <td>{% if item.created_by %}{{ item.created_by.get_full_name|default:item.created_by.username }}{% else %}-{% endif %}</td>
-    <td>{{ item.amount }}</td><td>{{ item.get_status_display }}</td>
-    <td>{% if item.attachment %}<a href="{{ item.attachment.url }}" target="_blank">Öffnen</a>{% else %}<span class="text-danger">Fehlt</span>{% endif %}</td>
+    <td>{{ item.amount }}</td><td>{% if item.eligible %}Ja{% else %}Nein{% endif %}</td><td>{% if item.is_direct_cashbook_entry %}Gebucht{% else %}{{ item.get_status_display }}{% endif %}</td>
+    <td>{% if item.attachment %}{% if is_cashier %}<a href="{{ item.attachment.url }}" target="_blank" rel="noopener">Öffnen</a>{% else %}<span class="text-muted">Vorhanden</span>{% endif %}{% else %}<span class="text-danger">Fehlt</span>{% endif %}</td>
     <td>
-        {% if item.created_by_id == request.user.id and not item.cashbook_entry and not item.advance_budget.settled_at %}<a href="{% url 'event_expense_edit' trip.pk item.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a> <form method="post" action="{% url 'event_expense_delete' trip.pk item.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Löschen</button></form>{% endif %}
-        {% if is_cashier and item.cashbook and item.status == 'pending' and request.membership.id == item.cashbook.responsible_id %}<form method="post" action="{% url 'event_expense_review' trip.pk item.pk %}" class="d-inline">{% csrf_token %}<button name="decision" value="approve" class="btn btn-sm btn-success">Freigeben</button> <button name="decision" value="reject" class="btn btn-sm btn-outline-danger">Ablehnen</button></form>{% endif %}
+        {% if item.is_direct_cashbook_entry %}{% if is_cashier %}<a class="btn btn-sm btn-outline-primary" href="{% url 'cashbook_detail' item.cashbook.pk %}">Im Kassenbuch öffnen</a>{% endif %}{% else %}{% if item.created_by_id == request.user.id and not item.cashbook_entry and not item.advance_budget.settled_at %}<a href="{% url 'event_expense_edit' trip.pk item.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a> <form method="post" action="{% url 'event_expense_delete' trip.pk item.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Löschen</button></form>{% endif %}
+        {% if is_cashier and item.cashbook and item.status == 'pending' and request.membership.id == item.cashbook.responsible_id %}<form method="post" action="{% url 'event_expense_review' trip.pk item.pk %}" class="d-inline">{% csrf_token %}<button name="decision" value="approve" class="btn btn-sm btn-success">Freigeben</button> <button name="decision" value="reject" class="btn btn-sm btn-outline-danger">Ablehnen</button></form>{% endif %}{% endif %}
     </td>
-</tr>{% empty %}<tr><td colspan="8" class="text-muted">Noch keine Ausgaben erfasst.</td></tr>{% endfor %}
+</tr>{% empty %}<tr><td colspan="10" class="text-muted">Noch keine Ausgaben erfasst.</td></tr>{% endfor %}
 </tbody></table></div>
 
 <h4 class="mt-4">Vorschussbudgets</h4>

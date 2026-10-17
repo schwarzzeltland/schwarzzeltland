@@ -130,6 +130,11 @@ class CashBookEntry(models.Model):
         return self.amount
 
 
+class EventSettlementEntry(models.Model):
+    cashbook_entry = models.OneToOneField(CashBookEntry, on_delete=models.CASCADE, related_name="settlement_metadata")
+    eligible = models.BooleanField(default=True, verbose_name="Förderfähig")
+
+
 class CashBookAuditLog(models.Model):
     ACTION_CREATE = "create"
     ACTION_UPDATE = "update"
@@ -205,6 +210,7 @@ class EventExpense(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Betrag")
     title = models.CharField(max_length=255, verbose_name="Titel")
     category = models.CharField(max_length=255, blank=True, verbose_name="Kategorie")
+    eligible = models.BooleanField(default=True, verbose_name="Förderfähig")
     counterparty = models.CharField(max_length=255, blank=True, verbose_name="Zahlungspartner")
     reference = models.CharField(max_length=255, blank=True, verbose_name="Belegnummer / Referenz")
     description = models.TextField(blank=True, verbose_name="Beschreibung")

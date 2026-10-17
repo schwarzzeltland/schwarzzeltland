@@ -2,6 +2,11 @@
 {% block content %}
 <div id="messages"></div>
 
+<div class="alert alert-info d-flex justify-content-between align-items-center" role="status">
+    <span>Durchschnittlich anwesend während der Veranstaltung</span>
+    <strong><span id="average-attendance">{{ average_attendance }}</span> von {{ trip.total_persons }} Personen</strong>
+</div>
+
 <!-- Suchfeld als Input-Group -->
 <form method="get" action="" class="mb-3">
     <div class="input-group">
@@ -19,6 +24,7 @@
                 <th>Name</th>
                 <th style="width: 150px;">Ankunft</th>
                 <th style="width: 150px;">Abreise</th>
+                <th class="text-center">Förderfähig</th>
                 <th class="text-end" style="width: 80px;"></th>
             </tr>
         </thead>
@@ -36,6 +42,7 @@
                            data-id="{{ item.pk }}" data-field="departure"
                            value="{{ item.departure|date:'Y-m-d\TH:i' }}">
                 </td>
+                <td class="text-center"><input type="checkbox" class="form-check-input inline-edit" data-id="{{ item.pk }}" data-field="eligible" {% if item.eligible %}checked{% endif %}></td>
                 <td class="text-end">
                     <button class="btn btn-danger btn-sm delete-item"
                             data-id="{{ item.pk }}"
@@ -45,7 +52,7 @@
             </tr>
         {% empty %}
             <tr id="no-items-row">
-                <td colspan="4" class="text-center text-muted">Keine Teilnehmer vorhanden.</td>
+                <td colspan="5" class="text-center text-muted">Keine Teilnehmer vorhanden.</td>
             </tr>
         {% endfor %}
         </tbody>
@@ -65,7 +72,10 @@
         <div class="col-md-3 col-sm-6">
             {{ form.departure }}
         </div>
-        <div class="col-md-3 col-sm-6">
+        <div class="col-md-1 col-sm-6 form-check pb-2">
+            {{ form.eligible }} <label class="form-check-label" for="{{ form.eligible.id_for_label }}">Förderfähig</label>
+        </div>
+        <div class="col-md-2 col-sm-6">
             <button type="submit" class="btn btn-success w-100">Teilnehmer hinzufügen</button>
         </div>
     </form>
@@ -91,6 +101,9 @@
 
 <script>
 const form = document.getElementById("vacancy-form");
+const updateAverageAttendance = () => fetch("{% url 'trip_vacancy_average' trip.pk %}")
+    .then(res => res.json())
+    .then(data => { document.getElementById("average-attendance").textContent = data.average_attendance; });
 
 form.addEventListener("submit", function (e) {
     e.preventDefault();
@@ -114,6 +127,7 @@ form.addEventListener("submit", function (e) {
                     <td>${data.item.name}</td>
                     <td><input type="datetime-local" class="form-control form-control-sm inline-edit" data-id="${data.item.id}" data-field="arrival" value="${data.item.arrival}"></td>
                     <td><input type="datetime-local" class="form-control form-control-sm inline-edit" data-id="${data.item.id}" data-field="departure" value="${data.item.departure}"></td>
+                    <td class="text-center"><input type="checkbox" class="form-check-input inline-edit" data-id="${data.item.id}" data-field="eligible" ${data.item.eligible ? "checked" : ""}></td>
                     <td class="text-end">
                         <button class="btn btn-danger btn-sm delete-item" data-id="${data.item.id}" data-url="${data.item.delete_url}">Löschen</button>
                     </td>
@@ -123,6 +137,7 @@ form.addEventListener("submit", function (e) {
             attachDeleteHandlers();
             attachInlineEditHandlers();
             form.reset();
+            updateAverageAttendance();
         } else {
             alert("Fehler: " + JSON.stringify(data.error));
         }
@@ -138,7 +153,7 @@ function attachDeleteHandlers() {
             const csrftoken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
 
             fetch(url, {method: "POST", headers: {"X-CSRFToken": csrftoken}})
-                .then(res => { if (res.ok) document.getElementById(`item-${id}`).remove(); });
+                .then(res => { if (res.ok) { document.getElementById(`item-${id}`).remove(); updateAverageAttendance(); } });
         }
     });
 }
@@ -148,7 +163,7 @@ function attachInlineEditHandlers() {
         input.onchange = function () {
             const id = this.dataset.id;
             const field = this.dataset.field;
-            const value = this.value;
+            const value = this.type === "checkbox" ? this.checked : this.value;
             const csrftoken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
             const currentInput = this;
 
@@ -162,6 +177,7 @@ function attachInlineEditHandlers() {
                 if (data.success) {
                     currentInput.value = data.item[field];
                     currentInput.classList.remove("is-invalid");
+                    updateAverageAttendance();
                 } else {
                     currentInput.classList.add("is-invalid");
                     if (!currentInput.nextElementSibling) {

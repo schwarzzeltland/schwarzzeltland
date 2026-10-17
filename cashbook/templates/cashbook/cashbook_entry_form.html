@@ -88,6 +88,19 @@
     </form>
 
     <script>
+        const settlementEligibleInput = document.getElementById("id_settlement_eligible");
+        const tripInput = document.getElementById("id_trip");
+        const entryTypeInput = document.getElementById("id_entry_type");
+        const settlementEligibleGroup = settlementEligibleInput?.closest(".mb-3") || settlementEligibleInput?.parentElement;
+        const toggleSettlementEligible = () => {
+            if (!settlementEligibleGroup) return;
+            const visible = Boolean(tripInput?.value) && entryTypeInput?.value === "expense";
+            settlementEligibleGroup.classList.toggle("d-none", !visible);
+        };
+        tripInput?.addEventListener("change", toggleSettlementEligible);
+        entryTypeInput?.addEventListener("change", toggleSettlementEligible);
+        toggleSettlementEligible();
+
         const categoryInput = document.getElementById("category-input");
         if (categoryInput) {
             const wrapper = categoryInput.parentElement;

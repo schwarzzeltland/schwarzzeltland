@@ -101,6 +101,7 @@ class CashBookReceiptReviewForm(forms.Form):
 
 
 class CashBookEntryForm(forms.ModelForm):
+    settlement_eligible = forms.BooleanField(required=False, initial=True, label="Förderfähig")
     class Meta:
         model = CashBookEntry
         fields = [
@@ -145,6 +146,10 @@ class CashBookEntryForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop("organization", None)
         super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            metadata = getattr(self.instance, "settlement_metadata", None)
+            if metadata is not None:
+                self.initial["settlement_eligible"] = metadata.eligible
         self.fields["booking_date"].input_formats = ["%Y-%m-%d"]
         self.fields["receipt_date"].input_formats = ["%Y-%m-%d"]
         if organization:
@@ -193,7 +198,7 @@ class EventExpenseForm(forms.ModelForm):
 
     class Meta:
         model = EventExpense
-        fields = ["expense_date", "amount", "title", "category", "counterparty", "reference", "description", "attachment"]
+        fields = ["expense_date", "amount", "title", "category", "eligible", "counterparty", "reference", "description", "attachment"]
         widgets = {
             "expense_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
             "category": forms.TextInput(attrs={

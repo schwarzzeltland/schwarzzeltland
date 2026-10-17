@@ -12,7 +12,7 @@
     .calculation-page .summary-card { height: 100%; }
 </style>
 
-<div class="calculation-page">
+<div class="calculation-page" id="calculation-workspace">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
         <div>
             <h2 class="mb-1">Kalkulation</h2>
@@ -72,7 +72,7 @@
     <div class="row g-4 mb-4">
         <div class="col-lg-6"><div class="card summary-card border-start border-4 border-primary">
             <div class="card-body"><h4 class="h5 mb-3">Planung</h4>
-                <div class="row g-3"><div class="col-sm-6"><div class="metric-label">Förderfähige Kosten</div><div class="metric-value">{{ values.planned_costs }} €</div></div><div class="col-sm-6"><div class="metric-label">Teilnehmerbeiträge nach Rabatten</div><div class="metric-value">{{ values.participant_income }} €</div></div><div class="col-sm-6"><div class="metric-label">Zuschüsse für Gäste</div><div>{{ values.guest_subsidies }} €</div></div><div class="col-sm-6"><div class="metric-label" title="Pauschale je Tag, Person und Bildungs-/QS-Stunde gemäß Profil.">Theoretischer Zuschuss</div><div>{{ values.base_subsidy }} €</div></div><div class="col-sm-6"><div class="metric-label">Voraussichtlicher Zuschuss</div><div>{{ values.planned_subsidy }} €</div></div></div>
+                <div class="row g-3"><div class="col-sm-6"><div class="metric-label">Gesamtkosten</div><div class="metric-value">{{ values.planned_total_costs }} €</div></div><div class="col-sm-6"><div class="metric-label">Förderfähige Kosten</div><div class="metric-value">{{ values.planned_costs }} €</div></div><div class="col-sm-6"><div class="metric-label">Plan-Einnahmen</div><div class="metric-value">{{ values.planned_income_total }} €</div></div><div class="col-sm-6"><div class="metric-label" title="Pauschale je Tag, Person und Bildungs-/QS-Stunde gemäß Profil.">Theoretischer Zuschuss</div><div>{{ values.base_subsidy }} €</div></div><div class="col-sm-6"><div class="metric-label">Voraussichtlicher Zuschuss</div><div>{{ values.planned_subsidy }} €</div></div></div>
                 <hr><div class="d-flex justify-content-between align-items-center"><strong>Ergebnis</strong><span class="result-value">{{ values.planned_result }} €</span></div>
             </div>
         </div></div>
@@ -88,22 +88,35 @@
         <div class="card-header d-flex justify-content-between align-items-center"><strong>Bildungsblöcke</strong><span class="badge text-bg-light">{{ values.education_hours }} Stunden</span></div>
         <div class="card-body">
             {% if organization.pro4 %}<h5 class="h6 text-muted">Aus Programmübersicht</h5><div class="table-responsive mb-4"><table class="table table-sm align-middle mb-0"><thead><tr><th>Programmpunkt</th><th>Zeit</th><th>Bildungsstunden</th></tr></thead><tbody>{% for item in program_education_items %}<tr><td>{{ item.name }}</td><td>{{ item.start_time|date:'d.m.Y H:i' }}</td><td>{{ item.education_hours }}</td></tr>{% empty %}<tr><td colspan="3" class="text-muted">Keine Programmpunkte mit Bildungsstunden markiert.</td></tr>{% endfor %}</tbody></table></div>{% endif %}
-            <h5 class="h6 text-muted">Manuell ergänzt</h5><div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Thema</th><th>Stunden</th><th></th></tr></thead><tbody>{% for session in calculation.education_sessions.all %}<tr><td>{{ session.topic }}</td><td>{{ session.hours }}</td><td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'calculation_education_edit' trip.pk session.pk %}">Bearbeiten</a></td></tr>{% empty %}<tr><td colspan="3" class="text-muted">Keine manuell erfassten Bildungsblöcke; der Programmwert wird verwendet.</td></tr>{% endfor %}</tbody></table></div>
+            <h5 class="h6 text-muted">Manuell ergänzt</h5><div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Thema</th><th>Stunden</th><th></th></tr></thead><tbody>{% for session in calculation.education_sessions.all %}<tr><td>{{ session.topic }}</td><td>{{ session.hours }}</td><td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-primary" href="{% url 'calculation_education_edit' trip.pk session.pk %}">Bearbeiten</a> <form method="post" action="{% url 'calculation_education_delete' trip.pk session.pk %}" class="d-inline" data-dynamic-calculation>{% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-danger">Löschen</button></form></td></tr>{% empty %}<tr><td colspan="3" class="text-muted">Keine manuell erfassten Bildungsblöcke; der Programmwert wird verwendet.</td></tr>{% endfor %}</tbody></table></div>
             <a class="btn btn-outline-primary" href="{% url 'calculation_education_create' trip.pk %}">Bildungsblock hinzufügen</a>
         </div>
     </div>
 
     <div class="card section-card">
-        <div class="card-header"><strong>Kostenpositionen</strong><div class="small text-muted mt-1">Variable Kosten können pro Person oder pro Person und Tag berechnet werden. Passende Abrechnungskategorien werden automatisch als Ist-Kosten übernommen.</div></div>
-        <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Kategorie</th><th>Beschreibung</th><th>Berechnung</th><th class="text-end">Plan gesamt</th><th class="text-end">Ist gesamt</th><th>Förderfähig</th><th></th></tr></thead><tbody>{% for row in line_rows %}<tr><td><span class="badge text-bg-light">{{ row.line.category }}</span></td><td>{{ row.line.description|default:'–' }}</td><td>{% if row.line.calculation_mode == 'per_person' %}{{ row.line.planned_amount }} €/Person{% elif row.line.calculation_mode == 'per_person_day' %}{{ row.line.planned_amount }} €/Person/Tag{% else %}Fix: {{ row.line.planned_amount }} €{% endif %}</td><td class="text-end">{{ row.planned_total }} €</td><td class="text-end">{% if row.line.actual_amount is not None %}{{ row.actual_total }} €{% elif row.actual_is_automatic %}{{ row.actual_total }} € <small class="text-success">auto</small>{% else %}–{% endif %}</td><td>{% if row.line.eligible %}<span class="badge text-bg-success">Ja</span>{% else %}<span class="badge text-bg-secondary">Nein</span>{% endif %}</td><td class="text-end text-nowrap"><a href="{% url 'calculation_line_edit' trip.pk row.line.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a> <form class="d-inline" method="post" action="{% url 'calculation_line_delete' trip.pk row.line.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Löschen</button></form></td></tr>{% empty %}<tr><td colspan="7" class="text-center text-muted py-4">Noch keine Kostenpositionen.</td></tr>{% endfor %}</tbody></table></div></div>
+        <div class="card-header"><strong>Einnahmen</strong><div class="small text-muted mt-1">Plan-Einnahmen aus Beiträgen, Gästezuschüssen und frei erfassten Positionen.</div></div>
+        <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Kategorie / Position</th><th>Berechnung</th><th class="text-end">Plan</th><th class="text-end">Ist</th><th></th></tr></thead><tbody>
+            <tr class="small text-muted"><td class="ps-4">↳ Vor Leiter-Rabatten</td><td>Teilnehmende × Beitrag</td><td class="text-end">{{ values.participant_income_gross }} €</td><td></td><td></td></tr>
+            <tr class="small text-muted"><td class="ps-4">↳ Leiter-Rabatte</td><td>Leiter × Rabatt</td><td class="text-end">− {{ values.leader_discounts }} €</td><td></td><td></td></tr>
+            <tr class="small text-muted"><td class="ps-4">↳ Zuschüsse für Gäste</td><td>Gäste × Zuschuss</td><td class="text-end">{{ values.guest_subsidies }} €</td><td></td><td></td></tr>
+            <tr class="table-light fw-semibold"><td><span class="badge text-bg-secondary">TN-Beitrag</span> Summe</td><td></td><td class="text-end">{{ values.participant_income }} €</td><td class="text-end">{% if values.participant_income_actual %}{{ values.participant_income_actual }} € <small class="text-success">auto</small>{% else %}–{% endif %}</td><td></td></tr>
+            {% for group in income_groups %}{% for row in group.rows %}<tr class="small text-muted"><td class="ps-4">↳ {{ row.income.description|default:'Ohne Beschreibung' }}</td><td>Fester Betrag</td><td class="text-end">{{ row.income.planned_amount }} €</td><td></td><td class="text-end text-nowrap"><a href="{% url 'calculation_income_edit' trip.pk row.income.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a> <form method="post" action="{% url 'calculation_income_delete' trip.pk row.income.pk %}" class="d-inline" data-dynamic-calculation>{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Löschen</button></form></td></tr>{% endfor %}<tr class="table-light fw-semibold"><td><span class="badge text-bg-secondary">{{ group.category }}</span> Summe</td><td>{% if group.automatic_only %}<small class="text-success">Aus Kassenbuch</small>{% endif %}</td><td class="text-end">{{ group.planned_total }} €</td><td class="text-end">{% if group.has_actual %}{{ group.actual_total }} € <small class="text-success">auto/manuell</small>{% else %}–{% endif %}</td><td></td></tr>{% endfor %}
+        </tbody></table></div></div>
+        <div class="card-body border-top"><details><summary class="btn btn-outline-primary">Plan-Einnahme hinzufügen</summary><form method="post" class="card card-body mt-3" data-dynamic-calculation>{% csrf_token %}<input type="hidden" name="income_form" value="1">{% bootstrap_form income_form %}<button type="submit" class="btn btn-primary">Einnahme speichern</button></form></details></div>
     </div>
 
-    <div class="card section-card"><div class="card-header"><strong>Kostenposition hinzufügen</strong></div><div class="card-body"><form method="post">{% csrf_token %}{% bootstrap_form line_form %}<button class="btn btn-primary">Kostenposition hinzufügen</button></form></div></div>
+    <div class="card section-card">
+        <div class="card-header"><strong>Kostenpositionen</strong><div class="small text-muted mt-1">Variable Kosten können pro Person oder pro Person und Tag berechnet werden. Passende Abrechnungskategorien werden automatisch als Ist-Kosten übernommen.</div></div>
+        <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Kategorie / Position</th><th>Berechnung</th><th class="text-end">Plan</th><th class="text-end">Ist</th><th>Förderfähig</th><th></th></tr></thead><tbody>{% for group in cost_groups %}{% for row in group.rows %}<tr class="small text-muted"><td class="ps-4">↳ {{ row.line.description|default:'Ohne Beschreibung' }}</td><td>{% if row.line.calculation_mode == 'per_person' %}{{ row.line.planned_amount }} €/Person{% elif row.line.calculation_mode == 'per_person_day' %}{{ row.line.planned_amount }} €/Person/Tag{% else %}Fix: {{ row.line.planned_amount }} €{% endif %}</td><td class="text-end">{{ row.planned_total }} €</td><td></td><td>{% if row.line.eligible %}Ja{% else %}Nein{% endif %}</td><td class="text-end text-nowrap"><a href="{% url 'calculation_line_edit' trip.pk row.line.pk %}" class="btn btn-sm btn-outline-primary">Bearbeiten</a> <form class="d-inline" method="post" action="{% url 'calculation_line_delete' trip.pk row.line.pk %}" data-dynamic-calculation>{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Löschen</button></form></td></tr>{% endfor %}<tr class="table-light fw-semibold"><td><span class="badge text-bg-secondary">{{ group.category }}</span> Summe</td><td></td><td class="text-end">{{ group.planned_total }} €</td><td class="text-end">{% if group.has_actual %}{{ group.actual_total }} € <small class="text-success">auto/manuell</small>{% else %}–{% endif %}</td><td></td><td></td></tr>{% empty %}<tr><td colspan="6" class="text-center text-muted py-4">Noch keine Kostenpositionen.</td></tr>{% endfor %}</tbody></table></div></div>
+        <div class="card-body border-top"><details><summary class="btn btn-outline-primary">Kostenposition hinzufügen</summary><form method="post" class="card card-body mt-3" data-dynamic-calculation>{% csrf_token %}{% bootstrap_form line_form %}<button class="btn btn-primary">Kostenposition speichern</button></form></details></div>
+    </div>
 </div>
 
 <script>
-    const categoryInput = document.getElementById("calculation-category-input");
-    if (categoryInput) {
+    const setupCategoryAutocomplete = (inputId) => {
+        const categoryInput = document.getElementById(inputId);
+        if (!categoryInput || categoryInput.dataset.autocompleteReady) return;
+        categoryInput.dataset.autocompleteReady = "true";
         const wrapper = categoryInput.parentElement;
         wrapper.classList.add("position-relative");
         const suggestions = document.createElement("ul");
@@ -119,6 +132,46 @@
         categoryInput.addEventListener("focus", () => loadSuggestions(categoryInput.value.trim()));
         categoryInput.addEventListener("input", () => loadSuggestions(categoryInput.value.trim()));
         document.addEventListener("click", event => { if (!categoryInput.contains(event.target) && !suggestions.contains(event.target)) suggestions.innerHTML = ""; });
-    }
+    };
+
+    const setupCalculationControls = () => {
+        setupCategoryAutocomplete("calculation-category-input");
+        setupCategoryAutocomplete("calculation-income-category-input");
+    };
+
+    const replaceCalculation = (html) => {
+        const documentFragment = new DOMParser().parseFromString(html, "text/html");
+        const replacement = documentFragment.getElementById("calculation-workspace");
+        const current = document.getElementById("calculation-workspace");
+        if (replacement && current) {
+            current.replaceWith(replacement);
+            setupCalculationControls();
+        }
+    };
+
+    document.addEventListener("submit", async (event) => {
+        const form = event.target.closest("form[data-dynamic-calculation]");
+        if (!form) return;
+        event.preventDefault();
+        const submitButton = event.submitter;
+        if (submitButton) submitButton.disabled = true;
+        try {
+            const formData = new FormData(form);
+            if (form.querySelector('input[name="income_form"]')) formData.set("income_form", "1");
+            const response = await fetch(form.action || window.location.href, {
+                method: "POST",
+                body: formData,
+                credentials: "same-origin",
+                headers: {"X-Requested-With": "XMLHttpRequest"},
+            });
+            if (!response.ok) throw new Error("Die Änderung konnte nicht gespeichert werden.");
+            replaceCalculation(await response.text());
+        } catch (error) {
+            alert(error.message);
+            if (submitButton) submitButton.disabled = false;
+        }
+    });
+
+    setupCalculationControls();
 </script>
 {% endblock %}

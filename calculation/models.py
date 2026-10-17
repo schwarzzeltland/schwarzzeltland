@@ -61,36 +61,15 @@ class CalculationLine(models.Model):
     eligible = models.BooleanField(default=True)
 
 
-class CalculationParticipantGroup(models.Model):
-    calculation = models.ForeignKey(EventCalculation, on_delete=models.CASCADE, related_name="participant_groups")
-    name = models.CharField(max_length=255)
-    count = models.PositiveIntegerField(default=0)
-    fee_per_person = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    discount_per_person = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    eligible_for_subsidy = models.BooleanField(default=True)
+class CalculationIncomeLine(models.Model):
+    calculation = models.ForeignKey(EventCalculation, on_delete=models.CASCADE, related_name="income_lines")
+    category = models.CharField(max_length=255, default="")
+    description = models.CharField(max_length=255, blank=True)
+    planned_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    actual_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     class Meta:
         ordering = ["id"]
-
-
-class CalculationTransport(models.Model):
-    MODE_BUS = "bus"
-    MODE_CAR = "car"
-    MODE_TRAIN = "train"
-    MODE_OTHER = "other"
-    MODE_CHOICES = ((MODE_BUS, "Bus"), (MODE_CAR, "PKW"), (MODE_TRAIN, "Zug"), (MODE_OTHER, "Sonstiges"))
-    calculation = models.ForeignKey(EventCalculation, on_delete=models.CASCADE, related_name="transports")
-    mode = models.CharField(max_length=10, choices=MODE_CHOICES, default=MODE_OTHER)
-    description = models.CharField(max_length=255, blank=True)
-    persons = models.PositiveIntegerField(default=0)
-    distance_km = models.DecimalField(max_digits=8, decimal_places=1, default=0)
-    rate_per_km = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    fixed_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    actual_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-
-    @property
-    def planned_amount(self):
-        return self.fixed_amount + self.distance_km * self.rate_per_km
 
 
 class CalculationEducationSession(models.Model):

@@ -29,7 +29,7 @@ from cashbook.forms import (
     CashBookReceiptRequestForm, CashBookReceiptReviewForm, CashBookReceiptSubmissionForm, EventExpenseForm,
     ReimbursementRequestForm, ReimbursementReviewForm,
 )
-from cashbook.models import AdvanceBudget, CashBook, CashBookAuditLog, CashBookEntry, CashBookReceiptRequest, EventExpense, ReimbursementRequest
+from cashbook.models import AdvanceBudget, CashBook, CashBookAuditLog, CashBookEntry, CashBookReceiptRequest, EventExpense, EventSettlementEntry, ReimbursementRequest
 from cashbook.notifications import notify_receipt_request, notify_requester_about_decision, notify_responsible_about_request
 from main.decorators import cashier_manager_required, organization_admin_required, pro5_required
 
@@ -299,6 +299,16 @@ def _can_change_event_expense(request, expense):
     if expense.advance_budget_id and expense.advance_budget.settled_at:
         return False
     return True
+
+
+def _sync_settlement_metadata(entry, eligible):
+    if entry.trip_id and entry.entry_type == CashBookEntry.TYPE_EXPENSE:
+        EventSettlementEntry.objects.update_or_create(
+            cashbook_entry=entry,
+            defaults={"eligible": eligible},
+        )
+    else:
+        EventSettlementEntry.objects.filter(cashbook_entry=entry).delete()
 
 
 def _cashbook_running_rows(entries, opening_balance):
@@ -730,6 +740,7 @@ def cashbook_entry_create(request, cashbook_pk):
             entry.cashbook = cashbook
             entry.created_by = request.user
             entry.save()
+            _sync_settlement_metadata(entry, form.cleaned_data["settlement_eligible"])
             _create_cashbook_audit_log(
                 organization=request.org,
                 actor=request.user,
@@ -932,6 +943,7 @@ def cashbook_entry_edit(request, cashbook_pk, pk):
         form = CashBookEntryForm(request.POST, request.FILES, instance=entry, organization=request.org)
         if form.is_valid():
             entry = form.save()
+            _sync_settlement_metadata(entry, form.cleaned_data["settlement_eligible"])
             changes = _cashbook_changes(before, _cashbook_snapshot(entry, [
                 "entry_type", "booking_date", "receipt_date", "amount", "title",
                 "category", "counterparty", "reference", "description", "attachment", "trip_id",
@@ -1463,15 +1475,33 @@ def event_settlement(request, trip_pk):
     trip = get_object_or_404(Trip, pk=trip_pk, owner=request.org)
     membership, is_cashier = _event_settlement_access(request, trip)
     expenses = list(trip.event_expenses.select_related("cashbook", "advance_budget__cashbook", "created_by", "cashbook_entry"))
+    direct_expenses = list(CashBookEntry.objects.filter(
+        trip=trip,
+        cashbook__organization=request.org,
+        entry_type=CashBookEntry.TYPE_EXPENSE,
+        event_expense__isnull=True,
+    ).exclude(advance_budget_payment__isnull=False).exclude(advance_budget_settlement__isnull=False).select_related("cashbook", "created_by", "settlement_metadata"))
+    for expense in expenses:
+        expense.is_direct_cashbook_entry = False
+    for entry in direct_expenses:
+        entry.is_direct_cashbook_entry = True
+        entry.expense_date = entry.booking_date
+        entry.eligible = entry.settlement_metadata.eligible if hasattr(entry, "settlement_metadata") else True
+    expenses.extend(direct_expenses)
+    expenses.sort(key=lambda item: (item.expense_date, item.pk), reverse=True)
     totals = {}
     pending_totals = {}
     for expense in expenses:
+        if expense.is_direct_cashbook_entry:
+            continue
         if expense.status == EventExpense.STATUS_REJECTED:
             continue
         currency = expense.cashbook.currency if expense.cashbook_id else expense.advance_budget.cashbook.currency
         totals[currency] = totals.get(currency, Decimal("0.00")) + expense.amount
         if expense.status == EventExpense.STATUS_PENDING:
             pending_totals[currency] = pending_totals.get(currency, Decimal("0.00")) + expense.amount
+    for entry in direct_expenses:
+        totals[entry.cashbook.currency] = totals.get(entry.cashbook.currency, Decimal("0.00")) + entry.amount
     return render(request, "cashbook/event_settlement.html", {
         "title": f"Abrechnung: {trip.name}", "trip": trip,
         "expenses": expenses,
@@ -1480,6 +1510,60 @@ def event_settlement(request, trip_pk):
         "is_cashier": is_cashier,
         "is_event_manager": membership.event_manager,
     })
+
+
+def _event_settlement_receipts(trip, organization):
+    direct_entries = CashBookEntry.objects.filter(
+        trip=trip, cashbook__organization=organization, entry_type=CashBookEntry.TYPE_EXPENSE,
+        event_expense__isnull=True,
+    ).exclude(advance_budget_payment__isnull=False).exclude(advance_budget_settlement__isnull=False).exclude(attachment="").exclude(attachment__isnull=True)
+    receipts = [(entry, entry.attachment) for entry in direct_entries]
+    for expense in trip.event_expenses.exclude(status=EventExpense.STATUS_REJECTED).exclude(attachment="").exclude(attachment__isnull=True).select_related("cashbook_entry"):
+        expense.entry_number = expense.cashbook_entry.entry_number if expense.cashbook_entry_id else "Vorschussbudget"
+        receipts.append((expense, expense.attachment))
+    return receipts
+
+
+@login_required
+@pro5_required
+def event_settlement_export_receipts_zip(request, trip_pk):
+    from events.models import Trip
+    trip = get_object_or_404(Trip, pk=trip_pk, owner=request.org)
+    _, is_cashier = _event_settlement_access(request, trip)
+    if not is_cashier:
+        raise PermissionDenied
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        written_names = set()
+        for item, attachment in _event_settlement_receipts(trip, request.org):
+            filename = Path(attachment.name).name
+            unique_name, counter = filename, 2
+            while unique_name in written_names:
+                unique_name = f"{Path(filename).stem}-{counter}{Path(filename).suffix}"
+                counter += 1
+            with attachment.open("rb") as uploaded_file:
+                archive.writestr(unique_name, uploaded_file.read())
+            written_names.add(unique_name)
+    response = HttpResponse(buffer.getvalue(), content_type="application/zip")
+    response["Content-Disposition"] = f'attachment; filename="{slugify(trip.name) or trip.pk}-abrechnung-belege.zip"'
+    return response
+
+
+@login_required
+@pro5_required
+def event_settlement_print_receipts(request, trip_pk):
+    from events.models import Trip
+    trip = get_object_or_404(Trip, pk=trip_pk, owner=request.org)
+    _, is_cashier = _event_settlement_access(request, trip)
+    if not is_cashier:
+        raise PermissionDenied
+    pdf, rendered_count = _build_receipts_print_pdf(_event_settlement_receipts(trip, request.org))
+    if not rendered_count:
+        messages.info(request, "Für diese Veranstaltung wurden keine druckbaren Belege gefunden.")
+        return redirect("event_settlement", trip_pk=trip.pk)
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{slugify(trip.name) or trip.pk}-abrechnung-belege.pdf"'
+    return response
 
 
 @login_required

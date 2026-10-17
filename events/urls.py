@@ -22,6 +22,7 @@ urlpatterns = [
     path("shoppinglist/update/", views.update_shoppinglist_item, name="update_shoppinglist_item"),
     path("shoppinglist/<int:item_id>/delete/", views.delete_shoppinglist_item, name="delete_shoppinglist_item"),
     path("trip/<int:trip_id>/vacancies/", views.trip_vacancies, name="trip_vacancies"),
+    path("trip/<int:trip_id>/vacancies/average/", views.trip_vacancy_average, name="trip_vacancy_average"),
     path("trip/<int:trip_id>/vacancies/add/", views.add_vacancy, name="add_vacancy"),
     path("vacancies/update/", views.update_vacancy, name="update_vacancy"),
     path("vacancies/<int:vacancy_id>/delete/", views.delete_vacancy, name="delete_vacancy"),

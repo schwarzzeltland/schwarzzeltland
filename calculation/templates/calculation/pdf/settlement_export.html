@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Abrechnung – {{ trip.name }}</title></head><body>
+<h1>Abrechnung</h1>
+<div>{{ trip.name }}</div><div class="muted">{{ trip.start_date|date:'d.m.Y' }} – {{ trip.end_date|date:'d.m.Y' }}</div>
+<table><thead><tr><th>Datum</th><th>Titel</th><th>Kategorie</th><th>Beschreibung</th><th>Buchung</th><th class="number">Betrag</th></tr></thead><tbody>
+{% for row in settlement_rows %}<tr><td>{{ row.date|date:'d.m.Y' }}</td><td>{{ row.title }}</td><td>{{ row.category|default:'–' }}</td><td>{{ row.description|default:'–' }}</td><td>{{ row.booking }}</td><td class="number">{{ row.amount }} €</td></tr>{% empty %}<tr><td colspan="6">Keine erfassten Ausgaben vorhanden.</td></tr>{% endfor %}
+</tbody><tfoot><tr><th colspan="5">Gesamtsumme</th><th class="number">{{ settlement_total }} €</th></tr></tfoot></table></body></html>

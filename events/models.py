@@ -177,6 +177,7 @@ class TripVacancy(models.Model):
     name = models.CharField(max_length=200)
     arrival = models.DateTimeField(null=True, blank=True)
     departure = models.DateTimeField(null=True, blank=True)
+    eligible = models.BooleanField(default=True, verbose_name="Förderfähig")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

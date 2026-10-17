@@ -267,11 +267,12 @@ class ShoppingListItemForm(forms.ModelForm):
 class TripVacancyForm(forms.ModelForm):
     class Meta:
         model = TripVacancy
-        fields = ["name", "arrival", "departure"]
+        fields = ["name", "arrival", "departure", "eligible"]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Name"}),
             "arrival": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
             "departure": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
+            "eligible": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
 

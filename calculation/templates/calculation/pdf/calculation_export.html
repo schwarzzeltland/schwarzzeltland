@@ -14,21 +14,31 @@
     </tbody></table>
 
     <h2>Kostenpositionen</h2>
-    <table><thead><tr><th>Kategorie</th><th>Beschreibung</th><th>Berechnung</th><th class="number">{% if is_actual %}Ist-Kosten{% else %}Plan-Kosten{% endif %}</th><th>Förderfähig</th></tr></thead><tbody>
-        {% for row in line_rows %}<tr><td>{{ row.line.category }}</td><td>{{ row.line.description|default:'–' }}</td><td>{{ row.line.get_calculation_mode_display }}: {% if is_actual and row.line.actual_amount is not None %}{{ row.line.actual_amount }}{% else %}{{ row.line.planned_amount }}{% endif %} €</td><td class="number">{% if is_actual %}{{ row.actual_total }}{% else %}{{ row.planned_total }}{% endif %} €</td><td>{% if row.line.eligible %}Ja{% else %}Nein{% endif %}</td></tr>{% empty %}<tr><td colspan="5">Keine Kostenpositionen vorhanden.</td></tr>{% endfor %}
+    <table><thead><tr><th>Kategorie / Position</th><th>Berechnung</th><th class="number">Plan</th><th class="number">Ist</th><th>Förderfähig</th></tr></thead><tbody>
+        {% for group in cost_groups %}{% for row in group.rows %}<tr class="muted"><td>↳ {{ row.line.description|default:'Ohne Beschreibung' }}</td><td>{{ row.line.get_calculation_mode_display }}: {{ row.line.planned_amount }} €</td><td class="number">{{ row.planned_total }} €</td><td class="number">{% if is_actual %}{{ row.actual_total }} €{% else %}–{% endif %}</td><td>{% if row.line.eligible %}Ja{% else %}Nein{% endif %}</td></tr>{% endfor %}<tr><th>{{ group.category }} – Summe</th><th></th><th class="number">{{ group.planned_total }} €</th><th class="number">{% if is_actual and group.has_actual %}{{ group.actual_total }} €{% else %}–{% endif %}</th><th></th></tr>{% empty %}<tr><td colspan="5">Keine Kostenpositionen vorhanden.</td></tr>{% endfor %}
+    </tbody></table>
+
+    <h2>Einnahmen</h2>
+    <table><thead><tr><th>Kategorie / Position</th><th>Berechnung</th><th class="number">Plan</th><th class="number">Ist</th></tr></thead><tbody>
+        <tr class="muted"><td>↳ Vor Leiter-Rabatten</td><td>Teilnehmende × Beitrag</td><td class="number">{{ values.participant_income_gross }} €</td><td></td></tr>
+        <tr class="muted"><td>↳ Leiter-Rabatte</td><td>Leiter × Rabatt</td><td class="number">− {{ values.leader_discounts }} €</td><td></td></tr>
+        <tr class="muted"><td>↳ Zuschüsse für Gäste</td><td>Gäste × Zuschuss</td><td class="number">{{ values.guest_subsidies }} €</td><td></td></tr>
+        <tr><th>TN-Beitrag – Summe</th><th></th><th class="number">{{ values.participant_income }} €</th><th class="number">{% if is_actual and values.participant_income_actual %}{{ values.participant_income_actual }} €{% else %}–{% endif %}</th></tr>
+        {% for group in income_groups %}{% for row in group.rows %}<tr class="muted"><td>↳ {{ row.income.description|default:'Ohne Beschreibung' }}</td><td>Fester Betrag</td><td class="number">{{ row.income.planned_amount }} €</td><td></td></tr>{% endfor %}<tr><th>{{ group.category }} – Summe</th><th>{% if group.automatic_only %}Aus Kassenbuch{% endif %}</th><th class="number">{{ group.planned_total }} €</th><th class="number">{% if is_actual and group.has_actual %}{{ group.actual_total }} €{% else %}–{% endif %}</th></tr>{% endfor %}
     </tbody></table>
 
     <h2>{% if is_actual %}Nachkalkulation{% else %}Planung{% endif %}</h2>
     <table class="summary"><tbody>
         {% if is_actual %}
-            <tr><td>Förderfähige Ist-Kosten</td><td class="number">{{ values.actual_costs }} €</td></tr>
+            <tr><td>Ist-Gesamtkosten</td><td class="number">{{ values.actual_costs }} €</td></tr>
+            <tr><td>Förderfähige Ist-Kosten</td><td class="number">{{ values.actual_eligible_costs }} €</td></tr>
             <tr><td>Gebuchte Einnahmen</td><td class="number">{{ values.booked_income }} €</td></tr>
             <tr><td>Voraussichtlicher Ist-Zuschuss</td><td class="number">{{ values.actual_subsidy }} €</td></tr>
             <tr class="result"><td>Ergebnis</td><td class="number">{{ values.actual_result }} €</td></tr>
         {% else %}
+            <tr><td>Plan-Gesamtkosten</td><td class="number">{{ values.planned_total_costs }} €</td></tr>
             <tr><td>Förderfähige Plan-Kosten</td><td class="number">{{ values.planned_costs }} €</td></tr>
-            <tr><td>Teilnehmerbeiträge nach Rabatten</td><td class="number">{{ values.participant_income }} €</td></tr>
-            <tr><td>Zuschüsse für Gäste</td><td class="number">{{ values.guest_subsidies }} €</td></tr>
+            <tr><td>Plan-Einnahmen</td><td class="number">{{ values.planned_income_total }} €</td></tr>
             <tr><td>Voraussichtlicher Zuschuss</td><td class="number">{{ values.planned_subsidy }} €</td></tr>
             <tr class="result"><td>Ergebnis</td><td class="number">{{ values.planned_result }} €</td></tr>
         {% endif %}

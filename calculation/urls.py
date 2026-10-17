@@ -8,10 +8,10 @@ urlpatterns = [
     path("events/<int:trip_pk>/calculation/pdf/<str:report_type>/", views.calculation_export_pdf, name="calculation_export_pdf"),
     path("events/<int:trip_pk>/calculation/lines/<int:pk>/delete/", views.calculation_line_delete, name="calculation_line_delete"),
     path("events/<int:trip_pk>/calculation/lines/<int:pk>/edit/", views.calculation_line_edit, name="calculation_line_edit"),
-    path("events/<int:trip_pk>/calculation/groups/create/", views.calculation_participant_group_edit, name="calculation_participant_group_create"),
-    path("events/<int:trip_pk>/calculation/groups/<int:pk>/edit/", views.calculation_participant_group_edit, name="calculation_participant_group_edit"),
-    path("events/<int:trip_pk>/calculation/groups/<int:pk>/delete/", views.calculation_participant_group_delete, name="calculation_participant_group_delete"),
+    path("events/<int:trip_pk>/calculation/incomes/<int:pk>/delete/", views.calculation_income_delete, name="calculation_income_delete"),
+    path("events/<int:trip_pk>/calculation/incomes/<int:pk>/edit/", views.calculation_income_edit, name="calculation_income_edit"),
     path("events/<int:trip_pk>/calculation/education/create/", views.calculation_education_edit, name="calculation_education_create"),
     path("events/<int:trip_pk>/calculation/education/<int:pk>/edit/", views.calculation_education_edit, name="calculation_education_edit"),
+    path("events/<int:trip_pk>/calculation/education/<int:pk>/delete/", views.calculation_education_delete, name="calculation_education_delete"),
     path("subsidy-profiles/", views.subsidy_profile_list, name="subsidy_profiles"),
 ]

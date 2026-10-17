@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django import forms
 from django.db.models import Sum
-from .models import CalculationEducationSession, CalculationLine, CalculationParticipantGroup, EventCalculation, SubsidyProfile
+from .models import CalculationEducationSession, CalculationIncomeLine, CalculationLine, EventCalculation, SubsidyProfile
 
 
 class SubsidyProfileForm(forms.ModelForm):
@@ -93,11 +93,13 @@ class CalculationLineForm(forms.ModelForm):
         widgets = {"category": forms.TextInput(attrs={"class": "form-control", "id": "calculation-category-input", "autocomplete": "off"})}
 
 
-class CalculationParticipantGroupForm(forms.ModelForm):
+class CalculationIncomeLineForm(forms.ModelForm):
     class Meta:
-        model = CalculationParticipantGroup
-        fields = ["name", "count", "fee_per_person", "discount_per_person", "eligible_for_subsidy"]
-        labels = {"name": "Gruppe", "count": "Personen (Anzahl)", "fee_per_person": "Teilnehmerbeitrag pro Person (EUR)", "discount_per_person": "Rabatt pro Person (EUR)", "eligible_for_subsidy": "Förderfähig"}
+        model = CalculationIncomeLine
+        fields = ["category", "description", "planned_amount", "actual_amount"]
+        labels = {"category": "Kategorie", "description": "Beschreibung", "planned_amount": "Plan-Einnahme (EUR)", "actual_amount": "Ist-Einnahme manuell (EUR)"}
+        help_texts = {"category": "Bei gleicher Kategorie werden gebuchte Einnahmen aus dem Kassenbuch automatisch als Ist-Wert zugeordnet."}
+        widgets = {"category": forms.TextInput(attrs={"class": "form-control", "id": "calculation-income-category-input", "autocomplete": "off"})}
 
 
 class CalculationEducationSessionForm(forms.ModelForm):

@@ -25,7 +25,14 @@ def _is_org_admin(user, organization):
 def _is_org_cashier(user, organization):
     if not user.is_authenticated or organization is None:
         return False
-    return Membership.objects.filter(user=user, organization=organization, cashier_manager=True).exists()
+    return Membership.objects.filter(
+        user=user,
+        organization=organization,
+    ).filter(cashier_manager=True).exists() or Membership.objects.filter(
+        user=user,
+        organization=organization,
+        admin=True,
+    ).exists()
 
 
 def _resolve_cached_source(path):

@@ -11,8 +11,8 @@ from django.utils.text import slugify
 
 from cashbook.models import CashBookEntry, EventExpense
 from main.decorators import pro7_required
-from .forms import CalculationEducationSessionForm, CalculationLineForm, CalculationParticipantGroupForm, EventCalculationForm, SubsidyProfileForm
-from .models import CalculationEducationSession, CalculationLine, CalculationParticipantGroup, EventCalculation, SubsidyProfile
+from .forms import CalculationEducationSessionForm, CalculationIncomeLineForm, CalculationLineForm, EventCalculationForm, SubsidyProfileForm
+from .models import CalculationEducationSession, CalculationIncomeLine, CalculationLine, EventCalculation, SubsidyProfile
 
 
 def _default_profile(organization):
@@ -46,9 +46,10 @@ def _ensure_default_cost_lines(calculation):
 
 def _participant_values(calculation):
     discounts = calculation.leader_count * calculation.leader_discount_per_person
-    income = calculation.total_participants * calculation.participant_fee - discounts
+    gross_income = calculation.total_participants * calculation.participant_fee
+    income = gross_income - discounts
     guest_subsidies = calculation.guest_count * calculation.guest_subsidy_per_person
-    return calculation.eligible_participants, income, discounts, guest_subsidies
+    return calculation.eligible_participants, gross_income, income, discounts, guest_subsidies
 
 
 def _line_amount(line, amount, participant_count, event_days):
@@ -60,7 +61,7 @@ def _line_amount(line, amount, participant_count, event_days):
 
 
 def _money(amount):
-    return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return Decimal(str(amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def _category_key(category):
@@ -71,11 +72,11 @@ def _actual_costs_by_category(trip):
     amounts = {}
     entries = CashBookEntry.objects.filter(
         cashbook__organization=trip.owner, trip=trip, entry_type=CashBookEntry.TYPE_EXPENSE,
-    ).exclude(category="")
+    ).exclude(category="").exclude(settlement_metadata__eligible=False).exclude(advance_budget_payment__isnull=False).exclude(advance_budget_settlement__isnull=False).exclude(event_expense__eligible=False)
     for entry in entries:
         key = _category_key(entry.category)
         amounts[key] = amounts.get(key, Decimal("0")) + entry.amount
-    expenses = EventExpense.objects.filter(trip=trip, cashbook_entry__isnull=True).exclude(
+    expenses = EventExpense.objects.filter(trip=trip, cashbook_entry__isnull=True, eligible=True).exclude(
         status=EventExpense.STATUS_REJECTED,
     ).exclude(category="")
     for expense in expenses:
@@ -84,27 +85,135 @@ def _actual_costs_by_category(trip):
     return amounts
 
 
+def _actual_incomes_by_category(trip):
+    amounts = {}
+    entries = CashBookEntry.objects.filter(
+        cashbook__organization=trip.owner, trip=trip, entry_type=CashBookEntry.TYPE_INCOME,
+    ).exclude(category="").exclude(advance_budget_settlement__isnull=False)
+    for entry in entries:
+        key = _category_key(entry.category)
+        amounts[key] = amounts.get(key, Decimal("0")) + entry.amount
+    return amounts
+
+
+def _cost_line_rows(calculation, total_people, actual_by_category):
+    rows, assigned_categories = [], set()
+    for line in calculation.lines.all():
+        key = _category_key(line.category)
+        automatic = line.actual_amount is None and key in actual_by_category
+        grouped = automatic and key in assigned_categories
+        if automatic:
+            assigned_categories.add(key)
+        rows.append({
+            "line": line,
+            "planned_total": _line_amount(line, line.planned_amount, total_people, calculation.event_days),
+            "actual_total": _line_amount(line, line.actual_amount, total_people, calculation.event_days) if line.actual_amount is not None else (Decimal("0") if grouped else actual_by_category.get(key, Decimal("0"))),
+            "actual_is_automatic": automatic and not grouped,
+            "actual_is_grouped": grouped,
+        })
+    return rows
+
+
+def _income_line_rows(calculation, actual_by_category):
+    rows, assigned_categories = [], set()
+    for income in calculation.income_lines.all():
+        key = _category_key(income.category)
+        automatic = income.actual_amount is None and key in actual_by_category
+        grouped = automatic and key in assigned_categories
+        if automatic:
+            assigned_categories.add(key)
+        rows.append({
+            "income": income,
+            "actual_total": income.actual_amount if income.actual_amount is not None else (Decimal("0") if grouped else actual_by_category.get(key, Decimal("0"))),
+            "actual_is_automatic": automatic and not grouped,
+            "actual_is_grouped": grouped,
+        })
+    return rows
+
+
+def _group_cost_rows(line_rows):
+    groups = []
+    groups_by_category = {}
+    for row in line_rows:
+        key = _category_key(row["line"].category)
+        group = groups_by_category.get(key)
+        if group is None:
+            group = {"category": row["line"].category, "rows": [], "planned_total": Decimal("0"), "actual_total": Decimal("0"), "automatic_total": Decimal("0"), "manual_total": Decimal("0"), "has_actual": False}
+            groups_by_category[key] = group
+            groups.append(group)
+        group["rows"].append(row)
+        group["planned_total"] += row["planned_total"]
+        if row["line"].actual_amount is not None or row["actual_is_automatic"] or row["actual_is_grouped"]:
+            group["has_actual"] = True
+        group["actual_total"] += row["actual_total"]
+        if row["line"].actual_amount is not None:
+            group["manual_total"] += row["actual_total"]
+        elif row["actual_is_automatic"]:
+            group["automatic_total"] += row["actual_total"]
+    return groups
+
+
+def _group_income_rows(income_rows, actual_by_category):
+    groups = []
+    groups_by_category = {}
+    for row in income_rows:
+        category = row["income"].category or "Sonstige Einnahmen"
+        key = _category_key(category)
+        group = groups_by_category.get(key)
+        if group is None:
+            group = {"category": category, "rows": [], "planned_total": Decimal("0"), "actual_total": Decimal("0"), "has_actual": False}
+            groups_by_category[key] = group
+            groups.append(group)
+        group["rows"].append(row)
+        group["planned_total"] += _money(row["income"].planned_amount)
+        if row["income"].actual_amount is not None or row["actual_is_automatic"]:
+            group["actual_total"] += _money(row["actual_total"])
+            group["has_actual"] = True
+    for category_key, amount in actual_by_category.items():
+        if category_key in groups_by_category or category_key == _category_key("TN-Beitrag"):
+            continue
+        category = category_key or "Sonstige Einnahmen"
+        group = {"category": category, "rows": [], "planned_total": Decimal("0"), "actual_total": _money(amount), "has_actual": True, "automatic_only": True}
+        groups_by_category[category_key] = group
+        groups.append(group)
+    return groups
+
+
 def _values(calculation, trip, use_cashbook):
     profile, submitted = calculation.profile, calculation.documents_received_at
     full_deadline = trip.end_date.date() + timedelta(days=profile.full_rate_days)
     reduced_deadline = trip.end_date.date() + timedelta(days=profile.reduced_rate_days)
     factor = Decimal("1") if not submitted or submitted <= full_deadline else profile.reduced_rate_factor if submitted <= reduced_deadline else profile.late_rate_factor
-    eligible_count, participant_income, leader_discounts, guest_subsidies = _participant_values(calculation)
+    eligible_count, participant_income_gross, participant_income, leader_discounts, guest_subsidies = _participant_values(calculation)
     manual_education_hours = calculation.education_sessions.aggregate(total=Sum("hours"))["total"] or Decimal("0")
     education_hours = calculation.education_hours + manual_education_hours
     base = eligible_count * (calculation.event_days * profile.rate_per_person_day + education_hours * profile.rate_per_person_hour) * factor
     total_people = calculation.total_participants
-    eligible_lines = calculation.lines.filter(eligible=True)
+    all_lines = calculation.lines.all()
+    eligible_lines = all_lines.filter(eligible=True)
     planned = sum((_line_amount(line, line.planned_amount, total_people, calculation.event_days) for line in eligible_lines), Decimal("0"))
+    planned_total_costs = sum((_line_amount(line, line.planned_amount, total_people, calculation.event_days) for line in all_lines), Decimal("0"))
     actual_by_category = _actual_costs_by_category(trip) if use_cashbook else {}
-    manual_actual = sum((
-        _line_amount(line, line.actual_amount, total_people, calculation.event_days) if line.actual_amount is not None
-        else actual_by_category.get(_category_key(line.category), Decimal("0"))
-        for line in eligible_lines
-    ), Decimal("0"))
+    actual_incomes_by_category = _actual_incomes_by_category(trip) if use_cashbook else {}
+    def actual_costs_for(lines):
+        assigned_categories = set()
+        amount = Decimal("0")
+        for line in lines:
+            if line.actual_amount is not None:
+                amount += _line_amount(line, line.actual_amount, total_people, calculation.event_days)
+                continue
+            category_key = _category_key(line.category)
+            if category_key not in assigned_categories:
+                amount += actual_by_category.get(category_key, Decimal("0"))
+                assigned_categories.add(category_key)
+        return amount
+
+    manual_actual = actual_costs_for(eligible_lines)
+    actual_total_costs = actual_costs_for(all_lines)
     booked = sum(actual_by_category.values(), Decimal("0")) if use_cashbook else Decimal("0")
-    booked_income = CashBookEntry.objects.filter(cashbook__organization=trip.owner, trip=trip, entry_type=CashBookEntry.TYPE_INCOME).aggregate(total=Sum("amount"))["total"] or Decimal("0") if use_cashbook else calculation.actual_income_manual or Decimal("0")
+    booked_income = sum(actual_incomes_by_category.values(), Decimal("0")) if use_cashbook else calculation.actual_income_manual or Decimal("0")
     actual = calculation.actual_eligible_costs_override if calculation.actual_eligible_costs_override is not None else manual_actual
+    manual_planned_income = calculation.income_lines.aggregate(total=Sum("planned_amount"))["total"] or Decimal("0")
     planned_subsidy = max(Decimal("0"), min(base, planned * profile.maximum_cost_share) - calculation.other_subsidies)
     actual_subsidy = max(Decimal("0"), min(base, actual * profile.maximum_cost_share) - calculation.other_subsidies)
     minimum_participants_met = eligible_count >= profile.minimum_eligible_participants
@@ -113,7 +222,7 @@ def _values(calculation, trip, use_cashbook):
     if not requirements_met:
         planned_subsidy = Decimal("0")
         actual_subsidy = Decimal("0")
-    return {"planned_costs": _money(planned), "actual_costs": _money(actual), "booked_costs": _money(booked), "booked_income": _money(booked_income), "total_people": total_people, "education_hours": education_hours, "eligible_count": eligible_count, "leader_discounts": _money(leader_discounts), "guest_subsidies": _money(guest_subsidies), "participant_income": _money(participant_income), "planned_result": _money(participant_income + guest_subsidies + planned_subsidy - planned), "actual_result": _money(booked_income + actual_subsidy - actual), "base_subsidy": _money(base), "planned_subsidy": _money(planned_subsidy), "actual_subsidy": _money(actual_subsidy), "requirements": {"met": requirements_met, "minimum_participants_met": minimum_participants_met, "minimum_days_met": minimum_days_met, "minimum_participants": profile.minimum_eligible_participants, "minimum_days": profile.minimum_event_days}, "full_deadline": full_deadline, "reduced_deadline": reduced_deadline}
+    return {"planned_costs": _money(planned), "planned_total_costs": _money(planned_total_costs), "actual_costs": _money(actual_total_costs), "actual_eligible_costs": _money(actual), "booked_costs": _money(booked), "booked_income": _money(booked_income), "participant_income_actual": _money(actual_incomes_by_category.get(_category_key("TN-Beitrag"), Decimal("0"))), "total_people": total_people, "education_hours": education_hours, "eligible_count": eligible_count, "leader_discounts": _money(leader_discounts), "guest_subsidies": _money(guest_subsidies), "participant_income_gross": _money(participant_income_gross), "participant_income": _money(participant_income), "manual_planned_income": _money(manual_planned_income), "planned_income_total": _money(participant_income + guest_subsidies + manual_planned_income), "planned_result": _money(participant_income + guest_subsidies + manual_planned_income + planned_subsidy - planned_total_costs), "actual_result": _money(booked_income + actual_subsidy - actual_total_costs), "base_subsidy": _money(base), "planned_subsidy": _money(planned_subsidy), "actual_subsidy": _money(actual_subsidy), "requirements": {"met": requirements_met, "minimum_participants_met": minimum_participants_met, "minimum_days_met": minimum_days_met, "minimum_participants": profile.minimum_eligible_participants, "minimum_days": profile.minimum_event_days}, "full_deadline": full_deadline, "reduced_deadline": reduced_deadline}
 
 
 @login_required
@@ -123,9 +232,15 @@ def calculation_category_autocomplete(request):
     calculation_categories = CalculationLine.objects.filter(
         calculation__trip__owner=request.org,
     ).exclude(category="").values_list("category", flat=True)
+    income_categories = CalculationIncomeLine.objects.filter(
+        calculation__trip__owner=request.org,
+    ).exclude(category="").values_list("category", flat=True)
     cashbook_categories = CashBookEntry.objects.filter(cashbook__organization=request.org).exclude(category="").values_list("category", flat=True)
     expense_categories = EventExpense.objects.filter(trip__owner=request.org).exclude(category="").values_list("category", flat=True)
-    suggestions = sorted(set(calculation_categories).union(cashbook_categories, expense_categories), key=str.casefold)
+    suggestions_by_key = {}
+    for category in (*calculation_categories, *income_categories, *cashbook_categories, *expense_categories):
+        suggestions_by_key.setdefault(_category_key(category), category)
+    suggestions = sorted(suggestions_by_key.values(), key=str.casefold)
     if query:
         suggestions = [category for category in suggestions if query in category.casefold()]
     return JsonResponse(suggestions[:20], safe=False)
@@ -155,8 +270,6 @@ def calculation_detail(request, trip_pk):
         if request.org.pro4 else Decimal("0")
     )
     calculation, created = EventCalculation.objects.get_or_create(trip=trip, defaults={"profile": _default_profile(request.org), "event_days": max(1, (trip.end_date.date() - trip.start_date.date()).days + 1), "eligible_participants": trip.total_persons(), "total_participants": trip.total_persons(), "education_hours": program_education_hours})
-    if created:
-        _ensure_default_cost_lines(calculation)
     if request.method == "POST":
         if "sync_event_data" in request.POST:
             _apply_event_data(calculation, trip, program_education_hours)
@@ -164,6 +277,11 @@ def calculation_detail(request, trip_pk):
         if "save_calculation" in request.POST:
             form = EventCalculationForm(request.POST, instance=calculation, organization=request.org)
             if form.is_valid(): form.save(); return redirect("calculation_detail", trip_pk=trip.pk)
+        elif "income_form" in request.POST:
+            income_form = CalculationIncomeLineForm(request.POST)
+            if income_form.is_valid():
+                income = income_form.save(commit=False); income.calculation = calculation; income.save()
+                return redirect("calculation_detail", trip_pk=trip.pk)
         else:
             line_form = CalculationLineForm(request.POST)
             if line_form.is_valid():
@@ -172,31 +290,111 @@ def calculation_detail(request, trip_pk):
     program_education_items = trip.programm.filter(education_hours__gt=0).order_by("start_time", "name") if request.org.pro4 else []
     values = _values(calculation, trip, request.org.pro5)
     actual_by_category = _actual_costs_by_category(trip) if request.org.pro5 else {}
-    line_rows = [{"line": line, "planned_total": _line_amount(line, line.planned_amount, values["total_people"], calculation.event_days), "actual_total": _line_amount(line, line.actual_amount, values["total_people"], calculation.event_days) if line.actual_amount is not None else actual_by_category.get(_category_key(line.category), Decimal("0")), "actual_is_automatic": line.actual_amount is None and _category_key(line.category) in actual_by_category} for line in calculation.lines.all()]
-    return render(request, "calculation/calculation_detail.html", {"trip": trip, "form": EventCalculationForm(instance=calculation, organization=request.org), "line_form": CalculationLineForm(), "calculation": calculation, "program_education_hours": program_education_hours, "program_education_items": program_education_items, "line_rows": line_rows, "values": values, "is_event_manager": request.user.membership_set.filter(organization=request.org, event_manager=True).exists()})
+    line_rows = _cost_line_rows(calculation, values["total_people"], actual_by_category)
+    cost_groups = _group_cost_rows(line_rows)
+    actual_incomes_by_category = _actual_incomes_by_category(trip) if request.org.pro5 else {}
+    income_rows = _income_line_rows(calculation, actual_incomes_by_category)
+    income_groups = _group_income_rows(income_rows, actual_incomes_by_category)
+    return render(request, "calculation/calculation_detail.html", {"trip": trip, "form": EventCalculationForm(instance=calculation, organization=request.org), "line_form": CalculationLineForm(), "income_form": CalculationIncomeLineForm(), "calculation": calculation, "program_education_hours": program_education_hours, "program_education_items": program_education_items, "line_rows": line_rows, "cost_groups": cost_groups, "income_rows": income_rows, "income_groups": income_groups, "values": values, "is_event_manager": request.user.membership_set.filter(organization=request.org, event_manager=True).exists()})
 
 
 @login_required
 @pro7_required
+def calculation_income_delete(request, trip_pk, pk):
+    income = get_object_or_404(CalculationIncomeLine, pk=pk, calculation__trip_id=trip_pk, calculation__trip__owner=request.org)
+    if not _can_manage_calculation(request):
+        raise PermissionDenied
+    if request.method == "POST":
+        income.delete()
+    return redirect("calculation_detail", trip_pk=trip_pk)
+
+
+@login_required
+@pro7_required
+def calculation_income_edit(request, trip_pk, pk):
+    income = get_object_or_404(CalculationIncomeLine, pk=pk, calculation__trip_id=trip_pk, calculation__trip__owner=request.org)
+    if not _can_manage_calculation(request):
+        raise PermissionDenied
+    form = CalculationIncomeLineForm(request.POST or None, instance=income)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        return redirect("calculation_detail", trip_pk=trip_pk)
+    return render(request, "calculation/calculation_income_form.html", {"form": form, "trip": income.calculation.trip, "income": income})
+
+
+@login_required
 def calculation_export_pdf(request, trip_pk, report_type):
     from events.models import Trip
 
-    if report_type not in {"planning", "actual"}:
+    if report_type not in {"planning", "actual", "settlement"}:
         raise PermissionDenied
     trip = get_object_or_404(Trip, pk=trip_pk, owner=request.org)
-    if not _can_manage_calculation(request):
+    if report_type == "settlement":
+        membership = request.user.membership_set.filter(organization=request.org).first()
+        if not request.org.pro5 or not membership or not (membership.admin or membership.cashier_manager or membership.event_manager):
+            raise PermissionDenied
+        direct_entries = CashBookEntry.objects.filter(
+            cashbook__organization=request.org,
+            trip=trip,
+            entry_type=CashBookEntry.TYPE_EXPENSE,
+            event_expense__isnull=True,
+        ).exclude(advance_budget_payment__isnull=False).exclude(advance_budget_settlement__isnull=False).select_related("cashbook")
+        settlement_rows = [
+            {
+                "date": entry.booking_date,
+                "title": entry.title,
+                "category": entry.category,
+                "description": entry.description,
+                "amount": entry.amount,
+                "booking": f"Kassenbuch #{entry.entry_number or '–'}",
+            }
+            for entry in direct_entries
+        ]
+        for expense in trip.event_expenses.exclude(status=EventExpense.STATUS_REJECTED).select_related("cashbook", "advance_budget__cashbook", "cashbook_entry"):
+            cashbook = expense.cashbook or expense.advance_budget.cashbook
+            booking = f"Kassenbuch #{expense.cashbook_entry.entry_number}" if expense.cashbook_entry_id else ("Vorschussbudget" if expense.advance_budget_id else expense.get_status_display())
+            settlement_rows.append({
+                "date": expense.expense_date,
+                "title": expense.title,
+                "category": expense.category,
+                "description": expense.description,
+                "amount": expense.amount,
+                "booking": booking,
+            })
+        settlement_rows.sort(key=lambda row: (row["date"], row["title"] or ""))
+        settlement_total = sum((row["amount"] for row in settlement_rows), Decimal("0"))
+        context = {"trip": trip, "settlement_rows": settlement_rows, "settlement_total": settlement_total}
+        try:
+            from weasyprint import CSS, HTML
+            html = render_to_string("calculation/pdf/settlement_export.html", context, request=request)
+            pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf(stylesheets=[CSS(string="""
+                @page { size: A4; margin: 12mm; }
+                body { font-family: sans-serif; font-size: 10px; color: #111827; }
+                h1 { margin: 0 0 2mm; font-size: 18px; } table { width: 100%; border-collapse: collapse; margin-top: 5mm; }
+                th, td { border: 1px solid #d1d5db; padding: 2mm; text-align: left; } th { background: #f3f4f6; } .number { text-align: right; } .muted { color: #6b7280; }
+            """)])
+        except (ImportError, OSError):
+            from cashbook.views import _build_text_pdf
+            lines = [f"Veranstaltung: {trip.name}", f"Zeitraum: {trip.start_date:%d.%m.%Y} - {trip.end_date:%d.%m.%Y}", ""]
+            lines.extend(f"{row['date']:%d.%m.%Y} | {row['title']} | {row['category']} | {row['description']} | {row['amount']:.2f} EUR | {row['booking']}" for row in settlement_rows)
+            lines.extend(["", f"Gesamtsumme: {settlement_total:.2f} EUR"])
+            pdf = _build_text_pdf("Abrechnung", lines)
+        response = HttpResponse(pdf, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{slugify(trip.name) or trip.pk}-abrechnung.pdf"'
+        return response
+
+    if not request.org.pro7 or not _can_manage_calculation(request):
         raise PermissionDenied
     calculation = get_object_or_404(EventCalculation, trip=trip)
     values = _values(calculation, trip, request.org.pro5)
     actual_by_category = _actual_costs_by_category(trip) if request.org.pro5 else {}
-    line_rows = [{
-        "line": line,
-        "planned_total": _line_amount(line, line.planned_amount, values["total_people"], calculation.event_days),
-        "actual_total": _line_amount(line, line.actual_amount, values["total_people"], calculation.event_days) if line.actual_amount is not None else actual_by_category.get(_category_key(line.category), Decimal("0")),
-        "actual_is_automatic": line.actual_amount is None and _category_key(line.category) in actual_by_category,
-    } for line in calculation.lines.all()]
+    line_rows = _cost_line_rows(calculation, values["total_people"], actual_by_category)
+    cost_groups = _group_cost_rows(line_rows)
+    actual_incomes_by_category = _actual_incomes_by_category(trip) if request.org.pro5 else {}
+    income_rows = _income_line_rows(calculation, actual_incomes_by_category)
+    income_groups = _group_income_rows(income_rows, actual_incomes_by_category)
     is_actual = report_type == "actual"
-    context = {"trip": trip, "calculation": calculation, "values": values, "line_rows": line_rows, "is_actual": is_actual}
+    context = {"trip": trip, "calculation": calculation, "values": values, "line_rows": line_rows, "cost_groups": cost_groups, "income_groups": income_groups, "is_actual": is_actual}
     try:
         from weasyprint import CSS, HTML
         html = render_to_string("calculation/pdf/calculation_export.html", context, request=request)
@@ -246,33 +444,6 @@ def calculation_line_edit(request, trip_pk, pk):
     return render(request, "calculation/calculation_line_form.html", {"form": form, "trip": line.calculation.trip, "line": line})
 
 
-@login_required
-@pro7_required
-def calculation_participant_group_edit(request, trip_pk, pk=None):
-    calculation = get_object_or_404(EventCalculation, trip_id=trip_pk, trip__owner=request.org)
-    if not _can_manage_calculation(request):
-        raise PermissionDenied
-    group = get_object_or_404(CalculationParticipantGroup, pk=pk, calculation=calculation) if pk else None
-    form = CalculationParticipantGroupForm(request.POST or None, instance=group)
-    if request.method == "POST" and form.is_valid():
-        item = form.save(commit=False)
-        item.calculation = calculation
-        item.save()
-        return redirect("calculation_detail", trip_pk=trip_pk)
-    return render(request, "calculation/participant_group_form.html", {"form": form, "trip": calculation.trip, "group": group})
-
-
-@login_required
-@pro7_required
-def calculation_participant_group_delete(request, trip_pk, pk):
-    group = get_object_or_404(CalculationParticipantGroup, pk=pk, calculation__trip_id=trip_pk, calculation__trip__owner=request.org)
-    if not _can_manage_calculation(request):
-        raise PermissionDenied
-    if request.method == "POST":
-        group.delete()
-    return redirect("calculation_detail", trip_pk=trip_pk)
-
-
 def _calculation_detail_object(request, trip_pk):
     calculation = get_object_or_404(EventCalculation, trip_id=trip_pk, trip__owner=request.org)
     if not _can_manage_calculation(request):
@@ -290,6 +461,16 @@ def calculation_education_edit(request, trip_pk, pk=None):
         session = form.save(commit=False); session.calculation = calculation; session.save()
         return redirect("calculation_detail", trip_pk=trip_pk)
     return render(request, "calculation/item_form.html", {"form": form, "trip": calculation.trip, "heading": "Bildungsblock"})
+
+
+@login_required
+@pro7_required
+def calculation_education_delete(request, trip_pk, pk):
+    calculation = _calculation_detail_object(request, trip_pk)
+    session = get_object_or_404(CalculationEducationSession, pk=pk, calculation=calculation)
+    if request.method == "POST":
+        session.delete()
+    return redirect("calculation_detail", trip_pk=trip_pk)
 
 
 @login_required

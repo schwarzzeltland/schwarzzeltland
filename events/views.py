@@ -48,6 +48,39 @@ from main.decorators import organization_admin_required, event_manager_required,
 from main.models import Membership, Organization
 
 
+def _average_attendance(trip):
+    total_people = trip.total_persons()
+    event_seconds = (trip.end_date - trip.start_date).total_seconds()
+    vacancies = list(trip.vacancies.exclude(arrival__isnull=True).exclude(departure__isnull=True))
+    if not vacancies or event_seconds <= 0:
+        return Decimal(total_people)
+
+    periods_by_name = defaultdict(list)
+    for vacancy in vacancies:
+        name_key = " ".join(vacancy.name.split()).casefold()
+        if not name_key:
+            continue
+        arrival = max(vacancy.arrival, trip.start_date)
+        departure = min(vacancy.departure, trip.end_date)
+        if arrival < departure:
+            periods_by_name[name_key].append((arrival, departure))
+
+    attended_seconds = 0
+    for periods in periods_by_name.values():
+        current_start, current_end = sorted(periods)[0]
+        for start, end in sorted(periods)[1:]:
+            if start <= current_end:
+                current_end = max(current_end, end)
+            else:
+                attended_seconds += (current_end - current_start).total_seconds()
+                current_start, current_end = start, end
+        attended_seconds += (current_end - current_start).total_seconds()
+
+    persons_without_entries = max(total_people - len(periods_by_name), 0)
+    average = Decimal(str((persons_without_entries * event_seconds + attended_seconds) / event_seconds))
+    return min(Decimal(total_people), average).quantize(Decimal("0.01"))
+
+
 @login_required
 def trip(request):
     temp_stock = StockMaterial.objects.filter(temporary=True,
@@ -1630,7 +1663,16 @@ def trip_vacancies(request, trip_id):
         'trip': trip,
         'vacancies': vacancies,
         'form': form,
+        'average_attendance': _average_attendance(trip),
     })
+
+
+@login_required
+@pro2_required
+@event_manager_required
+def trip_vacancy_average(request, trip_id):
+    trip = get_object_or_404(Trip, pk=trip_id, owner=request.org)
+    return JsonResponse({"average_attendance": f"{_average_attendance(trip):.2f}", "total_people": trip.total_persons()})
 
 
 @require_POST
@@ -1647,6 +1689,7 @@ def add_vacancy(request, trip_id):
     name = request.POST.get("name", "").strip()
     arrival_str = request.POST.get("arrival", "")
     departure_str = request.POST.get("departure", "")
+    eligible = request.POST.get("eligible") in {"true", "True", "1", "on"}
 
     if not name:
         return JsonResponse({"success": False, "error": "Name darf nicht leer sein"})
@@ -1673,7 +1716,8 @@ def add_vacancy(request, trip_id):
         trip=trip,
         name=name,
         arrival=arrival,
-        departure=departure
+        departure=departure,
+        eligible=eligible,
     )
 
     return JsonResponse({
@@ -1683,6 +1727,7 @@ def add_vacancy(request, trip_id):
             "name": item.name,
             "arrival": item.arrival.strftime("%Y-%m-%dT%H:%M") if item.arrival else "",
             "departure": item.departure.strftime("%Y-%m-%dT%H:%M") if item.departure else "",
+            "eligible": item.eligible,
             "delete_url": reverse("delete_vacancy", args=[item.pk])
         }
     })
@@ -1702,8 +1747,13 @@ def update_vacancy(request):
         field = data.get("field")
         value = data.get("value")
 
-        if field not in ["arrival", "departure"]:
+        if field not in ["arrival", "departure", "eligible"]:
             return JsonResponse({"success": False, "error": "Ungültiges Feld"})
+
+        if field == "eligible":
+            item.eligible = value in (True, "true", "True", "1", "on")
+            item.save(update_fields=["eligible"])
+            return JsonResponse({"success": True, "item": {"id": item.pk, "eligible": item.eligible}})
 
         # Datum umwandeln
         if value:
@@ -1766,7 +1816,7 @@ def export_vacancies_csv(request, trip_id):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     writer = csv.writer(response)
-    writer.writerow(['Name', 'Anwesenheit'])  # Header
+    writer.writerow(['Name', 'Anwesenheit', 'Förderfähig'])  # Header
 
     for v in vacancies:
         # Anwesenheit-Text zusammenbauen
@@ -1776,7 +1826,8 @@ def export_vacancies_csv(request, trip_id):
 
         writer.writerow([
             v.name or '',
-            presence_text
+            presence_text,
+            'Ja' if v.eligible else 'Nein',
         ])
     return response
 

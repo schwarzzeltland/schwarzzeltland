@@ -2,9 +2,8 @@ from django.contrib import admin
 
 from .models import (
     CalculationEducationSession,
+    CalculationIncomeLine,
     CalculationLine,
-    CalculationParticipantGroup,
-    CalculationTransport,
     EventCalculation,
     SubsidyProfile,
 )
@@ -45,21 +44,15 @@ class CalculationLineAdmin(admin.ModelAdmin):
     search_fields = ("category", "description", "calculation__trip__name")
 
 
+@admin.register(CalculationIncomeLine)
+class CalculationIncomeLineAdmin(admin.ModelAdmin):
+    list_display = ("category", "description", "calculation", "planned_amount")
+    list_filter = ("calculation__trip__owner",)
+    search_fields = ("category", "description", "calculation__trip__name")
+
+
 @admin.register(CalculationEducationSession)
 class CalculationEducationSessionAdmin(admin.ModelAdmin):
     list_display = ("topic", "hours", "calculation")
     search_fields = ("topic", "calculation__trip__name")
 
-
-@admin.register(CalculationParticipantGroup)
-class CalculationParticipantGroupAdmin(admin.ModelAdmin):
-    list_display = ("name", "calculation", "count", "fee_per_person", "discount_per_person", "eligible_for_subsidy")
-    list_filter = ("eligible_for_subsidy", "calculation__trip__owner")
-    search_fields = ("name", "calculation__trip__name")
-
-
-@admin.register(CalculationTransport)
-class CalculationTransportAdmin(admin.ModelAdmin):
-    list_display = ("description", "mode", "calculation", "persons", "planned_amount", "actual_amount")
-    list_filter = ("mode", "calculation__trip__owner")
-    search_fields = ("description", "calculation__trip__name")
