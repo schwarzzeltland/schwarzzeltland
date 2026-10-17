@@ -9,7 +9,7 @@
 </div></div>{% endif %}
 <script>
 const csrf=document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)')?.pop()||'';
-async function toggleAndSort(input){const response=await fetch(input.dataset.url,{method:'POST',headers:{'X-CSRFToken':csrf}});if(!response.ok){input.checked=!input.checked;return}const data=await response.json(),row=input.closest('.list-group-item'),list=row.parentElement;row.classList.toggle('text-muted',data.done);if(data.done)list.append(row);else{const firstDone=[...list.querySelectorAll('.list-group-item')].find(element=>element.querySelector('input')?.checked);firstDone?list.insertBefore(row,firstDone):list.prepend(row)}}
+async function toggleAndSort(input){const response=await fetch(input.dataset.url,{method:'POST',headers:{'X-CSRFToken':csrf}});if(!response.ok){input.checked=!input.checked;return}const data=await response.json(),row=input.closest('.list-group-item');if(data.done)row.remove()}
 document.querySelectorAll('.personal-toggle,.meeting-toggle').forEach(input=>input.addEventListener('change',function(){toggleAndSort(this)}));
 </script>
 {% endblock %}

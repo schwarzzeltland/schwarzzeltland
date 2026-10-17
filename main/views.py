@@ -470,15 +470,15 @@ def personal_todo_list(request):
     if membership.material_manager:
         checklist_scope |= Q(organization=request.org, trip__isnull=True)
     checklist_items = EventPlanningChecklistItem.objects.filter(
-        checklist_scope, responsible=request.user
-    ).select_related("trip", "organization").order_by("done", "due_date", "title") if request.org.pro3 and (membership.event_manager or membership.material_manager) else []
+        checklist_scope, responsible=request.user, done=False
+    ).select_related("trip", "organization").order_by("due_date", "title") if request.org.pro3 and (membership.event_manager or membership.material_manager) else []
     meeting_items = MeetingMinutesItem.objects.filter(
         minutes__organization=request.org,
         minutes__published=True,
         responsible_members=membership,
     ).filter(Q(minutes__replacement__isnull=True) | Q(minutes__replacement__published=False)).annotate(
         personal_completed=Exists(MeetingMinutesItemCompletion.objects.filter(item_id=OuterRef("pk"), user=request.user, completed=True))
-    ).select_related("minutes").order_by("personal_completed", "due_date", "position") if request.org.pro6 and membership.leiterrundenmitglied else []
+    ).filter(personal_completed=False).select_related("minutes").order_by("due_date", "position") if request.org.pro6 and membership.leiterrundenmitglied else []
     return render(request, "main/personal_todo_list.html", {
         "title": "Meine To-dos",
         "checklist_items": checklist_items,
