@@ -47,6 +47,17 @@ class ReimbursementRequestForm(forms.ModelForm):
         self.fields["recipient_name"].required = False
         self.fields["recipient_iban"].required = False
         self.fields["recipient_bic"].required = False
+        if not self.is_bound and self.requester and organization:
+            previous_request = ReimbursementRequest.objects.filter(
+                requester=self.requester,
+                cashbook__organization=organization,
+            ).exclude(recipient_iban="").first()
+            if previous_request:
+                self.initial.update({
+                    "recipient_name": previous_request.recipient_name,
+                    "recipient_iban": previous_request.recipient_iban,
+                    "recipient_bic": previous_request.recipient_bic,
+                })
 
     def clean(self):
         cleaned_data = super().clean()

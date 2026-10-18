@@ -36,6 +36,12 @@
                         <li class="list-group-item text-muted" id="no-items-placeholder">Noch keine Punkte.</li>
                     {% endfor %}
                 </ul>
+                <details>
+                    <summary class="list-group-item bg-light fw-semibold" style="cursor: pointer;">
+                        Erledigte To-dos <span class="text-muted fw-normal small">(zum Ausklappen anklicken)</span>
+                    </summary>
+                    <ul class="list-group list-group-flush d-flex flex-column" style="min-width: 600px;" id="completed-checklist"></ul>
+                </details>
             </div>
         </div>
         <div class="card-footer bg-light">
@@ -69,7 +75,12 @@
         document.addEventListener("DOMContentLoaded", function () {
             const form = document.getElementById("add-item-form");
             const checklist = document.getElementById("checklist");
+            const completedChecklist = document.getElementById("completed-checklist");
             const csrf = getCookie("csrftoken");
+
+            checklist.querySelectorAll(".toggle-done:checked").forEach(input => {
+                completedChecklist.appendChild(input.closest("li"));
+            });
 
             // Punkt hinzufügen
             form.addEventListener("submit", function (e) {
@@ -131,6 +142,7 @@
                                 if (data.success) {
                                     const li = document.getElementById("item-" + id);
                                     li.classList.toggle("done", data.done);
+                                    (data.done ? completedChecklist : checklist).appendChild(li);
                                 }
                             });
                     }
@@ -178,6 +190,7 @@
             });
             // Initiale Items
             checklist.querySelectorAll("li").forEach(li => attachHandlers(li));
+            completedChecklist.querySelectorAll("li").forEach(li => attachHandlers(li));
         });
     </script>
 

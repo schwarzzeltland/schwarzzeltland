@@ -606,6 +606,26 @@ class CashbookTests(TestCase):
         receipt_response = self.client.get(own_request.attachment.url)
         self.assertEqual(receipt_response.status_code, 200)
 
+    def test_new_request_prefills_bank_details_from_previous_request(self):
+        responsible = self.owner_org.membership_set.get(user=self.owner_user)
+        cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse", responsible=responsible)
+        leader = User.objects.create_user(username="bankdetails", password="pw")
+        Membership.objects.create(user=leader, organization=self.owner_org, leiterrundenmitglied=True)
+        ReimbursementRequest.objects.create(
+            cashbook=cashbook, requester=leader, title="Frühere Auslage", expense_date="2026-08-08",
+            amount="10.00", attachment=SimpleUploadedFile("alt.pdf", b"pdf"),
+            recipient_name="Leiter Beispiel", recipient_iban="DE12500105170648489890",
+            recipient_bic="INGDDEFFXXX",
+        )
+        self.client.login(username="bankdetails", password="pw")
+
+        response = self.client.get("/cashbooks/reimbursements/create/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["form"].initial["recipient_name"], "Leiter Beispiel")
+        self.assertEqual(response.context["form"].initial["recipient_iban"], "DE12500105170648489890")
+        self.assertEqual(response.context["form"].initial["recipient_bic"], "INGDDEFFXXX")
+
     def test_advance_budget_settlement_attaches_pdf_and_exports_all_receipts(self):
         membership = self.owner_org.membership_set.get(user=self.owner_user)
         cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse", responsible=membership)
