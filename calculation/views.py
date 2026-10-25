@@ -131,7 +131,7 @@ def _income_line_rows(calculation, actual_by_category):
     return rows
 
 
-def _group_cost_rows(line_rows):
+def _group_cost_rows(line_rows, actual_by_category):
     groups = []
     groups_by_category = {}
     for row in line_rows:
@@ -150,6 +150,22 @@ def _group_cost_rows(line_rows):
             group["manual_total"] += row["actual_total"]
         elif row["actual_is_automatic"]:
             group["automatic_total"] += row["actual_total"]
+    for category_key, amount in actual_by_category.items():
+        if category_key in groups_by_category:
+            continue
+        category = category_key or "Sonstige Ausgaben"
+        group = {
+            "category": category,
+            "rows": [],
+            "planned_total": Decimal("0"),
+            "actual_total": _money(amount),
+            "automatic_total": _money(amount),
+            "manual_total": Decimal("0"),
+            "has_actual": True,
+            "automatic_only": True,
+        }
+        groups_by_category[category_key] = group
+        groups.append(group)
     return groups
 
 
@@ -195,7 +211,9 @@ def _values(calculation, trip, use_cashbook):
     planned_total_costs = sum((_line_amount(line, line.planned_amount, total_people, calculation.event_days) for line in all_lines), Decimal("0"))
     actual_by_category = _actual_costs_by_category(trip) if use_cashbook else {}
     actual_incomes_by_category = _actual_incomes_by_category(trip) if use_cashbook else {}
-    def actual_costs_for(lines):
+    planned_category_keys = {_category_key(line.category) for line in all_lines}
+
+    def actual_costs_for(lines, include_unplanned=False):
         assigned_categories = set()
         amount = Decimal("0")
         for line in lines:
@@ -206,10 +224,12 @@ def _values(calculation, trip, use_cashbook):
             if category_key not in assigned_categories:
                 amount += actual_by_category.get(category_key, Decimal("0"))
                 assigned_categories.add(category_key)
+        if include_unplanned:
+            amount += sum((value for key, value in actual_by_category.items() if key not in planned_category_keys), Decimal("0"))
         return amount
 
-    manual_actual = actual_costs_for(eligible_lines)
-    actual_total_costs = actual_costs_for(all_lines)
+    manual_actual = actual_costs_for(eligible_lines, include_unplanned=True)
+    actual_total_costs = actual_costs_for(all_lines, include_unplanned=True)
     booked = sum(actual_by_category.values(), Decimal("0")) if use_cashbook else Decimal("0")
     booked_income = sum(actual_incomes_by_category.values(), Decimal("0")) if use_cashbook else calculation.actual_income_manual or Decimal("0")
     actual = calculation.actual_eligible_costs_override if calculation.actual_eligible_costs_override is not None else manual_actual
@@ -291,7 +311,7 @@ def calculation_detail(request, trip_pk):
     values = _values(calculation, trip, request.org.pro5)
     actual_by_category = _actual_costs_by_category(trip) if request.org.pro5 else {}
     line_rows = _cost_line_rows(calculation, values["total_people"], actual_by_category)
-    cost_groups = _group_cost_rows(line_rows)
+    cost_groups = _group_cost_rows(line_rows, actual_by_category)
     actual_incomes_by_category = _actual_incomes_by_category(trip) if request.org.pro5 else {}
     income_rows = _income_line_rows(calculation, actual_incomes_by_category)
     income_groups = _group_income_rows(income_rows, actual_incomes_by_category)
@@ -389,7 +409,7 @@ def calculation_export_pdf(request, trip_pk, report_type):
     values = _values(calculation, trip, request.org.pro5)
     actual_by_category = _actual_costs_by_category(trip) if request.org.pro5 else {}
     line_rows = _cost_line_rows(calculation, values["total_people"], actual_by_category)
-    cost_groups = _group_cost_rows(line_rows)
+    cost_groups = _group_cost_rows(line_rows, actual_by_category)
     actual_incomes_by_category = _actual_incomes_by_category(trip) if request.org.pro5 else {}
     income_rows = _income_line_rows(calculation, actual_incomes_by_category)
     income_groups = _group_income_rows(income_rows, actual_incomes_by_category)
