@@ -739,6 +739,12 @@ def cashbook_entry_create(request, cashbook_pk):
             entry = form.save(commit=False)
             entry.cashbook = cashbook
             entry.created_by = request.user
+            entry.source = CashBookEntry.SOURCE_MANUAL
+            entry.reconciliation_status = (
+                CashBookEntry.RECONCILIATION_EXPECTED
+                if cashbook.iban
+                else CashBookEntry.RECONCILIATION_BOOKED
+            )
             entry.save()
             _sync_settlement_metadata(entry, form.cleaned_data["settlement_eligible"])
             _create_cashbook_audit_log(

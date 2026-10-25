@@ -118,6 +118,34 @@ class CashbookTests(TestCase):
         self.assertEqual(audit_log.actor, self.owner_user)
         self.assertEqual(audit_log.changes["title"], "Audit-Test")
 
+    def test_manual_bank_entry_is_created_as_expected_transaction(self):
+        responsible = self.owner_org.membership_set.get(user=self.owner_user)
+        cashbook = CashBook.objects.create(
+            organization=self.owner_org,
+            name="Bankkonto",
+            responsible=responsible,
+            iban="DE89370400440532013000",
+        )
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.post(f"/cashbooks/{cashbook.pk}/entries/create/", {
+            "entry_type": CashBookEntry.TYPE_EXPENSE,
+            "booking_date": "2026-08-08",
+            "receipt_date": "",
+            "amount": "42.50",
+            "title": "Vorschuss: Einkauf",
+            "category": "Material",
+            "counterparty": "Leiter Beispiel",
+            "reference": "",
+            "trip": "",
+            "description": "",
+        })
+
+        self.assertEqual(response.status_code, 302)
+        entry = cashbook.entries.get()
+        self.assertEqual(entry.source, CashBookEntry.SOURCE_MANUAL)
+        self.assertEqual(entry.reconciliation_status, CashBookEntry.RECONCILIATION_EXPECTED)
+
     def test_cashbook_detail_uses_selection_start_balance_and_selection_total(self):
         cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse", opening_balance="100.00")
         CashBookEntry.objects.create(
@@ -396,7 +424,7 @@ class CashbookTests(TestCase):
         expected = CashBookEntry.objects.create(
             cashbook=cashbook, entry_type=CashBookEntry.TYPE_EXPENSE,
             booking_date="2026-08-08", amount="42.50", title="Vorschuss: Einkauf",
-            counterparty="Leiter Beispiel", source=CashBookEntry.SOURCE_AUTOMATIC,
+            counterparty="Leiter Beispiel", source=CashBookEntry.SOURCE_MANUAL,
             reconciliation_status=CashBookEntry.RECONCILIATION_EXPECTED,
         )
         csv_content = (
