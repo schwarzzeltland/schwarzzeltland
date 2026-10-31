@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
-from leiterrunden.models import MeetingMinutes, MeetingMinutesAcceptance
+from leiterrunden.models import MeetingMinutes, MeetingMinutesAcceptance, MeetingMinutesItem
 from leiterrunden.tasks import send_due_meeting_minutes_items_today
 from main.models import Membership
 
@@ -116,6 +116,38 @@ class MeetingMinutesTests(TestCase):
         )
         self.assertContains(response, "Gast hinzufügen")
         self.assertContains(response, "Gast entfernen")
+
+    def test_parent_top_with_child_can_be_deleted_and_replaced(self):
+        self.client.login(username="leitung", password="pw")
+        self.client.post(reverse("meeting_minutes_create"), self._post_data())
+        minutes = MeetingMinutes.objects.get()
+        parent = minutes.items.get()
+        child = MeetingMinutesItem.objects.create(
+            minutes=minutes,
+            parent=parent,
+            topic="Unterpunkt",
+            position=2,
+        )
+        data = self._post_data()
+        data.update({
+            "items-TOTAL_FORMS": "3",
+            "items-INITIAL_FORMS": "2",
+            "items-0-id": str(parent.pk),
+            "items-0-DELETE": "on",
+            "items-1-id": str(child.pk),
+            "items-1-DELETE": "on",
+            "items-2-parent": "",
+            "items-2-parent_reference": "",
+            "items-2-topic": "Neuer TOP",
+            "items-2-notes": "Neu angelegt",
+            "items-2-due_date": "",
+            "items-2-position": "1",
+        })
+
+        response = self.client.post(reverse("meeting_minutes_edit", args=[minutes.pk]), data)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(list(minutes.items.values_list("topic", flat=True)), ["Neuer TOP"])
 
     def test_due_date_is_loaded_again_in_edit_form(self):
         self.client.login(username="leitung", password="pw")
