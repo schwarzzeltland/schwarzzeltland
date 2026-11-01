@@ -118,10 +118,17 @@ ASGI_APPLICATION = "schwarzzeltland.asgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+DATABASE_ENGINE = os.environ.get("SQL_ENGINE", "django.db.backends.sqlite3")
+DATABASE_NAME = (
+    BASE_DIR / "db.sqlite3"
+    if DATABASE_ENGINE == "django.db.backends.sqlite3"
+    else os.environ.get("SQL_DATABASE", "schwarzzeltland")
+)
+
 DATABASES = {
     "default": {
-        "ENGINE": os.environ.get("SQL_ENGINE", "django.db.backends.sqlite3"),
-        "NAME": os.environ.get("SQL_DATABASE", BASE_DIR / "db.sqlite3"),
+        "ENGINE": DATABASE_ENGINE,
+        "NAME": DATABASE_NAME,
         "USER": os.environ.get("SQL_USER", "user"),
         "PASSWORD": os.environ.get("SQL_PASSWORD", "password"),
         "HOST": os.environ.get("SQL_HOST", "localhost"),

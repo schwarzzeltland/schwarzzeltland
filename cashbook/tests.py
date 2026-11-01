@@ -234,7 +234,7 @@ class CashbookTests(TestCase):
         self.assertTrue(entry.attachment_filename.endswith(".pdf"))
 
     def test_print_receipts_pdf_places_booking_numbers_above_receipts(self):
-        import pymupdf
+        from pypdf import PdfReader
 
         cashbook = CashBook.objects.create(organization=self.owner_org, name="Hauptkasse")
         image_buffer = io.BytesIO()
@@ -252,13 +252,12 @@ class CashbookTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/pdf")
-        document = pymupdf.open(stream=response.content, filetype="pdf")
-        self.assertEqual(len(document), 1)
-        page_text = document[0].get_text()
+        document = PdfReader(io.BytesIO(response.content))
+        self.assertEqual(len(document.pages), 1)
+        page_text = document.pages[0].extract_text()
         self.assertIn("Buchung #1 - Beleg 1", page_text)
         self.assertIn("Buchung #2 - Beleg 2", page_text)
         self.assertLess(page_text.index("Buchung #1"), page_text.index("Buchung #2"))
-        document.close()
 
     def test_only_responsible_cashier_can_change_entries(self):
         responsible = self.owner_org.membership_set.get(user=self.owner_user)

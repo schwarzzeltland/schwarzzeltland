@@ -18,4 +18,5 @@ channels[daphne]>=4.1.0
 channels-redis
 asgiref~=3.8.1
 weasyprint
-PyMuPDF
+pypdf
+reportlab

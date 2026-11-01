@@ -1241,16 +1241,22 @@ def cashbook_export_receipts_zip(request, pk):
 
 
 def _build_receipts_print_pdf(receipts):
-    import pymupdf
+    from PIL import Image
+    from pypdf import PageObject, PdfReader, PdfWriter, Transformation
+    from pypdf.errors import PdfReadError
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
 
-    output = pymupdf.open()
-    page_rect = pymupdf.paper_rect("a4")
+    page_width, page_height = A4
     margin = 36
     header_height = 20
     gap = 12
-    usable_width = page_rect.width - 2 * margin
-    usable_height = page_rect.height - 2 * margin
+    usable_width = page_width - 2 * margin
+    usable_height = page_height - 2 * margin
     output_page = None
+    output_pages = []
+    page_labels = []
+    labels = None
     cursor_y = margin
     rendered_count = 0
 
@@ -1258,42 +1264,69 @@ def _build_receipts_print_pdf(receipts):
         try:
             with attachment.open("rb") as uploaded_file:
                 source_data = uploaded_file.read()
-            source = pymupdf.open(stream=source_data)
-            if not source.is_pdf:
-                image_pdf = source.convert_to_pdf()
-                source.close()
-                source = pymupdf.open("pdf", image_pdf)
-        except Exception:
-            continue
+            try:
+                source = PdfReader(io.BytesIO(source_data))
+            except (PdfReadError, ValueError):
+                image_buffer = io.BytesIO()
+                with Image.open(io.BytesIO(source_data)) as image:
+                    image.convert("RGB").save(image_buffer, format="PDF")
+                image_buffer.seek(0)
+                source = PdfReader(image_buffer)
 
-        try:
-            for source_page_number, source_page in enumerate(source):
-                aspect_height = usable_width * source_page.rect.height / source_page.rect.width
+            for source_page_number, source_page in enumerate(source.pages):
+                source_width = float(source_page.mediabox.width)
+                source_height = float(source_page.mediabox.height)
+                if source_width <= 0 or source_height <= 0:
+                    continue
+                aspect_height = usable_width * source_height / source_width
                 compact = aspect_height + header_height <= usable_height / 2
                 content_height = min(aspect_height, usable_height - header_height)
                 block_height = header_height + content_height
 
-                if output_page is None or cursor_y + block_height > page_rect.height - margin or not compact and cursor_y > margin:
-                    output_page = output.new_page(width=page_rect.width, height=page_rect.height)
+                if output_page is None or cursor_y + block_height > page_height - margin or not compact and cursor_y > margin:
+                    output_page = PageObject.create_blank_page(width=page_width, height=page_height)
+                    output_pages.append(output_page)
+                    labels = []
+                    page_labels.append(labels)
                     cursor_y = margin
 
                 label = f"Buchung #{entry.entry_number} - {entry.title}"
-                if len(source) > 1:
-                    label += f" - Belegseite {source_page_number + 1}/{len(source)}"
-                output_page.insert_text((margin, cursor_y + 12), label, fontsize=10, fontname="helv")
-                target = pymupdf.Rect(margin, cursor_y + header_height, page_rect.width - margin, cursor_y + block_height)
-                output_page.show_pdf_page(target, source, source_page_number, keep_proportion=True)
+                if len(source.pages) > 1:
+                    label += f" - Belegseite {source_page_number + 1}/{len(source.pages)}"
+                labels.append((margin, page_height - cursor_y - 12, label))
+
+                scale = min(usable_width / source_width, content_height / source_height)
+                target_width = source_width * scale
+                target_height = source_height * scale
+                target_x = margin + (usable_width - target_width) / 2
+                target_y = page_height - cursor_y - header_height - target_height
+                output_page.merge_transformed_page(
+                    source_page,
+                    Transformation().scale(scale).translate(target_x, target_y),
+                )
                 cursor_y += block_height + gap
                 rendered_count += 1
-        finally:
-            source.close()
+        except Exception:
+            continue
 
     if not rendered_count:
-        output.close()
         return None, 0
-    pdf = output.tobytes(deflate=True)
-    output.close()
-    return pdf, rendered_count
+
+    writer = PdfWriter()
+    for page, labels in zip(output_pages, page_labels):
+        overlay_buffer = io.BytesIO()
+        overlay = canvas.Canvas(overlay_buffer, pagesize=A4)
+        overlay.setFont("Helvetica", 10)
+        for x, y, label in labels:
+            overlay.drawString(x, y, label)
+        overlay.save()
+        overlay_buffer.seek(0)
+        page.merge_page(PdfReader(overlay_buffer).pages[0])
+        writer.add_page(page)
+
+    output_buffer = io.BytesIO()
+    writer.write(output_buffer)
+    return output_buffer.getvalue(), rendered_count
 
 
 @login_required
