@@ -1,9 +1,12 @@
-FROM python:3.12-bullseye
+FROM python:3.12-bookworm
 LABEL authors="Leander Schulten"
 
 ADD requirements.txt /app/requirements.txt
 
-RUN apt-get update && apt-get install -y --no-install-recommends netcat ca-certificates fonts-dejavu-core && update-ca-certificates
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends netcat-openbsd ca-certificates fonts-dejavu-core \
+    && update-ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN set -ex \
     && python -m venv /env \
