@@ -57,6 +57,20 @@ class MeetingMinutesTests(TestCase):
         self.assertContains(response, "form.setAttribute('action',result.edit_url)")
         self.assertNotContains(response, "form.action=result.edit_url")
 
+    def test_publish_and_accept_require_confirmation_modals(self):
+        self.client.login(username="leitung", password="pw")
+
+        create_response = self.client.get(reverse("meeting_minutes_create"))
+        self.assertContains(create_response, 'data-bs-target="#publish-minutes-modal"')
+        self.assertContains(create_response, "Möchtest du dieses Protokoll wirklich veröffentlichen?")
+
+        self.client.post(reverse("meeting_minutes_create"), self._post_data("publish"))
+        minutes = MeetingMinutes.objects.get()
+        detail_response = self.client.get(reverse("meeting_minutes_detail", args=[minutes.pk]))
+        self.assertContains(detail_response, 'data-bs-target="#accept-minutes-modal"')
+        self.assertContains(detail_response, 'form="accept-minutes-form"')
+        self.assertContains(detail_response, "Möchtest du bestätigen, dass du dieses Protokoll geprüft hast")
+
     def test_vote_sum_must_not_exceed_present_eligible_voters(self):
         other_user = User.objects.create_user(username="zweite-leitung", password="pw")
         Membership.objects.create(user=other_user, organization=self.organization, leiterrundenmitglied=True)
