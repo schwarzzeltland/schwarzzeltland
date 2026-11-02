@@ -34,7 +34,30 @@ document.addEventListener('click',event=>{
   card.remove();
 });
 let nestedDragged=null;
-function nestExisting(){[...document.querySelectorAll('.top-card[data-item-id]')].sort((a,b)=>Number(a.dataset.level)-Number(b.dataset.level)).forEach(card=>{const parent=card.querySelector('select[name$="-parent"]');if(parent&&parent.value){const parentCard=document.querySelector('.top-card[data-item-id="'+parent.value+'"]');if(parentCard)children(parentCard).appendChild(card);}})}
+function nestExisting(){
+  const cards=[...document.querySelectorAll('#protocol-items > .top-card')];
+  const cardsByReference=new Map(cards.map(card=>[card.dataset.reference,card]));
+  const cardsById=new Map(cards.filter(card=>card.dataset.itemId).map(card=>[card.dataset.itemId,card]));
+  cards.forEach(card=>{
+    const parentReference=card.querySelector('input[name$="-parent_reference"]')?.value;
+    const parentId=card.querySelector('select[name$="-parent"]')?.value;
+    const parentCard=cardsByReference.get(parentReference)||cardsById.get(parentId);
+    if(parentCard&&parentCard!==card)children(parentCard).appendChild(card);
+  });
+  function restoreLevels(container=document.getElementById('protocol-items'),level=0){
+    [...container.querySelectorAll(':scope > .top-card')].forEach(card=>{
+      card.dataset.level=level;
+      card.classList.toggle('root-top',level===0);
+      const body=card.querySelector(':scope > .card-body');
+      const addButton=body.querySelector(':scope > .add-subtop');
+      if(level>=2&&addButton)addButton.remove();
+      if(level<2&&!addButton)body.querySelector(':scope > .delete-top')?.insertAdjacentHTML('beforebegin','<button type="button" class="btn btn-sm btn-outline-secondary add-subtop">Unter-TOP hinzufügen</button> ');
+      const childContainer=body.querySelector(':scope > .top-children');
+      if(childContainer)restoreLevels(childContainer,level+1);
+    });
+  }
+  restoreLevels();
+}
 function renumberNested(container=document.getElementById('protocol-items'), prefix='', sequence={value:0}){
   [...container.querySelectorAll(':scope > .top-card')].forEach((card,index)=>{
     const number=prefix ? `${prefix}.${index+1}` : `${index+1}`;
@@ -96,7 +119,7 @@ $(document).ready(()=>{updatePresentVoterCount();setupVoting()});
       if(!response.ok)throw new Error(result.message||'Speichern fehlgeschlagen');
       if(version===savingVersion)version=0;
       form.dataset.autosaveUrl=result.autosave_url;
-      form.action=result.edit_url;
+      form.setAttribute('action',result.edit_url);
       history.replaceState({},'',result.edit_url);
       if(version)showState('dirty','Weitere nicht gespeicherte Änderungen – jetzt speichern');else showState('saved','Alle Änderungen gespeichert · '+result.saved_at+' Uhr');
     }catch(error){showState('error','Speichern fehlgeschlagen: '+error.message+' – erneut versuchen');}

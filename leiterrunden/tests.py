@@ -49,6 +49,14 @@ class MeetingMinutesTests(TestCase):
         minutes.refresh_from_db()
         self.assertEqual(minutes.title, "Automatisch aktualisiert")
 
+    def test_autosave_switches_form_to_edit_url_without_action_field_collision(self):
+        self.client.login(username="leitung", password="pw")
+
+        response = self.client.get(reverse("meeting_minutes_create"))
+
+        self.assertContains(response, "form.setAttribute('action',result.edit_url)")
+        self.assertNotContains(response, "form.action=result.edit_url")
+
     def test_vote_sum_must_not_exceed_present_eligible_voters(self):
         other_user = User.objects.create_user(username="zweite-leitung", password="pw")
         Membership.objects.create(user=other_user, organization=self.organization, leiterrundenmitglied=True)
@@ -114,6 +122,35 @@ class MeetingMinutesTests(TestCase):
             f'name="guests-TOTAL_FORMS" value="{minutes.guests.count()}"',
             html=False,
         )
+
+    def test_invalid_form_keeps_three_unsaved_top_levels_connected(self):
+        self.client.login(username="leitung", password="pw")
+        data = self._post_data("publish")
+        data.update({
+            "meeting_end": "2026-07-22T18:00",
+            "items-TOTAL_FORMS": "3",
+            "items-0-parent_reference": "",
+            "items-1-parent": "",
+            "items-1-parent_reference": "items-0",
+            "items-1-topic": "Unter-TOP",
+            "items-1-notes": "",
+            "items-1-due_date": "",
+            "items-1-position": "2",
+            "items-2-parent": "",
+            "items-2-parent_reference": "items-1",
+            "items-2-topic": "Unter-Unter-TOP",
+            "items-2-notes": "",
+            "items-2-due_date": "",
+            "items-2-position": "3",
+        })
+
+        response = self.client.post(reverse("meeting_minutes_create"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["formset"].forms[1]["parent_reference"].value(), "items-0")
+        self.assertEqual(response.context["formset"].forms[2]["parent_reference"].value(), "items-1")
+        self.assertContains(response, "cardsByReference.get(parentReference)")
+        self.assertFalse(MeetingMinutes.objects.exists())
         self.assertContains(response, "Gast hinzufügen")
         self.assertContains(response, "Gast entfernen")
 
