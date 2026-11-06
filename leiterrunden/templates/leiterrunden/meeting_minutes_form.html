@@ -1,16 +1,16 @@
 {% extends "base.html" %}{% load bootstrap5 %}{% block content %}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"><script src="https://code.jquery.com/jquery-3.7.1.min.js"></script><script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<h3>{% if minutes %}Protokoll bearbeiten{% else %}Protokoll erstellen{% endif %}</h3><form method="post" id="minutes-form" data-autosave-url="{% if minutes %}{% url 'meeting_minutes_autosave_edit' minutes.pk %}{% else %}{% url 'meeting_minutes_autosave_create' %}{% endif %}">{% csrf_token %}{% bootstrap_form form %}
+    <h3>{% if minutes %}Protokoll bearbeiten{% else %}Protokoll erstellen{% endif %}</h3><form method="post" id="minutes-form" data-detail-url="{% if minutes %}{% url 'meeting_minutes_detail' minutes.pk %}{% endif %}" data-autosave-url="{% if minutes %}{% url 'meeting_minutes_autosave_edit' minutes.pk %}{% else %}{% url 'meeting_minutes_autosave_create' %}{% endif %}">{% csrf_token %}{% bootstrap_form form %}
 <h4>Anwesenheit <span class="badge text-bg-primary" id="present-voter-count">0 Stimmberechtigte</span></h4>{% for member, attendance in attendance_rows %}<div class="row mb-2"><div class="col-md-3"><input class="attendance-checkbox" type="checkbox" name="attendance_{{ member.id }}" {% if attendance and attendance.present %}checked{% endif %}> {{ member.user.username }}</div><div class="col-md-9"><input class="form-control" name="attendance_note_{{ member.id }}" value="{% if attendance %}{{ attendance.note }}{% endif %}" placeholder="Notiz (optional)"></div></div>{% endfor %}
-<h4>Gäste</h4>{{ guest_formset.management_form }}<div id="guest-forms">{% for guest_form in guest_formset %}<div class="card mb-2 guest-card"><div class="card-body">{% for hidden in guest_form.hidden_fields %}{{ hidden }}{% endfor %}{% bootstrap_form guest_form exclude='DELETE' %}<button type="button" class="btn btn-sm btn-outline-danger remove-guest">Gast entfernen</button></div></div>{% endfor %}</div>
+<h4>Gäste</h4>{{ guest_formset.management_form }}<div id="guest-forms">{% for guest_form in guest_formset %}{% if not guest_form.DELETE.value %}<div class="card mb-2 guest-card"><div class="card-body">{% for hidden in guest_form.hidden_fields %}{{ hidden }}{% endfor %}{% bootstrap_form guest_form exclude='DELETE' %}<button type="button" class="btn btn-sm btn-outline-danger remove-guest">Gast entfernen</button></div></div>{% endif %}{% endfor %}</div>
 <template id="empty-guest"><div class="card mb-2 guest-card"><div class="card-body">{% for hidden in guest_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}{% bootstrap_form guest_formset.empty_form exclude='DELETE' %}<button type="button" class="btn btn-sm btn-outline-danger remove-guest">Gast entfernen</button></div></div></template>
 <button type="button" id="add-guest" class="btn btn-outline-secondary mb-3">Gast hinzufügen</button>
-<div class="d-flex justify-content-between align-items-center"><h4>Tagesordnungspunkte</h4><div><button type="button" id="expand-all" class="btn btn-sm btn-outline-secondary">Alles aufklappen</button><button type="button" id="collapse-all" class="btn btn-sm btn-outline-secondary">Alles zuklappen</button></div></div>{{ formset.management_form }}<div id="protocol-items">{% for item_form in formset %}<div class="card mb-3 top-card {% if not item_form.instance.level %}root-top{% endif %}" data-item-id="{{ item_form.instance.pk }}" data-reference="{{ item_form.prefix }}" data-level="{{ item_form.instance.level }}"><div class="card-header top-drag-handle" draggable="true"><span class="top-number"></span></div><div class="card-body">{% for hidden in item_form.hidden_fields %}{{ hidden }}{% endfor %}{% bootstrap_form item_form exclude='DELETE,position,parent_reference' %}{% if item_form.instance.level < 2 %}<button type="button" class="btn btn-sm btn-outline-secondary add-subtop">Unter-TOP hinzufügen</button>{% endif %}<button type="button" class="btn btn-sm btn-outline-danger delete-top">Punkt entfernen</button></div></div>{% endfor %}</div><div id="deleted-protocol-items" hidden></div>
-<template id="empty-item"><div class="card mb-3 top-card"><div class="card-header top-drag-handle" draggable="true"><span class="top-number"></span></div><div class="card-body">{% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}{% bootstrap_form formset.empty_form exclude='DELETE,position,parent_reference' %}</div></div></template><button type="button" id="add-item" class="btn btn-outline-secondary">TOP hinzufügen</button><p class="text-muted mt-2">TOPs und Unter-TOPs an der Titelleiste per Drag-and-drop sortieren.</p><button type="submit" name="action" value="save" class="btn btn-outline-primary">Als Entwurf speichern</button><button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#publish-minutes-modal">Veröffentlichen</button>
+<div class="d-flex justify-content-between align-items-center"><h4>Tagesordnungspunkte</h4><div><button type="button" id="expand-all" class="btn btn-sm btn-outline-secondary">Alles aufklappen</button><button type="button" id="collapse-all" class="btn btn-sm btn-outline-secondary">Alles zuklappen</button></div></div>{{ formset.management_form }}<div id="protocol-items">{% for item_form in formset %}{% if not item_form.DELETE.value %}<div class="card mb-3 top-card {% if not item_form.instance.level %}root-top{% endif %}" data-item-id="{{ item_form.instance.pk }}" data-reference="{{ item_form.prefix }}" data-level="{{ item_form.instance.level }}"><div class="card-header top-drag-handle" draggable="true"><span class="top-number"></span></div><div class="card-body">{% for hidden in item_form.hidden_fields %}{{ hidden }}{% endfor %}{% bootstrap_form item_form exclude='DELETE,position,parent_reference' %}{% if item_form.instance.level < 2 %}<button type="button" class="btn btn-sm btn-outline-secondary add-subtop">Unter-TOP hinzufügen</button>{% endif %}<button type="button" class="btn btn-sm btn-outline-danger delete-top">Punkt entfernen</button></div></div>{% endif %}{% endfor %}</div><div id="deleted-protocol-items" hidden></div>
+<template id="empty-item"><div class="card mb-3 top-card"><div class="card-header top-drag-handle" draggable="true"><span class="top-number"></span></div><div class="card-body">{% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}{% bootstrap_form formset.empty_form exclude='DELETE,position,parent_reference' %}</div></div></template><button type="button" id="add-item" class="btn btn-outline-secondary">TOP hinzufügen</button><p class="text-muted mt-2">TOPs und Unter-TOPs an der Titelleiste per Drag-and-drop sortieren.</p><button type="submit" id="save-minutes-draft" name="action" value="save" class="btn btn-outline-primary">Als Entwurf speichern</button><button type="button" class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#publish-minutes-modal">Veröffentlichen</button>
 <div class="modal fade" id="publish-minutes-modal" tabindex="-1" aria-labelledby="publish-minutes-title" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="publish-minutes-title">Protokoll veröffentlichen?</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button></div><div class="modal-body">Möchtest du dieses Protokoll wirklich veröffentlichen? Danach kann es nicht mehr direkt bearbeitet werden.</div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button><button type="submit" form="minutes-form" name="action" value="publish" class="btn btn-success">Ja, veröffentlichen</button></div></div></div></div></form>
 <script>document.addEventListener('DOMContentLoaded',()=>document.body.append(document.getElementById('publish-minutes-modal')))</script>
 <style>.top-card{border:0;box-shadow:0 2px 8px rgba(15,23,42,.09);border-radius:.65rem;overflow:hidden}.top-card>.card-header{background:#f8fafc;color:#1e3a5f;font-weight:600;border-bottom:1px solid #e2e8f0;padding:.7rem 1rem}.top-drag-handle{cursor:grab}.top-drag-handle:active{cursor:grabbing}.top-drag-handle .toggle-children{cursor:pointer}.root-top{border-left:4px solid #2563eb}.top-children{margin:1rem 0 0 1.25rem;padding-left:1rem;border-left:3px solid #bfdbfe}.top-children-title{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin:0 0 .65rem}.subtop-summary{display:block;margin-top:.25rem;color:#64748b;font-size:.8rem;font-weight:400}.card-body .btn{margin-right:.35rem}body.modal-open>nav,body.modal-open>main,body.modal-open>footer{filter:blur(5px);transition:filter .15s ease}</style><script>
-function setupSelect(scope=document){$(scope).find('.select2-responsible').select2({width:'100%',placeholder:'Verantwortliche auswählen',allowClear:true});scope.querySelectorAll('select[name$="-parent"]').forEach(x=>x.closest('.mb-3').style.display='none')}function children(card){let x=card.querySelector(':scope > .card-body > .top-children');if(!x){x=document.createElement('div');x.className='top-children';x.innerHTML='<div class="top-children-title">Unterpunkte</div>';card.querySelector('.card-body').append(x)}return x}function numbers(){[...document.querySelectorAll('#protocol-items > .root-top')].forEach((x,i)=>{x.querySelector('.top-number').textContent='TOP '+(i+1);x.querySelectorAll('input[name$="-position"]').forEach(p=>p.value=i+1)})}function add(parent=null){const total=document.getElementById('id_{{ formset.prefix }}-TOTAL_FORMS'),wrap=document.createElement('div');wrap.innerHTML=document.getElementById('empty-item').innerHTML.replaceAll('__prefix__',total.value);const card=wrap.firstElementChild;card.dataset.reference='{{ formset.prefix }}-'+total.value;card.dataset.level=parent?Number(parent.dataset.level)+1:0;if(!parent)card.classList.add('root-top');if(parent){const select=card.querySelector('select[name$="-parent"]');if(parent.dataset.itemId)select.value=parent.dataset.itemId;card.querySelector('input[name$="-parent_reference"]').value=parent.dataset.reference}(parent?children(parent):document.getElementById('protocol-items')).append(card);card.querySelector('.card-body').insertAdjacentHTML('beforeend',(Number(card.dataset.level)<2?'<button type="button" class="btn btn-sm btn-outline-secondary add-subtop">Unter-TOP hinzufügen</button> ':'')+'<button type="button" class="btn btn-sm btn-outline-danger delete-top">Punkt entfernen</button>');total.value++;setupSelect(card);addCollapseToggle(card);renumberNested();refreshSubtopSummaries()}function markTopDeleted(card){[card,...card.querySelectorAll('.top-card')].forEach(item=>{const id=item.querySelector('input[name$="-id"]');if(!id||item.querySelector('input[name$="-DELETE"]'))return;const deleted=document.createElement('input');deleted.type='hidden';deleted.name=id.name.replace('-id','-DELETE');deleted.value='on';item.appendChild(deleted)});card.hidden=true;document.getElementById('deleted-protocol-items').appendChild(card)}document.getElementById('add-item').onclick=()=>add();document.addEventListener('click',e=>{if(e.target.classList.contains('add-subtop'))add(e.target.closest('.top-card'));if(e.target.classList.contains('delete-top')){markTopDeleted(e.target.closest('.top-card'));numbers()}});$(document).ready(()=>{setupSelect();numbers()});</script>
+function setupSelect(scope=document){$(scope).find('.select2-responsible').select2({width:'100%',placeholder:'Verantwortliche auswählen',allowClear:true});scope.querySelectorAll('select[name$="-parent"]').forEach(x=>x.closest('.mb-3').style.display='none')}function children(card){let x=card.querySelector(':scope > .card-body > .top-children');if(!x){x=document.createElement('div');x.className='top-children';x.innerHTML='<div class="top-children-title">Unterpunkte</div>';card.querySelector('.card-body').append(x)}return x}function numbers(){[...document.querySelectorAll('#protocol-items > .root-top')].forEach((x,i)=>{x.querySelector('.top-number').textContent='TOP '+(i+1);x.querySelectorAll('input[name$="-position"]').forEach(p=>p.value=i+1)})}function add(parent=null){const total=document.getElementById('id_{{ formset.prefix }}-TOTAL_FORMS'),wrap=document.createElement('div');wrap.innerHTML=document.getElementById('empty-item').innerHTML.replaceAll('__prefix__',total.value);const card=wrap.firstElementChild;card.dataset.reference='{{ formset.prefix }}-'+total.value;card.dataset.level=parent?Number(parent.dataset.level)+1:0;if(!parent)card.classList.add('root-top');if(parent){const select=card.querySelector('select[name$="-parent"]');if(parent.dataset.itemId)select.value=parent.dataset.itemId;card.querySelector('input[name$="-parent_reference"]').value=parent.dataset.reference}(parent?children(parent):document.getElementById('protocol-items')).append(card);card.querySelector('.card-body').insertAdjacentHTML('beforeend',(Number(card.dataset.level)<2?'<button type="button" class="btn btn-sm btn-outline-secondary add-subtop">Unter-TOP hinzufügen</button> ':'')+'<button type="button" class="btn btn-sm btn-outline-danger delete-top">Punkt entfernen</button>');total.value++;setupSelect(card);addCollapseToggle(card);renumberNested();refreshSubtopSummaries()}function markTopDeleted(card){[card,...card.querySelectorAll('.top-card')].forEach(item=>{const id=item.querySelector('input[name$="-id"]');if(!id||item.querySelector('input[name$="-DELETE"]'))return;const deleted=document.createElement('input');deleted.type='hidden';deleted.name=id.name.replace('-id','-DELETE');deleted.value='on';item.appendChild(deleted);item.querySelectorAll('input,select,textarea').forEach(field=>{if(field!==id&&field!==deleted)field.disabled=true})});card.hidden=true;document.getElementById('deleted-protocol-items').appendChild(card)}document.getElementById('add-item').onclick=()=>add();document.addEventListener('click',e=>{if(e.target.classList.contains('add-subtop'))add(e.target.closest('.top-card'));if(e.target.classList.contains('delete-top')){markTopDeleted(e.target.closest('.top-card'));numbers()}});$(document).ready(()=>{setupSelect();numbers()});</script>
 <script>
 function addGuest(){
   const total=document.getElementById('id_{{ guest_formset.prefix }}-TOTAL_FORMS');
@@ -18,6 +18,34 @@ function addGuest(){
   wrapper.innerHTML=document.getElementById('empty-guest').innerHTML.replaceAll('__prefix__',total.value);
   document.getElementById('guest-forms').appendChild(wrapper.firstElementChild);
   total.value=Number(total.value)+1;
+}
+function compactGuestForms(){
+  const cards=[...document.querySelectorAll('#guest-forms > .guest-card:not([hidden])')];
+  cards.forEach((card,index)=>{
+    card.querySelectorAll('[name]').forEach(element=>element.name=element.name.replace(/guests-\d+-/,`guests-${index}-`));
+    card.querySelectorAll('[id]').forEach(element=>element.id=element.id.replace(/id_guests-\d+-/,`id_guests-${index}-`));
+    card.querySelectorAll('label[for]').forEach(label=>label.htmlFor=label.htmlFor.replace(/id_guests-\d+-/,`id_guests-${index}-`));
+  });
+  document.getElementById('id_guests-TOTAL_FORMS').value=cards.length;
+  return cards;
+}
+function compactTopForms(){
+  const cards=[...document.querySelectorAll('#protocol-items .top-card:not([hidden])')];
+  cards.forEach((card,index)=>{
+    card.querySelectorAll('[name]').forEach(element=>element.name=element.name.replace(/items-\d+-/,`items-${index}-`));
+    card.querySelectorAll('[id]').forEach(element=>element.id=element.id.replace(/id_items-\d+-/,`id_items-${index}-`));
+    card.querySelectorAll('label[for]').forEach(label=>label.htmlFor=label.htmlFor.replace(/id_items-\d+-/,`id_items-${index}-`));
+    card.dataset.reference=`items-${index}`;
+  });
+  cards.forEach(card=>{
+    const parentCard=card.parentElement.closest('.top-card');
+    const parentReference=card.querySelector('input[name$="-parent_reference"]');
+    const parentSelect=card.querySelector('select[name$="-parent"]');
+    if(parentReference)parentReference.value=parentCard?.dataset.reference||'';
+    if(parentSelect)parentSelect.value=parentCard?.dataset.itemId||'';
+  });
+  document.getElementById('id_items-TOTAL_FORMS').value=cards.length;
+  return cards;
 }
 document.getElementById('add-guest').addEventListener('click',addGuest);
 document.addEventListener('click',event=>{
@@ -34,6 +62,7 @@ document.addEventListener('click',event=>{
     return;
   }
   card.remove();
+  compactGuestForms();
 });
 let nestedDragged=null;
 function nestExisting(){
@@ -103,30 +132,73 @@ $(document).ready(()=>{updatePresentVoterCount();setupVoting()});
 <script>
 (()=>{
   const form=document.getElementById('minutes-form'),status=document.getElementById('autosave-status');
-  let version=0,saving=false;
+  let version=0,savePromise=null,submitting=false;
   function showState(state,message){status.className='autosave-indicator is-'+state;status.title=message;status.setAttribute('aria-label',message);status.innerHTML=state==='saved'?'<i class="bi bi-check-lg" aria-hidden="true"></i>':state==='saving'?'<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>':state==='error'?'<i class="bi bi-exclamation-lg" aria-hidden="true"></i>':'<i class="bi bi-circle-fill" aria-hidden="true"></i>'}
   function markDirty(){version++;showState('dirty','Nicht gespeicherte Änderungen – jetzt speichern')}
   form.addEventListener('input',markDirty);
   form.addEventListener('change',markDirty);
   form.addEventListener('click',event=>{if(event.target.closest('.add-subtop,.delete-top,.remove-guest,#add-guest,#add-item'))markDirty()});
   form.addEventListener('drop',()=>setTimeout(markDirty,0));
-  async function saveDraft(){
-    if(!version||saving)return;
-    saving=true;
-    const savingVersion=version;
-    showState('saving','Entwurf wird gespeichert');
-    try{
-      const response=await fetch(form.dataset.autosaveUrl,{method:'POST',body:new FormData(form),headers:{'X-Requested-With':'XMLHttpRequest'}});
-      const result=await response.json();
-      if(!response.ok)throw new Error(result.message||'Speichern fehlgeschlagen');
-      if(version===savingVersion)version=0;
-      form.dataset.autosaveUrl=result.autosave_url;
-      form.setAttribute('action',result.edit_url);
-      history.replaceState({},'',result.edit_url);
-      if(version)showState('dirty','Weitere nicht gespeicherte Änderungen – jetzt speichern');else showState('saved','Alle Änderungen gespeichert · '+result.saved_at+' Uhr');
-    }catch(error){showState('error','Speichern fehlgeschlagen: '+error.message+' – erneut versuchen');}
-    finally{saving=false;}
+  function saveDraft(){
+    if(savePromise)return savePromise;
+    if(!version)return Promise.resolve(true);
+    savePromise=(async()=>{
+      const savingVersion=version;
+      showState('saving','Entwurf wird gespeichert');
+      try{
+        const response=await fetch(form.dataset.autosaveUrl,{method:'POST',body:new FormData(form),headers:{'X-Requested-With':'XMLHttpRequest'}});
+        const result=await response.json();
+        if(!response.ok)throw new Error(result.message||'Speichern fehlgeschlagen');
+        if(version===savingVersion)version=0;
+        form.dataset.autosaveUrl=result.autosave_url;
+        form.dataset.detailUrl=result.detail_url;
+        form.setAttribute('action',result.edit_url);
+        history.replaceState({},'',result.edit_url);
+        Object.entries(result.item_ids||{}).forEach(([prefix,id])=>{
+          const input=form.querySelector(`[name="${prefix}-id"]`),card=input?.closest('.top-card');
+          if(input)input.value=id;
+          if(card)card.dataset.itemId=id;
+        });
+        document.querySelectorAll('#deleted-protocol-items > .top-card').forEach(card=>card.remove());
+        const topCards=compactTopForms();
+        Object.entries(result.guest_ids||{}).forEach(([prefix,id])=>{
+          const input=form.querySelector(`[name="${prefix}-id"]`);
+          if(input)input.value=id;
+        });
+        document.querySelectorAll('#guest-forms > .guest-card').forEach(card=>{
+          if(card.querySelector('input[name$="-DELETE"]'))card.remove();
+        });
+        const guestCards=compactGuestForms();
+        document.getElementById('id_items-INITIAL_FORMS').value=topCards.length;
+        document.getElementById('id_guests-INITIAL_FORMS').value=guestCards.length;
+        if(version)showState('dirty','Weitere nicht gespeicherte Änderungen – jetzt speichern');else showState('saved','Alle Änderungen gespeichert · '+result.saved_at+' Uhr');
+        return true;
+      }catch(error){showState('error','Speichern fehlgeschlagen: '+error.message+' – erneut versuchen');return false;}
+      finally{savePromise=null;}
+    })();
+    return savePromise;
   }
+  document.getElementById('save-minutes-draft').addEventListener('click',event=>{
+    if(version||savePromise||!form.dataset.detailUrl)return;
+    event.preventDefault();
+    window.location.href=form.dataset.detailUrl;
+  });
+  form.addEventListener('submit',async event=>{
+    if(submitting)return;
+    const submitter=event.submitter;
+    if(submitter?.value==='save'&&!version&&!savePromise&&form.dataset.detailUrl){
+      event.preventDefault();
+      window.location.assign(form.dataset.detailUrl);
+      return;
+    }
+    if(!savePromise)return;
+    event.preventDefault();
+    if(!await savePromise)return;
+    if(submitter?.value==='save'&&!version&&form.dataset.detailUrl){window.location.assign(form.dataset.detailUrl);return;}
+    submitting=true;
+    if(submitter?.name){const action=document.createElement('input');action.type='hidden';action.name=submitter.name;action.value=submitter.value;form.appendChild(action);}
+    HTMLFormElement.prototype.submit.call(form);
+  });
   status.addEventListener('click',saveDraft);
   setInterval(saveDraft,120000);
 })();

@@ -11,6 +11,38 @@ from events.models import Trip
 
 
 class CalculationActualCostsTests(TestCase):
+    def test_education_event_only_uses_education_hours_for_subsidy(self):
+        user = User.objects.create_user(username="education-owner", password="pw")
+        organization = user.organization_set.first()
+        trip = Trip.objects.create(
+            owner=organization,
+            name="Tagesbildung",
+            start_date=datetime(2026, 8, 1, 9, tzinfo=timezone.utc),
+            end_date=datetime(2026, 8, 1, 17, tzinfo=timezone.utc),
+        )
+        profile = SubsidyProfile.objects.create(
+            organization=organization,
+            name="Bildung",
+            rate_per_person_day=Decimal("4.00"),
+            rate_per_person_hour=Decimal("2.00"),
+            minimum_eligible_participants=1,
+        )
+        calculation = EventCalculation.objects.create(
+            trip=trip,
+            profile=profile,
+            eligible_participants=10,
+            total_participants=10,
+            event_days=1,
+            is_education_or_qs=True,
+            education_hours=Decimal("3.00"),
+        )
+        profile.refresh_from_db()
+        calculation.refresh_from_db()
+
+        values = _values(calculation, trip, use_cashbook=False)
+
+        self.assertEqual(values["base_subsidy"], Decimal("60.00"))
+
     def test_unplanned_expense_category_is_included_in_actual_calculation(self):
         user = User.objects.create_user(username="owner", password="pw")
         organization = user.organization_set.first()
@@ -22,6 +54,8 @@ class CalculationActualCostsTests(TestCase):
         )
         profile = SubsidyProfile.objects.create(organization=organization, name="Test")
         calculation = EventCalculation.objects.create(trip=trip, profile=profile, event_days=10)
+        profile.refresh_from_db()
+        calculation.refresh_from_db()
         CalculationLine.objects.create(
             calculation=calculation,
             category="Verpflegung",

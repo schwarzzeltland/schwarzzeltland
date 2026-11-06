@@ -333,7 +333,17 @@ def meeting_minutes_autosave(request, pk=None):
     form, items, guests, saved = _save_minutes(request, minutes, publish=False)
     if not saved:
         return JsonResponse({"ok": False, "message": "Noch nicht speicherbare oder unvollständige Eingaben."}, status=422)
-    return JsonResponse({"ok": True, "pk": saved.pk, "edit_url": reverse("meeting_minutes_edit", args=[saved.pk]), "autosave_url": reverse("meeting_minutes_autosave_edit", args=[saved.pk]), "saved_at": timezone.localtime().strftime("%H:%M")})
+    item_ids = {
+        item_form.prefix: item_form.instance.pk
+        for item_form in items.forms
+        if item_form.instance.pk and not item_form.cleaned_data.get("DELETE")
+    }
+    guest_ids = {
+        guest_form.prefix: guest_form.instance.pk
+        for guest_form in guests.forms
+        if guest_form.instance.pk and not guest_form.cleaned_data.get("DELETE")
+    }
+    return JsonResponse({"ok": True, "pk": saved.pk, "detail_url": reverse("meeting_minutes_detail", args=[saved.pk]), "edit_url": reverse("meeting_minutes_edit", args=[saved.pk]), "autosave_url": reverse("meeting_minutes_autosave_edit", args=[saved.pk]), "saved_at": timezone.localtime().strftime("%H:%M"), "item_ids": item_ids, "guest_ids": guest_ids})
 
 
 @login_required

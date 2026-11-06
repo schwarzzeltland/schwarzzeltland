@@ -203,7 +203,8 @@ def _values(calculation, trip, use_cashbook):
     eligible_count, participant_income_gross, participant_income, leader_discounts, guest_subsidies = _participant_values(calculation)
     manual_education_hours = calculation.education_sessions.aggregate(total=Sum("hours"))["total"] or Decimal("0")
     education_hours = calculation.education_hours + manual_education_hours
-    base = eligible_count * (calculation.event_days * profile.rate_per_person_day + education_hours * profile.rate_per_person_hour) * factor
+    daily_subsidy = Decimal("0") if calculation.is_education_or_qs else calculation.event_days * profile.rate_per_person_day
+    base = eligible_count * (daily_subsidy + education_hours * profile.rate_per_person_hour) * factor
     total_people = calculation.total_participants
     all_lines = calculation.lines.all()
     eligible_lines = all_lines.filter(eligible=True)

@@ -55,7 +55,7 @@ class EventCalculationForm(forms.ModelForm):
             "event_days": "Veranstaltungstage (Tage)",
             "education_hours": "Bildungs-/QS-Stunden (Stunden)",
             "other_subsidies": "Weitere Zuschüsse (EUR)",
-            "participant_fee": "Teilnehmerbeitrag förderfähige Person (EUR)",
+            "participant_fee": "Teilnehmerbeitrag (EUR)",
             "documents_received_at": "Unterlagen eingereicht am",
             "actual_eligible_costs_override": "Förderfähige Ist-Kosten manuell (EUR)",
         }
