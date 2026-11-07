@@ -28,6 +28,7 @@ class MeetingMinutesForm(forms.ModelForm):
 
 
 class MeetingMinutesItemForm(forms.ModelForm):
+    client_id = forms.UUIDField(required=False, widget=forms.HiddenInput())
     parent_reference = forms.CharField(required=False, widget=forms.HiddenInput())
 
     class Meta:
@@ -53,6 +54,8 @@ class MeetingMinutesItemForm(forms.ModelForm):
         self.fields["responsible_members"].widget.attrs.update({"class": "form-select select2-responsible"})
         self.fields["parent"].required = False
         self.fields["parent"].queryset = minutes.items.exclude(pk=self.instance.pk) if minutes else MeetingMinutesItem.objects.none()
+        if self.instance.pk:
+            self.fields["client_id"].initial = self.instance.client_id
 
     def clean_parent(self):
         parent = self.cleaned_data.get("parent")
@@ -74,6 +77,19 @@ class MeetingMinutesItemForm(forms.ModelForm):
         return data
 
 
+class MeetingGuestForm(forms.ModelForm):
+    client_id = forms.UUIDField(required=False, widget=forms.HiddenInput())
+
+    class Meta:
+        model = MeetingGuest
+        fields = ["name", "note"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields["client_id"].initial = self.instance.client_id
+
+
 MeetingMinutesItemFormSet = inlineformset_factory(
     MeetingMinutes,
     MeetingMinutesItem,
@@ -84,7 +100,7 @@ MeetingMinutesItemFormSet = inlineformset_factory(
 MeetingGuestFormSet = inlineformset_factory(
     MeetingMinutes,
     MeetingGuest,
-    fields=["name", "note"],
+    form=MeetingGuestForm,
     extra=0,
     can_delete=True,
 )

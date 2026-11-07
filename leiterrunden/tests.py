@@ -100,6 +100,25 @@ class MeetingMinutesTests(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(list(minutes.items.order_by("position").values_list("topic", flat=True)), ["Sommerlager", "Neuer TOP 2", "Neuer TOP 3"])
 
+    def test_autosave_uses_client_id_when_database_id_is_missing(self):
+        self.client.login(username="leitung", password="pw")
+        self.client.post(reverse("meeting_minutes_autosave_create"), self._post_data())
+        minutes = MeetingMinutes.objects.get()
+        item = minutes.items.get()
+        data = self._post_data()
+        data["items-INITIAL_FORMS"] = "0"
+        data["items-0-id"] = ""
+        data["items-0-client_id"] = str(item.client_id)
+        data["items-0-notes"] = "Über UUID aktualisiert"
+
+        response = self.client.post(reverse("meeting_minutes_autosave_edit", args=[minutes.pk]), data)
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(minutes.items.count(), 1)
+        item.refresh_from_db()
+        self.assertEqual(item.notes, "Über UUID aktualisiert")
+        self.assertEqual(response.json()["item_client_ids"][str(item.client_id)], item.pk)
+
     def test_autosave_returns_field_errors_for_invalid_draft(self):
         self.client.login(username="leitung", password="pw")
         data = self._post_data()
@@ -172,6 +191,8 @@ class MeetingMinutesTests(TestCase):
         self.assertContains(response, "field.disabled=true")
         self.assertContains(response, "function compactGuestForms()")
         self.assertContains(response, "const guestCards=compactGuestForms()")
+        self.assertContains(response, 'id="deleted-guest-forms"')
+        self.assertContains(response, "document.getElementById('deleted-guest-forms').appendChild(card)")
         self.assertContains(response, "function compactTopForms()")
         self.assertContains(response, "const topCards=compactTopForms()")
         self.assertContains(response, "function ownTopFields(card,selector)")
@@ -179,6 +200,11 @@ class MeetingMinutesTests(TestCase):
         self.assertContains(response, "top-topic-summary")
         self.assertContains(response, 'id="autosave-error"')
         self.assertContains(response, "window.location.replace(result.edit_url)")
+        self.assertContains(response, "function ensureTopClientId(card)")
+        self.assertContains(response, "function ensureGuestClientId(card)")
+        self.assertContains(response, "crypto.randomUUID()")
+        self.assertContains(response, "result.item_client_ids")
+        self.assertContains(response, "result.guest_client_ids")
 
     def test_draft_can_be_saved_after_initial_autosave_without_duplicate_items(self):
         self.client.login(username="leitung", password="pw")
@@ -226,6 +252,124 @@ class MeetingMinutesTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(list(minutes.guests.values_list("name", flat=True)), ["Alex"])
+
+    def test_autosave_uses_guest_client_id_when_database_id_is_missing(self):
+        self.client.login(username="leitung", password="pw")
+        data = self._post_data()
+        data["guests-0-name"] = "Alex"
+        self.client.post(reverse("meeting_minutes_autosave_create"), data)
+        minutes = MeetingMinutes.objects.get()
+        guest = minutes.guests.get()
+        data["items-INITIAL_FORMS"] = "1"
+        data["items-0-id"] = str(minutes.items.get().pk)
+        data["guests-INITIAL_FORMS"] = "0"
+        data["guests-0-id"] = ""
+        data["guests-0-client_id"] = str(guest.client_id)
+        data["guests-0-note"] = "Über UUID aktualisiert"
+
+        response = self.client.post(reverse("meeting_minutes_autosave_edit", args=[minutes.pk]), data)
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(minutes.guests.count(), 1)
+        guest.refresh_from_db()
+        self.assertEqual(guest.note, "Über UUID aktualisiert")
+        self.assertEqual(response.json()["guest_client_ids"][str(guest.client_id)], guest.pk)
+
+    def test_guest_delete_add_autosave_and_draft_save_does_not_duplicate(self):
+        self.client.login(username="leitung", password="pw")
+        data = self._post_data()
+        data["guests-0-name"] = "Alter Gast"
+        self.client.post(reverse("meeting_minutes_create"), data)
+        minutes = MeetingMinutes.objects.get()
+        old_guest = minutes.guests.get()
+        item = minutes.items.get()
+        new_client_id = "6abf69be-75aa-493a-9a29-bd68e70bfba8"
+        data.update({
+            "items-INITIAL_FORMS": "1",
+            "items-0-id": str(item.pk),
+            "items-0-client_id": str(item.client_id),
+            "guests-TOTAL_FORMS": "2",
+            "guests-INITIAL_FORMS": "1",
+            "guests-0-id": str(old_guest.pk),
+            "guests-0-client_id": str(old_guest.client_id),
+            "guests-0-DELETE": "on",
+            "guests-1-id": "",
+            "guests-1-client_id": new_client_id,
+            "guests-1-name": "Neuer Gast",
+            "guests-1-note": "Neu hinzugefügt",
+        })
+
+        autosave = self.client.post(reverse("meeting_minutes_autosave_edit", args=[minutes.pk]), data)
+        new_guest_id = autosave.json()["guest_client_ids"][new_client_id]
+        self.assertEqual(list(minutes.guests.values_list("name", flat=True)), ["Neuer Gast"])
+
+        data = self._post_data()
+        data.update({
+            "items-INITIAL_FORMS": "1",
+            "items-0-id": str(item.pk),
+            "items-0-client_id": str(item.client_id),
+            "guests-TOTAL_FORMS": "1",
+            "guests-INITIAL_FORMS": "1",
+            "guests-0-id": str(new_guest_id),
+            "guests-0-client_id": new_client_id,
+            "guests-0-name": "Neuer Gast",
+            "guests-0-note": "Neu hinzugefügt",
+        })
+        response = self.client.post(reverse("meeting_minutes_edit", args=[minutes.pk]), data)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(list(minutes.guests.values_list("name", flat=True)), ["Neuer Gast"])
+
+    def test_autosave_removes_omitted_items_and_guests_without_delete_marker(self):
+        self.client.login(username="leitung", password="pw")
+        data = self._post_data()
+        data["guests-0-name"] = "Alter Gast"
+        self.client.post(reverse("meeting_minutes_create"), data)
+        minutes = MeetingMinutes.objects.get()
+        old_item = minutes.items.get()
+        old_guest = minutes.guests.get()
+        data = self._post_data()
+        data.update({
+            "items-0-topic": "Neuer TOP",
+            "items-0-client_id": "6abf69be-75aa-493a-9a29-bd68e70bfba8",
+            "guests-0-name": "Neuer Gast",
+            "guests-0-client_id": "94da0993-5ed0-4879-af25-25ab881b88bc",
+        })
+
+        response = self.client.post(reverse("meeting_minutes_autosave_edit", args=[minutes.pk]), data)
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertFalse(minutes.items.filter(pk=old_item.pk).exists())
+        self.assertFalse(minutes.guests.filter(pk=old_guest.pk).exists())
+        self.assertEqual(list(minutes.items.values_list("topic", flat=True)), ["Neuer TOP"])
+        self.assertEqual(list(minutes.guests.values_list("name", flat=True)), ["Neuer Gast"])
+
+    def test_guest_is_not_duplicated_by_manual_autosave_then_autosave_then_draft_save(self):
+        self.client.login(username="leitung", password="pw")
+        data = self._post_data()
+        data["guests-0-name"] = "Alex"
+        data["guests-0-client_id"] = "6abf69be-75aa-493a-9a29-bd68e70bfba8"
+
+        first_autosave = self.client.post(reverse("meeting_minutes_autosave_create"), data)
+        minutes = MeetingMinutes.objects.get()
+        guest_id = first_autosave.json()["guest_client_ids"][data["guests-0-client_id"]]
+        item_id = first_autosave.json()["item_ids"]["items-0"]
+        self.assertEqual(minutes.guests.count(), 1)
+
+        data["items-INITIAL_FORMS"] = "1"
+        data["items-0-id"] = str(item_id)
+        data["guests-INITIAL_FORMS"] = "1"
+        data["guests-0-id"] = str(guest_id)
+        data["guests-0-note"] = "Nach manuellem Autosave"
+        second_autosave = self.client.post(reverse("meeting_minutes_autosave_edit", args=[minutes.pk]), data)
+        self.assertEqual(second_autosave.status_code, 200, second_autosave.content)
+        self.assertEqual(minutes.guests.count(), 1)
+
+        response = self.client.post(reverse("meeting_minutes_edit", args=[minutes.pk]), data)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(minutes.guests.count(), 1)
+        self.assertEqual(minutes.guests.get().note, "Nach manuellem Autosave")
 
     def test_new_top_after_autosave_can_be_autosaved_and_saved_as_draft(self):
         self.client.login(username="leitung", password="pw")

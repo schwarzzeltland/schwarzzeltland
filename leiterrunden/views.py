@@ -54,7 +54,7 @@ def _notify_leiterrunde(request, minutes):
         )
     return len(recipients)
 
-def _normalize_formset_data(post_data):
+def _normalize_formset_data(post_data, minutes=None):
     data = post_data.copy()
     for prefix in ("items", "guests"):
         if f"{prefix}-TOTAL_FORMS" not in data or f"{prefix}-INITIAL_FORMS" not in data:
@@ -64,6 +64,14 @@ def _normalize_formset_data(post_data):
         for index in range(total):
             row_prefix = f"{prefix}-{index}-"
             fields = {key[len(row_prefix):]: values for key, values in data.lists() if key.startswith(row_prefix)}
+            if prefix == "items" and minutes and fields.get("client_id", [""])[-1] and not fields.get("id", [""])[-1]:
+                existing_id = minutes.items.filter(client_id=fields["client_id"][-1]).values_list("id", flat=True).first()
+                if existing_id:
+                    fields["id"] = [str(existing_id)]
+            if prefix == "guests" and minutes and fields.get("client_id", [""])[-1] and not fields.get("id", [""])[-1]:
+                existing_id = minutes.guests.filter(client_id=fields["client_id"][-1]).values_list("id", flat=True).first()
+                if existing_id:
+                    fields["id"] = [str(existing_id)]
             if fields and not (not fields.get("id", [""])[-1] and fields.get("DELETE", [""])[-1]):
                 rows.append((index, fields))
         rows.sort(key=lambda row: not bool(row[1].get("id", [""])[-1]))
@@ -81,7 +89,7 @@ def _normalize_formset_data(post_data):
 
 
 def _form_data(request, minutes=None):
-    data = _normalize_formset_data(request.POST)
+    data = _normalize_formset_data(request.POST, minutes)
     voter_count = sum(
         request.POST.get(f"attendance_{membership_id}") == "on"
         for membership_id in request.org.membership_set.filter(leiterrundenmitglied=True).values_list("id", flat=True)
@@ -236,11 +244,20 @@ def _save_minutes(request, minutes=None, publish=False):
         saved.meeting_date = saved.meeting_start.date() if saved.meeting_start else timezone.localdate()
         if publish: saved.published, saved.published_at, saved.published_by = True, timezone.now(), request.user
         saved.save(); item_formset.instance = saved
+        for item_form in item_formset.forms:
+            if item_form.cleaned_data.get("client_id") and not item_form.cleaned_data.get("DELETE"):
+                item_form.instance.client_id = item_form.cleaned_data["client_id"]
         for index, item in enumerate(item_formset.save(commit=False), start=1):
             item.position = item.position or index
             item.save()
         for item in item_formset.deleted_objects: item.delete()
         item_formset.save_m2m()
+        retained_item_ids = [
+            item_form.instance.pk
+            for item_form in item_formset.forms
+            if item_form.instance.pk and not item_form.cleaned_data.get("DELETE")
+        ]
+        saved.items.exclude(pk__in=retained_item_ids).delete()
         items_by_prefix = {item_form.prefix: item_form.instance for item_form in item_formset.forms if item_form.instance.pk}
         for item_form in item_formset.forms:
             parent_reference = item_form.cleaned_data.get("parent_reference")
@@ -248,7 +265,17 @@ def _save_minutes(request, minutes=None, publish=False):
                 item = items_by_prefix[item_form.prefix]
                 item.parent = items_by_prefix[parent_reference]
                 item.save(update_fields=["parent"])
-        guest_formset.instance = saved; guest_formset.save()
+        guest_formset.instance = saved
+        for guest_form in guest_formset.forms:
+            if guest_form.cleaned_data.get("client_id") and not guest_form.cleaned_data.get("DELETE"):
+                guest_form.instance.client_id = guest_form.cleaned_data["client_id"]
+        guest_formset.save()
+        retained_guest_ids = [
+            guest_form.instance.pk
+            for guest_form in guest_formset.forms
+            if guest_form.instance.pk and not guest_form.cleaned_data.get("DELETE")
+        ]
+        saved.guests.exclude(pk__in=retained_guest_ids).delete()
         for member, _ in _attendance_rows(saved, request.org):
             MeetingAttendance.objects.update_or_create(minutes=saved, membership=member, defaults={"present": request.POST.get(f"attendance_{member.id}") == "on", "note": request.POST.get(f"attendance_note_{member.id}", "").strip()})
     return form, item_formset, guest_formset, saved
@@ -390,12 +417,22 @@ def meeting_minutes_autosave(request, pk=None):
         for item_form in items.forms
         if item_form.instance.pk and not item_form.cleaned_data.get("DELETE")
     }
+    item_client_ids = {
+        str(item_form.cleaned_data["client_id"]): item_form.instance.pk
+        for item_form in items.forms
+        if item_form.instance.pk and item_form.cleaned_data.get("client_id") and not item_form.cleaned_data.get("DELETE")
+    }
     guest_ids = {
         guest_form.prefix: guest_form.instance.pk
         for guest_form in guests.forms
         if guest_form.instance.pk and not guest_form.cleaned_data.get("DELETE")
     }
-    return JsonResponse({"ok": True, "pk": saved.pk, "detail_url": reverse("meeting_minutes_detail", args=[saved.pk]), "edit_url": reverse("meeting_minutes_edit", args=[saved.pk]), "autosave_url": reverse("meeting_minutes_autosave_edit", args=[saved.pk]), "saved_at": timezone.localtime().strftime("%H:%M"), "item_ids": item_ids, "guest_ids": guest_ids})
+    guest_client_ids = {
+        str(guest_form.cleaned_data["client_id"]): guest_form.instance.pk
+        for guest_form in guests.forms
+        if guest_form.instance.pk and guest_form.cleaned_data.get("client_id") and not guest_form.cleaned_data.get("DELETE")
+    }
+    return JsonResponse({"ok": True, "pk": saved.pk, "detail_url": reverse("meeting_minutes_detail", args=[saved.pk]), "edit_url": reverse("meeting_minutes_edit", args=[saved.pk]), "autosave_url": reverse("meeting_minutes_autosave_edit", args=[saved.pk]), "saved_at": timezone.localtime().strftime("%H:%M"), "item_ids": item_ids, "item_client_ids": item_client_ids, "guest_ids": guest_ids, "guest_client_ids": guest_client_ids})
 
 
 @login_required

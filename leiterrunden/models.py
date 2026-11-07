@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+import uuid
 
 
 class MeetingMinutes(models.Model):
@@ -67,6 +68,7 @@ class MeetingMinutes(models.Model):
 
 
 class MeetingMinutesItem(models.Model):
+    client_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     minutes = models.ForeignKey(MeetingMinutes, on_delete=models.CASCADE, related_name="items")
     copied_from = models.ForeignKey(
         "self",
@@ -111,6 +113,7 @@ class MeetingAttendance(models.Model):
 
 
 class MeetingGuest(models.Model):
+    client_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     minutes = models.ForeignKey(MeetingMinutes, on_delete=models.CASCADE, related_name="guests")
     name = models.CharField(max_length=255, verbose_name="Name")
     note = models.CharField(max_length=500, blank=True, verbose_name="Notiz")
