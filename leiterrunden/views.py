@@ -1,4 +1,5 @@
 import io
+import re
 from datetime import date
 from django.conf import settings
 from django.contrib import messages
@@ -51,19 +52,46 @@ def _notify_leiterrunde(request, minutes):
         )
     return len(recipients)
 
+def _normalize_formset_data(post_data):
+    data = post_data.copy()
+    for prefix in ("items", "guests"):
+        if f"{prefix}-TOTAL_FORMS" not in data or f"{prefix}-INITIAL_FORMS" not in data:
+            continue
+        total = int(data.get(f"{prefix}-TOTAL_FORMS", 0) or 0)
+        rows = []
+        for index in range(total):
+            row_prefix = f"{prefix}-{index}-"
+            fields = {key[len(row_prefix):]: values for key, values in data.lists() if key.startswith(row_prefix)}
+            if fields and not (not fields.get("id", [""])[-1] and fields.get("DELETE", [""])[-1]):
+                rows.append((index, fields))
+        rows.sort(key=lambda row: not bool(row[1].get("id", [""])[-1]))
+        prefix_map = {f"{prefix}-{old_index}": f"{prefix}-{new_index}" for new_index, (old_index, _) in enumerate(rows)}
+        for key in [key for key in data if re.match(rf"^{prefix}-\d+-", key)]:
+            del data[key]
+        for new_index, (_, fields) in enumerate(rows):
+            for field, values in fields.items():
+                if field == "parent_reference":
+                    values = [prefix_map.get(value, value) for value in values]
+                data.setlist(f"{prefix}-{new_index}-{field}", values)
+        data[f"{prefix}-TOTAL_FORMS"] = len(rows)
+        data[f"{prefix}-INITIAL_FORMS"] = sum(bool(fields.get("id", [""])[-1]) for _, fields in rows)
+    return data
+
+
 def _form_data(request, minutes=None):
+    data = _normalize_formset_data(request.POST)
     voter_count = sum(
         request.POST.get(f"attendance_{membership_id}") == "on"
         for membership_id in request.org.membership_set.filter(leiterrundenmitglied=True).values_list("id", flat=True)
     )
     return (
-        MeetingMinutesForm(request.POST, instance=minutes),
+        MeetingMinutesForm(data, instance=minutes),
         MeetingMinutesItemFormSet(
-            request.POST,
+            data,
             instance=minutes,
             form_kwargs={"organization": request.org, "voter_count": voter_count},
         ),
-        MeetingGuestFormSet(request.POST, instance=minutes),
+        MeetingGuestFormSet(data, instance=minutes),
     )
 
 def _attendance_rows(minutes, organization):
@@ -332,7 +360,29 @@ def meeting_minutes_autosave(request, pk=None):
     minutes = get_object_or_404(MeetingMinutes, pk=pk, organization=request.org, published=False) if pk else None
     form, items, guests, saved = _save_minutes(request, minutes, publish=False)
     if not saved:
-        return JsonResponse({"ok": False, "message": "Noch nicht speicherbare oder unvollständige Eingaben."}, status=422)
+        errors = {}
+        for field, field_errors in form.errors.get_json_data().items():
+            label = form.fields[field].label if field in form.fields else "Protokoll"
+            errors[form.add_prefix(field)] = [f"{label}: {error['message']}" for error in field_errors]
+        for formset in (items, guests):
+            formset_name = formset.prefix
+            management_errors = formset.management_form.errors.get_json_data()
+            for field, field_errors in management_errors.items():
+                errors[f"{formset_name}-{field}"] = [f"Interne Formularverwaltung: {error['message']}" for error in field_errors]
+            non_form_errors = formset.non_form_errors().get_json_data()
+            if non_form_errors:
+                errors[f"{formset_name}-__all__"] = [f"{formset_name}: {error['message']}" for error in non_form_errors]
+            for index, child_form in enumerate(formset.forms, start=1):
+                if child_form.cleaned_data.get("DELETE"):
+                    continue
+                for field, field_errors in child_form.errors.get_json_data().items():
+                    label = (child_form.fields[field].label or field.replace("_", " ").title()) if field in child_form.fields else "Formular"
+                    if field == "id":
+                        label = "Interne Zuordnung"
+                    section = "TOP" if formset_name == "items" else "Gast"
+                    errors[child_form.add_prefix(field)] = [f"{section} {index} – {label}: {error['message']}" for error in field_errors]
+        message = next((message for messages in errors.values() for message in messages), "Noch nicht speicherbare oder unvollständige Eingaben.")
+        return JsonResponse({"ok": False, "message": message, "errors": errors}, status=422)
     item_ids = {
         item_form.prefix: item_form.instance.pk
         for item_form in items.forms

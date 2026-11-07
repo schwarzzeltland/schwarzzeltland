@@ -52,6 +52,107 @@ class MeetingMinutesTests(TestCase):
         self.assertEqual(minutes.title, "Automatisch aktualisiert")
         self.assertEqual(minutes.items.count(), 1)
 
+    def test_existing_top_notes_can_be_changed_by_repeated_autosaves(self):
+        self.client.login(username="leitung", password="pw")
+        first_response = self.client.post(reverse("meeting_minutes_autosave_create"), self._post_data())
+        minutes = MeetingMinutes.objects.get()
+        item = minutes.items.get()
+        data = self._post_data()
+        data["items-INITIAL_FORMS"] = "1"
+        data["items-0-id"] = str(first_response.json()["item_ids"]["items-0"])
+
+        for notes in ("Beschluss geändert", "Beschluss erneut geändert"):
+            data["items-0-notes"] = notes
+            response = self.client.post(reverse("meeting_minutes_autosave_edit", args=[minutes.pk]), data)
+            self.assertEqual(response.status_code, 200, response.content)
+
+        item.refresh_from_db()
+        self.assertEqual(item.notes, "Beschluss erneut geändert")
+
+    def test_autosave_repairs_initial_forms_without_ids(self):
+        self.client.login(username="leitung", password="pw")
+        first_response = self.client.post(reverse("meeting_minutes_autosave_create"), self._post_data())
+        minutes = MeetingMinutes.objects.get()
+        data = self._post_data()
+        data.update({
+            "items-TOTAL_FORMS": "3",
+            "items-INITIAL_FORMS": "3",
+            "items-0-id": str(first_response.json()["item_ids"]["items-0"]),
+            "items-1-id": "",
+            "items-1-parent": "",
+            "items-1-topic": "Neuer TOP 2",
+            "items-1-notes": "",
+            "items-1-due_date": "",
+            "items-1-position": "2",
+            "items-2-id": "",
+            "items-2-parent": "",
+            "items-2-topic": "Neuer TOP 3",
+            "items-2-notes": "",
+            "items-2-due_date": "",
+            "items-2-position": "3",
+        })
+
+        response = self.client.post(reverse("meeting_minutes_autosave_edit", args=[minutes.pk]), data)
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(list(minutes.items.order_by("position").values_list("topic", flat=True)), ["Sommerlager", "Neuer TOP 2", "Neuer TOP 3"])
+
+    def test_autosave_returns_field_errors_for_invalid_draft(self):
+        self.client.login(username="leitung", password="pw")
+        data = self._post_data()
+        data["items-0-topic"] = ""
+
+        response = self.client.post(reverse("meeting_minutes_autosave_create"), data)
+
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("items-0-topic", response.json()["errors"])
+        self.assertIn("TOP 1 – Tagesordnungspunkt", response.json()["errors"]["items-0-topic"][0])
+        self.assertFalse(MeetingMinutes.objects.exists())
+
+    def test_autosave_returns_hidden_formset_management_errors(self):
+        self.client.login(username="leitung", password="pw")
+        data = self._post_data()
+        del data["items-TOTAL_FORMS"]
+
+        response = self.client.post(reverse("meeting_minutes_autosave_create"), data)
+
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("items-TOTAL_FORMS", response.json()["errors"])
+        self.assertFalse(MeetingMinutes.objects.exists())
+
+    def test_first_autosave_ignores_new_top_deleted_before_another_is_added(self):
+        self.client.login(username="leitung", password="pw")
+        data = self._post_data()
+        data.update({
+            "items-TOTAL_FORMS": "2",
+            "items-0-topic": "",
+            "items-0-DELETE": "on",
+            "items-1-parent": "",
+            "items-1-topic": "Neuer TOP",
+            "items-1-notes": "",
+            "items-1-due_date": "",
+            "items-1-position": "1",
+        })
+
+        response = self.client.post(reverse("meeting_minutes_autosave_create"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(MeetingMinutesItem.objects.get().topic, "Neuer TOP")
+
+    def test_autosave_does_not_report_errors_from_deleted_unsaved_forms(self):
+        self.client.login(username="leitung", password="pw")
+        data = self._post_data()
+        data["title"] = ""
+        data["items-0-topic"] = ""
+        data["items-0-DELETE"] = "on"
+        data["guests-0-name"] = ""
+        data["guests-0-DELETE"] = "on"
+
+        response = self.client.post(reverse("meeting_minutes_autosave_create"), data)
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(set(response.json()["errors"]), {"title"})
+
     def test_autosave_updates_new_item_ids_in_open_form(self):
         self.client.login(username="leitung", password="pw")
 
@@ -70,6 +171,9 @@ class MeetingMinutesTests(TestCase):
         self.assertContains(response, "const guestCards=compactGuestForms()")
         self.assertContains(response, "function compactTopForms()")
         self.assertContains(response, "const topCards=compactTopForms()")
+        self.assertContains(response, "function ownTopFields(card,selector)")
+        self.assertContains(response, 'id="autosave-error"')
+        self.assertContains(response, "window.location.replace(result.edit_url)")
 
     def test_draft_can_be_saved_after_initial_autosave_without_duplicate_items(self):
         self.client.login(username="leitung", password="pw")
