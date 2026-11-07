@@ -1,3 +1,6 @@
+import io
+import zipfile
+
 from django.contrib.auth.models import User
 from django.core import mail
 from django.test import TestCase
@@ -172,6 +175,8 @@ class MeetingMinutesTests(TestCase):
         self.assertContains(response, "function compactTopForms()")
         self.assertContains(response, "const topCards=compactTopForms()")
         self.assertContains(response, "function ownTopFields(card,selector)")
+        self.assertContains(response, "function refreshTopTopicSummary(card)")
+        self.assertContains(response, "top-topic-summary")
         self.assertContains(response, 'id="autosave-error"')
         self.assertContains(response, "window.location.replace(result.edit_url)")
 
@@ -343,6 +348,14 @@ class MeetingMinutesTests(TestCase):
         pdf_html = render_to_string("leiterrunden/meeting_minutes_pdf.html", {"minutes": minutes, "minutes_tree": detail.context["minutes_tree"], "acceptance_rows": []})
         self.assertIn("Abstimmung:", pdf_html)
         self.assertIn("1 Ja", pdf_html)
+        self.assertIn("Inhaltsverzeichnis", pdf_html)
+        self.assertIn(f'href="#top-{minutes.items.get().pk}"', pdf_html)
+        self.assertIn(f'id="top-{minutes.items.get().pk}"', pdf_html)
+        self.assertIn('<div class="section page-break"><h2>Inhaltsverzeichnis</h2>', pdf_html)
+        self.assertIn('<div class="section page-break"><h2>Tagesordnung</h2>', pdf_html)
+        self.assertIn('<div class="section page-break"><h2>Annahme des Protokolls</h2>', pdf_html)
+        self.assertLess(pdf_html.index("<h2>Notizen</h2>"), pdf_html.index("<h2>Inhaltsverzeichnis</h2>"))
+        self.assertLess(pdf_html.index("Inhaltsverzeichnis"), pdf_html.index("Tagesordnung"))
 
     def test_detail_and_pdf_show_absent_members(self):
         absent_user = User.objects.create_user(username="abwesend", password="pw")
@@ -533,6 +546,39 @@ class MeetingMinutesTests(TestCase):
         self.assertIn("Protokoll prüfen und annehmen", mail.outbox[0].alternatives[0][0])
         self.assertEqual(self.client.get(reverse("meeting_minutes_edit", args=[minutes.pk])).status_code, 302)
         pdf = self.client.get(reverse("meeting_minutes_pdf", args=[minutes.pk])); self.assertEqual(pdf.status_code, 200); self.assertEqual(pdf["Content-Type"], "application/pdf"); self.assertEqual(pdf["Content-Disposition"], 'attachment; filename="juli-sitzung.pdf"')
+        self.assertEqual(self.client.get(reverse("meeting_minutes_docx", args=[minutes.pk])).status_code, 404)
+        self.assertNotContains(self.client.get(reverse("meeting_minutes_detail", args=[minutes.pk])), "Textdatei exportieren")
+
+    def test_draft_can_be_exported_as_word_document(self):
+        self.client.login(username="leitung", password="pw")
+        self.client.post(reverse("meeting_minutes_create"), self._post_data())
+        minutes = MeetingMinutes.objects.get()
+        parent = minutes.items.get()
+        child = MeetingMinutesItem.objects.create(minutes=minutes, parent=parent, topic="Unterpunkt", notes="Eingerückte Notiz", position=2)
+
+        detail = self.client.get(reverse("meeting_minutes_detail", args=[minutes.pk]))
+        response = self.client.get(reverse("meeting_minutes_docx", args=[minutes.pk]))
+
+        self.assertContains(detail, "Textdatei exportieren")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        self.assertEqual(response["Content-Disposition"], 'attachment; filename="juli-sitzung-entwurf.docx"')
+        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+            document_xml = archive.read("word/document.xml").decode()
+        self.assertIn("Juli-Sitzung", document_xml)
+        self.assertIn("Entwurf", document_xml)
+        self.assertIn("TOP 1 Sommerlager", document_xml)
+        self.assertIn("TOP 1.1 Unterpunkt", document_xml)
+        self.assertIn(f'w:anchor="top_{parent.pk}"', document_xml)
+        self.assertIn(f'w:anchor="top_{child.pk}"', document_xml)
+        self.assertIn(f'w:name="top_{child.pk}"', document_xml)
+        self.assertIn('<w:ind w:left="480"/>', document_xml)
+        self.assertEqual(document_xml.count('<w:br w:type="page"/>'), 2)
+        self.assertLess(document_xml.index("Einleitung und allgemeine Notizen"), document_xml.index("Inhaltsverzeichnis"))
+        self.assertLess(document_xml.index("Anwesenheit"), document_xml.index("Inhaltsverzeichnis"))
+        self.assertLess(document_xml.index("Abwesend"), document_xml.index("Inhaltsverzeichnis"))
+        self.assertLess(document_xml.index("Gäste"), document_xml.index("Inhaltsverzeichnis"))
+        self.assertLess(document_xml.index("Inhaltsverzeichnis"), document_xml.index("Tagesordnung"))
 
     def test_acceptance_requires_majority_and_all_responsible_members(self):
         memberships = [self.membership]

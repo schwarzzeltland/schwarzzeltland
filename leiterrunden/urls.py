@@ -15,4 +15,5 @@ urlpatterns = [
     path("leiterrunden/protokolle/<int:pk>/annehmen/", views.meeting_minutes_accept, name="meeting_minutes_accept"),
     path("leiterrunden/protokolle/<int:pk>/loeschen/", views.meeting_minutes_delete, name="meeting_minutes_delete"),
     path("leiterrunden/protokolle/<int:pk>/export/pdf/", views.meeting_minutes_pdf, name="meeting_minutes_pdf"),
+    path("leiterrunden/protokolle/<int:pk>/export/word/", views.meeting_minutes_docx, name="meeting_minutes_docx"),
 ]

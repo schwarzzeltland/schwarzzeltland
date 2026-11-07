@@ -1,0 +1,6 @@
+{% for item in items %}
+    <div class="toc-item"><a href="#top-{{ item.pk }}">TOP {{ item.display_number }} {{ item.topic }}</a></div>
+    {% if item.tree_children %}
+        <div class="toc-children">{% include "leiterrunden/includes/pdf_toc.html" with items=item.tree_children %}</div>
+    {% endif %}
+{% endfor %}

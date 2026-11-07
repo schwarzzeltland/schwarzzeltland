@@ -1,6 +1,8 @@
 import io
 import re
+import zipfile
 from datetime import date
+from xml.sax.saxutils import escape
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -466,6 +468,118 @@ def meeting_minutes_delete(request, pk):
     if minutes.published: messages.error(request, "Veröffentlichte Protokolle sind gesperrt."); return redirect("meeting_minutes_detail", pk=minutes.pk)
     if request.method == "POST": minutes.delete(); messages.success(request, "Entwurf gelöscht."); return redirect("meeting_minutes_list")
     return render(request, "leiterrunden/meeting_minutes_delete.html", {"title": "Protokoll löschen", "minutes": minutes})
+
+
+def _build_minutes_docx(minutes):
+    paragraphs = []
+    minutes_tree = _minutes_tree(minutes)
+
+    def add_paragraph(text="", style=None, bold=False, indent=0, bookmark=None):
+        properties = []
+        if style:
+            properties.append(f'<w:pStyle w:val="{style}"/>')
+        if indent:
+            properties.append(f'<w:ind w:left="{indent}"/>')
+        style_xml = f'<w:pPr>{"".join(properties)}</w:pPr>' if properties else ""
+        bold_xml = "<w:rPr><w:b/></w:rPr>" if bold else ""
+        bookmark_start = f'<w:bookmarkStart w:id="{bookmark}" w:name="top_{bookmark}"/>' if bookmark is not None else ""
+        bookmark_end = f'<w:bookmarkEnd w:id="{bookmark}"/>' if bookmark is not None else ""
+        paragraphs.append(f'<w:p>{style_xml}{bookmark_start}<w:r>{bold_xml}<w:t xml:space="preserve">{escape(str(text))}</w:t></w:r>{bookmark_end}</w:p>')
+
+    def add_toc_entry(item, level):
+        text = escape(f"TOP {item.display_number} {item.topic}")
+        paragraphs.append(f'<w:p><w:pPr><w:ind w:left="{level * 480}"/></w:pPr><w:hyperlink w:anchor="top_{item.pk}" w:history="1"><w:r><w:rPr><w:color w:val="1D4ED8"/><w:u w:val="single"/></w:rPr><w:t>{text}</w:t></w:r></w:hyperlink></w:p>')
+        for child in item.tree_children:
+            add_toc_entry(child, level + 1)
+
+    add_paragraph(minutes.title, "Title")
+    add_paragraph("Entwurf", "Subtitle")
+    add_paragraph(f"{minutes.meeting_start:%d.%m.%Y %H:%M} - {minutes.meeting_end:%d.%m.%Y %H:%M}")
+    if minutes.introduction:
+        add_paragraph("Einleitung und allgemeine Notizen", "Heading1")
+        for line in minutes.introduction.splitlines() or [""]:
+            add_paragraph(line)
+    add_paragraph("Anwesenheit", "Heading1")
+    present = [attendance for attendance in minutes.attendances.all() if attendance.present]
+    for attendance in present:
+        suffix = f" - {attendance.note}" if attendance.note else ""
+        add_paragraph(f"{attendance.membership.user.username}{suffix}", "ListBullet")
+    if not present:
+        add_paragraph("Keine")
+    add_paragraph("Abwesend", "Heading1")
+    absent = [attendance for attendance in minutes.attendances.all() if not attendance.present]
+    for attendance in absent:
+        suffix = f" - {attendance.note}" if attendance.note else ""
+        add_paragraph(f"{attendance.membership.user.username}{suffix}", "ListBullet")
+    if not absent:
+        add_paragraph("Keine")
+    add_paragraph("Gäste", "Heading1")
+    guests = list(minutes.guests.all())
+    for guest in guests:
+        suffix = f" - {guest.note}" if guest.note else ""
+        add_paragraph(f"{guest.name}{suffix}", "ListBullet")
+    if not guests:
+        add_paragraph("Keine")
+    paragraphs.append('<w:p><w:r><w:br w:type="page"/></w:r></w:p>')
+    add_paragraph("Inhaltsverzeichnis", "Heading1")
+    for item in minutes_tree:
+        add_toc_entry(item, 0)
+    paragraphs.append('<w:p><w:r><w:br w:type="page"/></w:r></w:p>')
+    add_paragraph("Tagesordnung", "Heading1")
+
+    def add_items(items, level=0):
+        for item in items:
+            add_paragraph(f"TOP {item.display_number} {item.topic}", "Heading2" if level == 0 else "Heading3", indent=level * 480, bookmark=item.pk)
+            for line in item.notes.splitlines() or ([""] if item.notes else []):
+                add_paragraph(line, indent=level * 480)
+            responsible = ", ".join(member.user.username for member in item.responsible_members.all())
+            if responsible:
+                add_paragraph(f"Verantwortlich: {responsible}", bold=True, indent=level * 480)
+            if item.due_date:
+                add_paragraph(f"Fällig am: {item.due_date:%d.%m.%Y}", bold=True, indent=level * 480)
+            if item.voting_enabled:
+                add_paragraph(f"Abstimmung: {item.votes_yes} Ja, {item.votes_no} Nein, {item.votes_abstain} Enthaltungen", bold=True, indent=level * 480)
+            add_items(item.tree_children, level + 1)
+
+    add_items(minutes_tree)
+    document_xml = f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{''.join(paragraphs)}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr></w:body></w:document>'''
+    styles_xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="22"/></w:rPr><w:pPr><w:spacing w:after="120"/></w:pPr></w:style>
+<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:color w:val="000000"/><w:sz w:val="36"/></w:rPr><w:pPr><w:spacing w:after="160"/></w:pPr></w:style>
+<w:style w:type="paragraph" w:styleId="Subtitle"><w:name w:val="Subtitle"/><w:basedOn w:val="Normal"/><w:rPr><w:i/><w:color w:val="666666"/><w:sz w:val="24"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:color w:val="000000"/><w:sz w:val="28"/></w:rPr><w:pPr><w:spacing w:before="260" w:after="100"/><w:keepNext/></w:pPr></w:style>
+<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:color w:val="000000"/><w:sz w:val="24"/></w:rPr><w:pPr><w:spacing w:before="200" w:after="80"/><w:keepNext/></w:pPr></w:style>
+<w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:color w:val="000000"/><w:sz w:val="22"/></w:rPr><w:pPr><w:left w:val="360"/><w:spacing w:before="160" w:after="60"/><w:keepNext/></w:pPr></w:style>
+<w:style w:type="paragraph" w:styleId="ListBullet"><w:name w:val="List Bullet"/><w:basedOn w:val="Normal"/><w:pPr><w:ind w:left="360" w:hanging="240"/></w:pPr></w:style>
+</w:styles>'''
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>''')
+        archive.writestr("_rels/.rels", '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>''')
+        archive.writestr("word/_rels/document.xml.rels", '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>''')
+        archive.writestr("word/document.xml", document_xml)
+        archive.writestr("word/styles.xml", styles_xml)
+    return buffer.getvalue()
+
+
+@login_required
+@leiterrundenmitglied_required
+@pro6_required
+def meeting_minutes_docx(request, pk):
+    minutes = get_object_or_404(
+        MeetingMinutes.objects.prefetch_related("items__responsible_members__user", "attendances__membership__user", "guests"),
+        pk=pk,
+        organization=request.org,
+        published=False,
+    )
+    response = HttpResponse(
+        _build_minutes_docx(minutes),
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{slugify(minutes.title) or "protokoll"}-entwurf.docx"'
+    return response
 
 @login_required
 @leiterrundenmitglied_required

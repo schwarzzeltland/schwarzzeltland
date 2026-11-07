@@ -1,5 +1,5 @@
 {% for item in items %}
-<div class="top">
+<div class="top" id="top-{{ item.pk }}">
   {% if item.change_labels %}<div class="top-change"><strong>Änderung</strong>{% for change in item.change_labels %}<div>{{ change }}</div>{% endfor %}</div>{% endif %}
   <span class="number">TOP {{ item.display_number }}</span> <strong>{{ item.topic }}</strong>
   <div class="notes">{{ item.notes|default:"" }}</div>
