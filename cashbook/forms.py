@@ -2,7 +2,7 @@ from django import forms
 from decimal import Decimal
 
 from events.models import Trip
-from cashbook.models import AdvanceBudget, CashBook, CashBookEntry, CashBookReceiptRequest, EventExpense, ReimbursementRequest
+from cashbook.models import AdvanceBudget, CashBook, CashBookEntry, CashBookReceiptRequest, EventExpense, EventIncome, ReimbursementRequest
 from main.models import Membership
 
 
@@ -241,6 +241,31 @@ class EventExpenseForm(forms.ModelForm):
             return source_type, int(source_id)
         except ValueError:
             raise forms.ValidationError("Ungültige Zahlungsquelle.")
+
+    def clean_amount(self):
+        amount = self.cleaned_data["amount"]
+        if amount <= 0:
+            raise forms.ValidationError("Der Betrag muss größer als 0 sein.")
+        return amount
+
+
+class EventIncomeForm(forms.ModelForm):
+    class Meta:
+        model = EventIncome
+        fields = ["advance_budget", "income_date", "amount", "title", "category", "counterparty", "reference", "description"]
+        widgets = {
+            "income_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        trip = kwargs.pop("trip")
+        user = kwargs.pop("user")
+        super().__init__(*args, **kwargs)
+        self.fields["income_date"].input_formats = ["%Y-%m-%d"]
+        self.fields["advance_budget"].queryset = AdvanceBudget.objects.filter(
+            trip=trip, settled_at__isnull=True, assigned_to__user=user
+        ).select_related("cashbook")
 
     def clean_amount(self):
         amount = self.cleaned_data["amount"]

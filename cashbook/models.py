@@ -193,8 +193,37 @@ class AdvanceBudget(models.Model):
         return sum(expense.amount for expense in self.expenses.exclude(status=EventExpense.STATUS_REJECTED))
 
     @property
+    def income_amount(self):
+        return sum(income.amount for income in self.incomes.all())
+
+    @property
     def remaining_amount(self):
-        return self.amount - self.spent_amount
+        return self.amount + self.income_amount - self.spent_amount
+
+
+class EventIncome(models.Model):
+    trip = models.ForeignKey("events.Trip", on_delete=models.CASCADE, related_name="event_incomes", verbose_name="Veranstaltung")
+    advance_budget = models.ForeignKey(AdvanceBudget, on_delete=models.PROTECT, related_name="incomes", verbose_name="Vorschussbudget")
+    income_date = models.DateField(verbose_name="Einnahmedatum")
+    amount = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Betrag")
+    title = models.CharField(max_length=255, verbose_name="Titel")
+    category = models.CharField(max_length=255, blank=True, verbose_name="Kategorie")
+    counterparty = models.CharField(max_length=255, blank=True, verbose_name="Zahlung von")
+    reference = models.CharField(max_length=255, blank=True, verbose_name="Referenz")
+    description = models.TextField(blank=True, verbose_name="Beschreibung")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="event_incomes", verbose_name="Erstellt von")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-income_date", "-id"]
+
+    def __str__(self):
+        return f"{self.title} – {self.amount}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.advance_budget_id and self.trip_id and self.advance_budget.trip_id != self.trip_id:
+            raise ValidationError("Das Vorschussbudget gehört nicht zu dieser Veranstaltung.")
 
 
 class EventExpense(models.Model):

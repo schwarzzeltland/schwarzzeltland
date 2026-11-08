@@ -12,7 +12,7 @@
         .meta, .summary { width: 100%; margin-bottom: 7mm; border-collapse: collapse; }
         .meta td { padding: 1.2mm 0; vertical-align: top; }
         .meta td:first-child { width: 34%; color: #667085; }
-        .summary td { width: 33.33%; padding: 3mm; border: 1px solid #d0d5dd; background: #f8fafc; }
+        .summary td { width: 25%; padding: 3mm; border: 1px solid #d0d5dd; background: #f8fafc; }
         .summary strong { display: block; margin-bottom: 1mm; color: #667085; font-size: 8pt; text-transform: uppercase; }
         .entries { width: 100%; max-width: 100%; border-collapse: collapse; table-layout: fixed; }
         .entries th { padding: 2.4mm 2mm; background: #243447; color: white; text-align: left; font-size: 8.5pt; }
@@ -33,19 +33,20 @@
     <table class="summary">
         <tr>
             <td><strong>Vorschuss</strong>{{ budget.amount }} {{ budget.cashbook.currency }}</td>
-            <td><strong>Ausgaben</strong>{{ total }} {{ budget.cashbook.currency }}</td>
+            <td><strong>Bareinnahmen</strong>+{{ income_total }} {{ budget.cashbook.currency }}</td>
+            <td><strong>Ausgaben</strong>−{{ expense_total }} {{ budget.cashbook.currency }}</td>
             <td><strong>Verbleibender Saldo</strong>{{ balance }} {{ budget.cashbook.currency }}</td>
         </tr>
     </table>
     <table class="entries">
         <colgroup><col style="width: 14%"><col style="width: 29%"><col style="width: 21%"><col style="width: 18%"><col style="width: 18%"></colgroup>
-        <thead><tr><th>Datum</th><th>Ausgabe</th><th>Zahlungspartner</th><th class="amount">Betrag</th><th class="amount">Saldo</th></tr></thead>
+        <thead><tr><th>Datum</th><th>Position</th><th>Zahlungspartner</th><th class="amount">Betrag</th><th class="amount">Saldo</th></tr></thead>
         <tbody>
-        {% for expense, running_balance in rows %}
-            <tr><td>{{ expense.expense_date|date:"d.m.Y" }}</td><td>{{ expense.title }}</td><td>{{ expense.counterparty|default:"-" }}</td><td class="amount">−{{ expense.amount }} {{ budget.cashbook.currency }}</td><td class="amount">{{ running_balance }} {{ budget.cashbook.currency }}</td></tr>
+        {% for item, item_type, running_balance in rows %}
+            <tr><td>{% if item_type == "income" %}{{ item.income_date|date:"d.m.Y" }}{% else %}{{ item.expense_date|date:"d.m.Y" }}{% endif %}</td><td>{{ item.title }}{% if item_type == "income" %} <small>(Bareinnahme)</small>{% endif %}</td><td>{{ item.counterparty|default:"-" }}</td><td class="amount">{% if item_type == "income" %}+{% else %}−{% endif %}{{ item.amount }} {{ budget.cashbook.currency }}</td><td class="amount">{{ running_balance }} {{ budget.cashbook.currency }}</td></tr>
         {% endfor %}
         </tbody>
-        <tfoot><tr><td colspan="3">Summe</td><td class="amount">−{{ total }} {{ budget.cashbook.currency }}</td><td class="amount">{{ balance }} {{ budget.cashbook.currency }}</td></tr></tfoot>
+        <tfoot><tr><td colspan="3">Endsaldo</td><td></td><td class="amount">{{ balance }} {{ budget.cashbook.currency }}</td></tr></tfoot>
     </table>
 </body>
 </html>

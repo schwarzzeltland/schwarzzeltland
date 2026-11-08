@@ -515,6 +515,25 @@ class MeetingMinutesTests(TestCase):
         self.assertIn("Abwesend", pdf_html)
         self.assertIn(absent_membership.user.username, pdf_html)
 
+    def test_pdf_shows_end_date_for_meeting_over_multiple_days(self):
+        self.client.login(username="leitung", password="pw")
+        data = self._post_data("publish")
+        data["meeting_end"] = "2026-07-23T01:30"
+        self.client.post(reverse("meeting_minutes_create"), data)
+        minutes = MeetingMinutes.objects.get()
+
+        detail = self.client.get(reverse("meeting_minutes_detail", args=[minutes.pk]))
+        pdf_html = render_to_string(
+            "leiterrunden/meeting_minutes_pdf.html",
+            {
+                "minutes": minutes,
+                "minutes_tree": detail.context["minutes_tree"],
+                "acceptance_rows": detail.context["acceptance_rows"],
+            },
+        )
+
+        self.assertIn("22.07.2026, 19:00 – 23.07.2026, 01:30 Uhr", pdf_html)
+
     def test_edit_form_does_not_add_an_empty_top(self):
         self.client.login(username="leitung", password="pw")
         self.client.post(reverse("meeting_minutes_create"), self._post_data())
