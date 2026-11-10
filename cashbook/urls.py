@@ -15,6 +15,7 @@ urlpatterns = [
     path("events/<int:trip_pk>/settlement/incomes/<int:pk>/edit/", views.event_income_edit, name="event_income_edit"),
     path("events/<int:trip_pk>/settlement/incomes/<int:pk>/delete/", views.event_income_delete, name="event_income_delete"),
     path("events/<int:trip_pk>/settlement/budgets/create/", views.advance_budget_create, name="advance_budget_create"),
+    path("events/<int:trip_pk>/settlement/budgets/<int:pk>/top-up/", views.advance_budget_top_up, name="advance_budget_top_up"),
     path("events/<int:trip_pk>/settlement/budgets/<int:pk>/settle/", views.advance_budget_settle, name="advance_budget_settle"),
     path("cashbooks/", views.cashbook_list, name="cashbook_list"),
     path("cashbooks/create/", views.cashbook_create, name="cashbook_create"),

@@ -50,13 +50,13 @@
 </tbody></table></div>
 
 <h4 class="mt-4">Vorschussbudgets</h4>
-<div class="table-responsive"><table class="table table-hover"><thead><tr><th>Bezeichnung</th><th>Planer</th><th>Zielkassenbuch</th><th>Vorschuss</th><th>Bareinnahmen</th><th>Ausgaben</th><th>Saldo</th><th>Status</th><th></th></tr></thead><tbody>
+<div class="table-responsive"><table class="table table-hover"><thead><tr><th>Bezeichnung</th><th>Planer</th><th>Zielkassenbuch</th><th>Vorschuss</th><th>Weitere Einzahlungen</th><th>Bareinnahmen</th><th>Ausgaben</th><th>Saldo</th><th>Status</th><th></th></tr></thead><tbody>
 {% for budget in budgets %}<tr>
     <td>{{ budget.name }}</td><td>{{ budget.assigned_to.user.get_full_name|default:budget.assigned_to.user.username }}</td><td>{{ budget.cashbook.name }}</td>
-    <td>{{ budget.amount }} {{ budget.cashbook.currency }}</td><td>+{{ budget.income_amount }} {{ budget.cashbook.currency }}</td><td>{{ budget.spent_amount }} {{ budget.cashbook.currency }}</td><td>{{ budget.remaining_amount }} {{ budget.cashbook.currency }}</td>
+    <td>{{ budget.amount }} {{ budget.cashbook.currency }}</td><td>+{{ budget.top_up_amount }} {{ budget.cashbook.currency }}</td><td>+{{ budget.income_amount }} {{ budget.cashbook.currency }}</td><td>{{ budget.spent_amount }} {{ budget.cashbook.currency }}</td><td>{{ budget.remaining_amount }} {{ budget.cashbook.currency }}</td>
     <td>{% if budget.settled_at %}Abgerechnet{% else %}Offen{% endif %}</td>
-    <td>{% if is_cashier and not budget.settled_at and request.membership.id == budget.cashbook.responsible_id %}<form method="post" action="{% url 'advance_budget_settle' trip.pk budget.pk %}">{% csrf_token %}<button class="btn btn-sm btn-primary">Gesamtabrechnung</button></form>{% elif is_cashier and budget.settlement_entry %}<a class="btn btn-sm btn-outline-primary" href="{% url 'cashbook_detail' budget.cashbook.pk %}">Sammelbuchung #{{ budget.settlement_entry.entry_number }}</a>{% endif %}</td>
-</tr>{% empty %}<tr><td colspan="9" class="text-muted">Noch keine Vorschussbudgets angelegt.</td></tr>{% endfor %}
+    <td>{% if is_cashier and not budget.settled_at and request.membership.id == budget.cashbook.responsible_id %}<div class="d-flex gap-1"><a class="btn btn-sm btn-outline-primary" href="{% url 'advance_budget_top_up' trip.pk budget.pk %}">Weitere Einzahlung</a><form method="post" action="{% url 'advance_budget_settle' trip.pk budget.pk %}">{% csrf_token %}<button class="btn btn-sm btn-primary">Gesamtabrechnung</button></form></div>{% elif is_cashier and budget.settlement_entry %}<a class="btn btn-sm btn-outline-primary" href="{% url 'cashbook_detail' budget.cashbook.pk %}">Sammelbuchung #{{ budget.settlement_entry.entry_number }}</a>{% endif %}</td>
+</tr>{% empty %}<tr><td colspan="10" class="text-muted">Noch keine Vorschussbudgets angelegt.</td></tr>{% endfor %}
 </tbody></table></div>
 {% if is_event_manager %}
     <a href="{% url 'edit_trip' trip.pk %}" class="btn btn-secondary">Zur Bearbeitung der Veranstaltung</a>

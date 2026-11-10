@@ -25,11 +25,11 @@ from django.utils import timezone
 from PIL import Image, ImageDraw, ImageFont
 
 from cashbook.forms import (
-    AdvanceBudgetForm, CashBookCsvRowForm, CashBookCsvUploadForm, CashBookEntryForm, CashBookForm,
+    AdvanceBudgetForm, AdvanceBudgetTopUpForm, CashBookCsvRowForm, CashBookCsvUploadForm, CashBookEntryForm, CashBookForm,
     CashBookReceiptRequestForm, CashBookReceiptReviewForm, CashBookReceiptSubmissionForm, EventExpenseForm, EventIncomeForm,
     ReimbursementRequestForm, ReimbursementReviewForm,
 )
-from cashbook.models import AdvanceBudget, CashBook, CashBookAuditLog, CashBookEntry, CashBookReceiptRequest, EventExpense, EventIncome, EventSettlementEntry, ReimbursementRequest
+from cashbook.models import AdvanceBudget, AdvanceBudgetTopUp, CashBook, CashBookAuditLog, CashBookEntry, CashBookReceiptRequest, EventExpense, EventIncome, EventSettlementEntry, ReimbursementRequest
 from cashbook.notifications import notify_receipt_request, notify_requester_about_decision, notify_responsible_about_request
 from main.decorators import cashier_manager_required, organization_admin_required, pro5_required
 
@@ -472,15 +472,17 @@ def _build_cashbook_fallback_pdf(cashbook, running_rows):
     return _build_text_pdf(f"Kassenbuch {cashbook.name}", lines or ["Keine Einträge vorhanden."])
 
 
-def _build_advance_budget_pdf(budget, expenses, incomes):
+def _build_advance_budget_pdf(budget, expenses, incomes, top_ups):
     expenses = list(expenses)
     incomes = list(incomes)
+    top_ups = list(top_ups)
     running_balance = Decimal(budget.amount)
     rows = []
     items = [(expense.expense_date, expense.pk, "expense", expense) for expense in expenses]
     items += [(income.income_date, income.pk, "income", income) for income in incomes]
+    items += [(top_up.booking_date, top_up.pk, "top_up", top_up) for top_up in top_ups]
     for _, _, item_type, item in sorted(items):
-        running_balance += item.amount if item_type == "income" else -item.amount
+        running_balance += item.amount if item_type in ("income", "top_up") else -item.amount
         rows.append((item, item_type, running_balance))
 
     context = {
@@ -488,6 +490,7 @@ def _build_advance_budget_pdf(budget, expenses, incomes):
         "rows": rows,
         "expense_total": sum((expense.amount for expense in expenses), Decimal("0.00")),
         "income_total": sum((income.amount for income in incomes), Decimal("0.00")),
+        "top_up_total": sum((top_up.amount for top_up in top_ups), Decimal("0.00")),
         "balance": running_balance,
     }
     try:
@@ -498,13 +501,15 @@ def _build_advance_budget_pdf(budget, expenses, incomes):
             f"Veranstaltung: {budget.trip.name}",
             f"Zugewiesen an: {budget.assigned_to.user.get_full_name() or budget.assigned_to.user.username}",
             f"Vorschuss: {budget.amount} {budget.cashbook.currency}",
+            f"Weitere Einzahlungen: {context['top_up_total']} {budget.cashbook.currency}",
             f"Bareinnahmen: {context['income_total']} {budget.cashbook.currency}",
             "",
         ]
         for item, item_type, balance in rows:
             lines.append(
-                f"{(item.income_date if item_type == 'income' else item.expense_date):%d.%m.%Y} | {item.title} | "
-                f"{'+' if item_type == 'income' else '-'}{item.amount} {budget.cashbook.currency} | Saldo: {balance} {budget.cashbook.currency}"
+                f"{(item.income_date if item_type == 'income' else item.booking_date if item_type == 'top_up' else item.expense_date):%d.%m.%Y} | "
+                f"{('Weitere Einzahlung' if item_type == 'top_up' else item.title)} | "
+                f"{'+' if item_type in ('income', 'top_up') else '-'}{item.amount} {budget.cashbook.currency} | Saldo: {balance} {budget.cashbook.currency}"
             )
         lines.extend(["", f"Endsaldo: {running_balance} {budget.cashbook.currency}"])
         return _build_text_pdf(f"Vorschussbudget {budget.name}", lines)
@@ -1491,7 +1496,7 @@ def event_settlement(request, trip_pk):
         cashbook__organization=request.org,
         entry_type=CashBookEntry.TYPE_EXPENSE,
         event_expense__isnull=True,
-    ).exclude(advance_budget_payment__isnull=False).exclude(advance_budget_settlement__isnull=False).select_related("cashbook", "created_by", "settlement_metadata"))
+    ).exclude(advance_budget_payment__isnull=False).exclude(advance_budget_top_up__isnull=False).exclude(advance_budget_settlement__isnull=False).select_related("cashbook", "created_by", "settlement_metadata"))
     for expense in expenses:
         expense.is_direct_cashbook_entry = False
     for entry in direct_expenses:
@@ -1584,7 +1589,7 @@ def _event_settlement_receipts(trip, organization):
     direct_entries = CashBookEntry.objects.filter(
         trip=trip, cashbook__organization=organization, entry_type=CashBookEntry.TYPE_EXPENSE,
         event_expense__isnull=True,
-    ).exclude(advance_budget_payment__isnull=False).exclude(advance_budget_settlement__isnull=False).exclude(attachment="").exclude(attachment__isnull=True)
+    ).exclude(advance_budget_payment__isnull=False).exclude(advance_budget_top_up__isnull=False).exclude(advance_budget_settlement__isnull=False).exclude(attachment="").exclude(attachment__isnull=True)
     receipts = [(entry, entry.attachment) for entry in direct_entries]
     for expense in trip.event_expenses.exclude(status=EventExpense.STATUS_REJECTED).exclude(attachment="").exclude(attachment__isnull=True).select_related("cashbook_entry"):
         expense.entry_number = expense.cashbook_entry.entry_number if expense.cashbook_entry_id else "Vorschussbudget"
@@ -1764,6 +1769,37 @@ def advance_budget_create(request, trip_pk):
 
 @login_required
 @pro5_required
+def advance_budget_top_up(request, trip_pk, pk):
+    from events.models import Trip
+    trip = get_object_or_404(Trip, pk=trip_pk, owner=request.org)
+    _, is_cashier = _event_settlement_access(request, trip)
+    budget = get_object_or_404(AdvanceBudget.objects.select_related("cashbook", "assigned_to__user"), pk=pk, trip=trip, settled_at__isnull=True)
+    if not is_cashier:
+        raise PermissionDenied("Nur Kassenwarte dürfen weitere Einzahlungen buchen.")
+    _require_responsible_cashier(request, budget.cashbook)
+    form = AdvanceBudgetTopUpForm(request.POST or None, initial={"booking_date": timezone.localdate()})
+    if request.method == "POST" and form.is_valid():
+        planner_name = budget.assigned_to.user.get_full_name() or budget.assigned_to.user.username
+        with transaction.atomic():
+            entry = CashBookEntry.objects.create(
+                cashbook=budget.cashbook, trip=trip, entry_type=CashBookEntry.TYPE_EXPENSE,
+                booking_date=form.cleaned_data["booking_date"], amount=form.cleaned_data["amount"],
+                title=f"Weitere Einzahlung: {budget.name}", category="Vorschussbudget",
+                counterparty=planner_name, description=form.cleaned_data["description"],
+                created_by=request.user, **_automatic_entry_reconciliation(budget.cashbook),
+            )
+            AdvanceBudgetTopUp.objects.create(
+                advance_budget=budget, booking_date=form.cleaned_data["booking_date"],
+                amount=form.cleaned_data["amount"], description=form.cleaned_data["description"],
+                cashbook_entry=entry, created_by=request.user,
+            )
+        messages.success(request, "Weitere Einzahlung ins Vorschussbudget gebucht.")
+        return redirect("event_settlement", trip_pk=trip.pk)
+    return render(request, "cashbook/advance_budget_top_up_form.html", {"title": "Weitere Einzahlung", "trip": trip, "budget": budget, "form": form})
+
+
+@login_required
+@pro5_required
 def advance_budget_settle(request, trip_pk, pk):
     from events.models import Trip
     trip = get_object_or_404(Trip, pk=trip_pk, owner=request.org)
@@ -1773,10 +1809,12 @@ def advance_budget_settle(request, trip_pk, pk):
     if request.method == "POST" and not budget.settled_at:
         expenses = list(budget.expenses.filter(status=EventExpense.STATUS_APPROVED))
         incomes = list(budget.incomes.all())
+        top_ups = list(budget.top_ups.all())
         expense_total = sum((item.amount for item in expenses), Decimal("0.00"))
         income_total = sum((item.amount for item in incomes), Decimal("0.00"))
+        top_up_total = sum((item.amount for item in top_ups), Decimal("0.00"))
         with transaction.atomic():
-            difference = expense_total - budget.amount - income_total
+            difference = expense_total - budget.amount - top_up_total - income_total
             entry = None
             if budget.amount != 0 or expenses or incomes:
                 planner_name = budget.assigned_to.user.get_full_name() or budget.assigned_to.user.username
@@ -1785,7 +1823,7 @@ def advance_budget_settle(request, trip_pk, pk):
                 receipt_note = " Die zugehörigen Belege sind in der Veranstaltungsabrechnung hinterlegt." if expenses else ""
                 entry = CashBookEntry.objects.create(cashbook=budget.cashbook, trip=trip, entry_type=CashBookEntry.TYPE_EXPENSE if difference >= 0 else CashBookEntry.TYPE_INCOME, booking_date=timezone.localdate(), amount=abs(difference), title=f"Sammelabrechnung: {budget.name}", category="Vorschussbudget", counterparty=planner_name, description=f"{expense_note} {balance_note}{receipt_note}", created_by=request.user, **_automatic_entry_reconciliation(budget.cashbook))
                 pdf_filename = f"sammelabrechnung-{slugify(budget.name) or budget.pk}.pdf"
-                entry.attachment.save(pdf_filename, ContentFile(_build_advance_budget_pdf(budget, expenses, incomes)), save=True)
+                entry.attachment.save(pdf_filename, ContentFile(_build_advance_budget_pdf(budget, expenses, incomes, top_ups)), save=True)
             budget.settlement_entry, budget.settled_at, budget.settled_by = entry, timezone.now(), request.user
             budget.save(update_fields=["settlement_entry", "settled_at", "settled_by"])
         messages.success(request, "Vorschussbudget als Sammelbuchung ins Kassenbuch übernommen.")

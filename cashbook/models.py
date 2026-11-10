@@ -197,8 +197,28 @@ class AdvanceBudget(models.Model):
         return sum(income.amount for income in self.incomes.all())
 
     @property
+    def top_up_amount(self):
+        return sum(top_up.amount for top_up in self.top_ups.all())
+
+    @property
     def remaining_amount(self):
-        return self.amount + self.income_amount - self.spent_amount
+        return self.amount + self.top_up_amount + self.income_amount - self.spent_amount
+
+
+class AdvanceBudgetTopUp(models.Model):
+    advance_budget = models.ForeignKey(AdvanceBudget, on_delete=models.PROTECT, related_name="top_ups", verbose_name="Vorschussbudget")
+    booking_date = models.DateField(verbose_name="Buchungsdatum")
+    amount = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Betrag")
+    description = models.TextField(blank=True, verbose_name="Bemerkung")
+    cashbook_entry = models.OneToOneField(CashBookEntry, on_delete=models.PROTECT, related_name="advance_budget_top_up", verbose_name="Kassenbucheintrag")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="created_advance_budget_top_ups", verbose_name="Erstellt von")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["booking_date", "id"]
+
+    def __str__(self):
+        return f"Nachzahlung {self.advance_budget.name} – {self.amount}"
 
 
 class EventIncome(models.Model):

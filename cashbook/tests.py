@@ -7,7 +7,7 @@ import io
 import zipfile
 from PIL import Image
 
-from cashbook.models import AdvanceBudget, CashBook, CashBookAuditLog, CashBookEntry, EventExpense, EventIncome, ReimbursementRequest
+from cashbook.models import AdvanceBudget, AdvanceBudgetTopUp, CashBook, CashBookAuditLog, CashBookEntry, EventExpense, EventIncome, ReimbursementRequest
 from events.models import Trip
 from main.models import Membership
 
@@ -707,6 +707,10 @@ class CashbookTests(TestCase):
         )
         self.client.login(username="owner", password="pw")
 
+        form_response = self.client.get(f"/events/{trip.pk}/settlement/incomes/create/")
+        self.assertContains(form_response, 'id="category-input"')
+        self.assertContains(form_response, "/cashbooks/autocomplete/category/")
+
         response = self.client.post(f"/events/{trip.pk}/settlement/incomes/create/", {
             "advance_budget": budget.pk, "income_date": "2026-07-02", "amount": "300.00",
             "title": "Teilnehmendenbeiträge", "category": "TN-Beiträge", "counterparty": "Teilnehmende",
@@ -727,6 +731,40 @@ class CashbookTests(TestCase):
         self.assertEqual(budget.settlement_entry.amount, Decimal("100.00"))
         self.assertIn("Bareinnahmen", budget.settlement_entry.description)
         self.assertTrue(budget.settlement_entry.attachment.name.endswith(".pdf"))
+
+    def test_additional_payment_increases_advance_budget_from_cashbook(self):
+        membership = self.owner_org.membership_set.get(user=self.owner_user)
+        cashbook = CashBook.objects.create(organization=self.owner_org, name="Bankkonto", responsible=membership)
+        trip = Trip.objects.create(name="Sommerlager", owner=self.owner_org, start_date="2026-07-01T10:00:00Z", end_date="2026-07-10T10:00:00Z")
+        trip.planners.add(self.owner_user)
+        budget = AdvanceBudget.objects.create(trip=trip, cashbook=cashbook, assigned_to=membership, name="Lagerleitung", amount="100.00")
+        EventExpense.objects.create(
+            trip=trip, advance_budget=budget, expense_date="2026-07-03", amount="130.00", title="Material",
+            attachment=SimpleUploadedFile("beleg.pdf", b"receipt"), status=EventExpense.STATUS_APPROVED, created_by=self.owner_user,
+        )
+        self.client.login(username="owner", password="pw")
+
+        response = self.client.post(f"/events/{trip.pk}/settlement/budgets/{budget.pk}/top-up/", {
+            "booking_date": "2026-07-02", "amount": "50.00", "description": "Zusätzlicher Materialbedarf",
+        })
+
+        self.assertEqual(response.status_code, 302)
+        top_up = AdvanceBudgetTopUp.objects.get(advance_budget=budget)
+        self.assertEqual(top_up.cashbook_entry.cashbook, cashbook)
+        self.assertEqual(top_up.cashbook_entry.entry_type, CashBookEntry.TYPE_EXPENSE)
+        self.assertEqual(top_up.cashbook_entry.amount, Decimal("50.00"))
+        budget.refresh_from_db()
+        self.assertEqual(budget.top_up_amount, Decimal("50.00"))
+        self.assertEqual(budget.remaining_amount, Decimal("20.00"))
+
+        settlement = self.client.get(f"/events/{trip.pk}/settlement/")
+        self.assertContains(settlement, "+50,00 EUR")
+        self.assertEqual(len(settlement.context["expenses"]), 1)
+
+        self.client.post(f"/events/{trip.pk}/settlement/budgets/{budget.pk}/settle/")
+        budget.refresh_from_db()
+        self.assertEqual(budget.settlement_entry.entry_type, CashBookEntry.TYPE_INCOME)
+        self.assertEqual(budget.settlement_entry.amount, Decimal("20.00"))
 
     def test_advance_budget_without_expenses_can_be_settled(self):
         membership = self.owner_org.membership_set.get(user=self.owner_user)

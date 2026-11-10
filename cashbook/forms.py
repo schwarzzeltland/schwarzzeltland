@@ -2,7 +2,7 @@ from django import forms
 from decimal import Decimal
 
 from events.models import Trip
-from cashbook.models import AdvanceBudget, CashBook, CashBookEntry, CashBookReceiptRequest, EventExpense, EventIncome, ReimbursementRequest
+from cashbook.models import AdvanceBudget, AdvanceBudgetTopUp, CashBook, CashBookEntry, CashBookReceiptRequest, EventExpense, EventIncome, ReimbursementRequest
 from main.models import Membership
 
 
@@ -204,6 +204,26 @@ class AdvanceBudgetForm(forms.ModelForm):
         return amount
 
 
+class AdvanceBudgetTopUpForm(forms.ModelForm):
+    class Meta:
+        model = AdvanceBudgetTopUp
+        fields = ["booking_date", "amount", "description"]
+        widgets = {
+            "booking_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["booking_date"].input_formats = ["%Y-%m-%d"]
+
+    def clean_amount(self):
+        amount = self.cleaned_data["amount"]
+        if amount <= 0:
+            raise forms.ValidationError("Der Betrag muss größer als 0 sein.")
+        return amount
+
+
 class EventExpenseForm(forms.ModelForm):
     payment_source = forms.ChoiceField(label="Zahlungsquelle")
 
@@ -255,6 +275,11 @@ class EventIncomeForm(forms.ModelForm):
         fields = ["advance_budget", "income_date", "amount", "title", "category", "counterparty", "reference", "description"]
         widgets = {
             "income_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+            "category": forms.TextInput(attrs={
+                "id": "category-input",
+                "autocomplete": "off",
+                "placeholder": "Kategorie",
+            }),
             "description": forms.Textarea(attrs={"rows": 3}),
         }
 
